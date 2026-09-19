@@ -1,0 +1,1 @@
+"""AgroTwin backend application."""

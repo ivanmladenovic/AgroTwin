@@ -1,0 +1,194 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-background: #eef4ef;
+  --color-foreground: #10241a;
+  --color-card: #f7fbf8;
+  --color-muted: #dce8df;
+  --color-muted-foreground: #4f6558;
+  --color-border: #c5d5ca;
+  --color-primary: #0b4226;
+  --color-primary-foreground: #f3faf5;
+  --color-accent: #026a74;
+  --color-accent-foreground: #e7f7f8;
+  --color-ring: #026a74;
+  --color-sidebar: #050807;
+  --color-sidebar-foreground: #e7f2ea;
+  --color-danger: #9f2d2d;
+  --color-ok: #2a6c24;
+  --color-health-healthy: #2a6c24;
+  --color-health-monitoring: #c4a017;
+  --color-health-issue: #9f2d2d;
+  --color-health-unknown: #6b746e;
+  --color-tree-replaced: #026a74;
+  --color-map-soil: #e4eee6;
+  --color-map-row-odd: #d7e4da;
+  --color-map-row-even: #cddccf;
+  --color-map-well: #026a74;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.25rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    height: 100dvh;
+    max-width: 100%;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    margin: 0;
+    overflow-x: clip;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  h1,
+  h2 {
+    letter-spacing: -0.03em;
+  }
+}
+
+@layer components {
+  .kicker {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-accent);
+  }
+
+  .wordmark {
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+
+  .wordmark-agro {
+    color: #5dad45;
+  }
+
+  .wordmark-twin {
+    color: #2eb3be;
+  }
+
+  .tree-health-healthy {
+    fill: var(--color-health-healthy);
+  }
+  .tree-health-monitoring {
+    fill: var(--color-health-monitoring);
+  }
+  .tree-health-issue {
+    fill: var(--color-health-issue);
+  }
+  .tree-health-severe {
+    fill: #5c1f1a;
+  }
+  .tree-severe-ring {
+    fill: none;
+    stroke: #5c1f1a;
+    stroke-width: 0.45;
+  }
+  .tree-health-unknown {
+    fill: var(--color-health-unknown);
+  }
+  .tree-status-removed {
+    fill: transparent;
+    stroke: var(--color-health-unknown);
+    stroke-width: 0.35;
+  }
+  .tree-status-replaced {
+    fill: var(--color-tree-replaced);
+  }
+}
+
+.agrotwin-map-root .leaflet-container {
+  height: 100%;
+  width: 100%;
+  background: var(--color-muted);
+  font-family: inherit;
+  border-radius: 1rem;
+}
+
+.agrotwin-map-root .leaflet-control-zoom {
+  border: 0;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.16);
+}
+
+.agrotwin-map-root .leaflet-control-zoom a {
+  background: #fff;
+  color: #334155;
+  width: 2.75rem;
+  height: 2.75rem;
+  line-height: 2.75rem;
+  font-size: 1.125rem;
+}
+
+@media (min-width: 1024px) {
+  .agrotwin-map-root .leaflet-control-zoom a {
+    width: 1.875rem;
+    height: 1.875rem;
+    line-height: 1.875rem;
+    font-size: 1rem;
+  }
+}
+
+.agrotwin-map-root .leaflet-popup-content-wrapper {
+  border-radius: 0.75rem;
+  box-shadow: 0 8px 24px rgba(16, 36, 26, 0.12);
+}
+
+.agrotwin-map-root .leaflet-popup-content {
+  margin: 12px 14px;
+}
+
+.agrotwin-map-marker {
+  background: transparent;
+  border: 0;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body,
+  #root {
+    height: auto !important;
+    max-width: none;
+    overflow: visible !important;
+  }
+
+  body {
+    background: #fff !important;
+    overflow: visible !important;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
+
+  .print-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .report-sheet {
+    box-shadow: none !important;
+    background: #fff !important;
+  }
+}

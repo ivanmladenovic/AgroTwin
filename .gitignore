@@ -1,0 +1,25 @@
+.DS_Store
+.env
+**/.env
+.venv/
+**/.venv/
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.vite/
+coverage/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+__pycache__/
+*.py[cod]
+*.log
+.idea/
+.vscode/
+var/storage/
+**/var/storage/
+
+# Local grant paperwork and large field-photo dumps stay off the public repo
+Prijava za ENECA/
+Slike lesnika za testiranje/
