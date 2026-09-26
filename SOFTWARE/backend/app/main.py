@@ -44,6 +44,15 @@ def create_app() -> FastAPI:
     )
     register_exception_handlers(application)
     application.include_router(api_router, prefix=settings.api_prefix)
+
+    @application.get("/", include_in_schema=False)
+    def root() -> dict[str, str]:
+        return {
+            "service": settings.app_name,
+            "health": f"{settings.api_prefix}/health",
+            "docs": "/docs",
+        }
+
     return application
 
 
