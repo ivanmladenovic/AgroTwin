@@ -122,11 +122,17 @@ See [docs/AI_MODEL_BENCHMARK.md](docs/AI_MODEL_BENCHMARK.md) for setup, env vars
 
 Page (superuser only): [http://localhost:5174/dev/benchmark](http://localhost:5174/dev/benchmark)
 
+## Production deploy (Render)
+
+Full stack (Postgres + API + frontend) on Render: [docs/DEPLOY_RENDER.md](docs/DEPLOY_RENDER.md)
+
+Blueprint file at repo root: `render.yaml`
+
 ## Production deploy (SuperHosting)
 
-Push to `main` triggers GitHub Actions FTPS deploy to https://agrotwin.srpskisafran.rs (frontend + backend code sync).
+Frontend-only FTPS sync remains available, but SuperHosting shared plans often cannot run FastAPI. Prefer Render for the API.
 
-One-time cPanel Python App + PostgreSQL setup: [docs/DEPLOY_PRODUCTION.md](docs/DEPLOY_PRODUCTION.md)
+See also: [docs/DEPLOY_PRODUCTION.md](docs/DEPLOY_PRODUCTION.md)
 
 ## Phase 0 scope
 
