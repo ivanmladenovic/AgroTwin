@@ -16,6 +16,10 @@ from app.models.tree import Tree
 from app.models.user import User
 from app.models.analysis import DiseaseAnalysis
 from app.models.harvest import HarvestEvent
+from app.models.soil import SoilProfileSnapshot
+from app.models.soil_lab import SoilLabAnalysis
+from app.models.subsidy import Subsidy
+from app.models.schedule import OrchardSeason, TaskSchedule
 from app.models.weather import WeatherForecastCache
 import app.models.activity as activity_module
 import app.models.ai as ai_module
@@ -69,9 +73,14 @@ __all__ = [
     "KnowledgeChunk",
     "KnowledgeAsset",
     "KnowledgePage",
+    "OrchardSeason",
     "Parcel",
     "Photo",
     "Row",
+    "SoilLabAnalysis",
+    "SoilProfileSnapshot",
+    "Subsidy",
+    "TaskSchedule",
     "Tree",
     "User",
     "WeatherForecastCache",

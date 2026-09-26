@@ -80,8 +80,8 @@ Open [http://localhost:5174](http://localhost:5174).
 
 Demo user (seeded automatically):
 
-- email: `demo@agrotwin.com`
-- password: `demo12345`
+- email: `admin@agrotwin.rs`
+- password: `admin`
 
 ### Full stack with Docker
 
@@ -113,6 +113,20 @@ docker compose exec backend python scripts/seed.py
 - `GET /api/v1/parcels/{id}/trees/{treeId}/journal` — tree journal timeline
 
 Interactive docs: [http://localhost:8001/docs](http://localhost:8001/docs)
+
+## AI Model Benchmark (developers)
+
+Compare Gemini 3.8 Flash and GPT-5 on identical inputs. Keys stay on the backend only.
+
+See [docs/AI_MODEL_BENCHMARK.md](docs/AI_MODEL_BENCHMARK.md) for setup, env vars (`GEMINI_API_KEY`, `OPENAI_API_KEY`), and usage.
+
+Page (superuser only): [http://localhost:5174/dev/benchmark](http://localhost:5174/dev/benchmark)
+
+## Production deploy (SuperHosting)
+
+Push to `main` triggers GitHub Actions FTPS deploy to https://agrotwin.srpskisafran.rs (frontend + backend code sync).
+
+One-time cPanel Python App + PostgreSQL setup: [docs/DEPLOY_PRODUCTION.md](docs/DEPLOY_PRODUCTION.md)
 
 ## Phase 0 scope
 

@@ -6,6 +6,7 @@ import type {
   ParcelCreatePayload,
   ParcelUpdatePayload,
   ParcelWeather,
+  ParcelSoilProfile,
   TreeDetail,
   TreeJournal,
   TreeOption,
@@ -60,4 +61,12 @@ export function listParcelTrees(parcelId: string, rowId?: string) {
 
 export function getParcelWeather(parcelId: string) {
   return apiRequest<ParcelWeather>(`/parcels/${parcelId}/weather`)
+}
+
+export function getParcelSoilProfile(parcelId: string) {
+  return apiRequest<ParcelSoilProfile>(`/parcels/${parcelId}/soil/profile`)
+}
+
+export function refreshParcelSoilProfile(parcelId: string) {
+  return apiRequest<ParcelSoilProfile>(`/parcels/${parcelId}/soil/refresh`, { method: 'POST' })
 }

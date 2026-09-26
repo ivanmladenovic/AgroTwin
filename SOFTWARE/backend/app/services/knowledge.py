@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 from datetime import datetime, timezone
+from pathlib import Path
 from uuid import UUID, uuid4
 
 from sqlalchemy import text
@@ -104,6 +105,43 @@ class KnowledgeService:
         self.storage.delete(document.storage_key)
         self.docs.delete(document)
         self.db.commit()
+
+    def file_local_path(self, document: Document) -> Path | None:
+        return self.storage.local_path(document.storage_key)
+
+    def file_bytes(self, document: Document) -> tuple[bytes, str]:
+        return self.storage.get(document.storage_key), document.content_type or "application/pdf"
+
+    def page_bytes(self, document: Document, page_number: int) -> tuple[bytes, str]:
+        if page_number < 1:
+            raise NotFoundError("Strana nije pronađena")
+        if document.page_count and page_number > document.page_count:
+            raise NotFoundError("Strana nije pronađena")
+        page = self.docs.get_page(document.id, page_number)
+        if page and page.image_storage_key:
+            return self.storage.get(page.image_storage_key), "image/jpeg"
+        return self._render_page(document, page_number), "image/jpeg"
+
+    def page_local_path(self, document: Document, page_number: int):
+        page = self.docs.get_page(document.id, page_number)
+        if page and page.image_storage_key:
+            return self.storage.local_path(page.image_storage_key)
+        return None
+
+    def _render_page(self, document: Document, page_number: int) -> bytes:
+        try:
+            import fitz
+        except ImportError as exc:
+            raise AppError("PDF stranica nije dostupna", status_code=500, code="pdf_render") from exc
+        content = self.storage.get(document.storage_key)
+        pdf = fitz.open(stream=content, filetype="pdf")
+        try:
+            if page_number > pdf.page_count:
+                raise NotFoundError("Strana nije pronađena")
+            pixmap = pdf[page_number - 1].get_pixmap(matrix=fitz.Matrix(160 / 72, 160 / 72), alpha=False)
+            return pixmap.tobytes("jpeg")
+        finally:
+            pdf.close()
 
     def list_chunks(self, document_id: UUID, owner_id: UUID) -> list[KnowledgeChunkRead]:
         document = self.get_document(document_id, owner_id)

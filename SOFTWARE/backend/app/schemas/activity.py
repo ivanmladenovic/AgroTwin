@@ -8,11 +8,16 @@ from app.models.enums import ActivityStatus, ScopeType
 from app.schemas.catalog import CatalogItemRead
 from app.schemas.common import IDSchema
 from app.schemas.cost import CostItemRead
+from app.schemas.soil_lab import SoilLabAnalysisRead
 
 
 class ActivityLineItem(BaseModel):
+    name: str | None = Field(default=None, max_length=255)
     quantity: Decimal | None = Field(default=None, ge=0)
     unit: str | None = Field(default=None, max_length=32)
+    volume: Decimal | None = Field(default=None, ge=0)
+    volume_unit: str | None = Field(default=None, max_length=32)
+    amount: Decimal | None = Field(default=None, ge=0)
 
 
 class ActivityCreate(BaseModel):
@@ -77,5 +82,6 @@ class ActivityRead(IDSchema):
     row_number: int | None = None
     tree_public_id: str | None = None
     costs: list[CostItemRead] = Field(default_factory=list)
+    soil_analyses: list[SoilLabAnalysisRead] = Field(default_factory=list)
     total_cost: Decimal
     currency: str = "EUR"

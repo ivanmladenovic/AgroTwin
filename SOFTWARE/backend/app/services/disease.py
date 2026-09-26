@@ -34,8 +34,9 @@ from app.schemas.disease import (
     PhotoRead,
 )
 from app.storage import get_storage
+from app.storage.images import compress_photo
 
-ALLOWED_PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+ALLOWED_PHOTO_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"}
 MAX_PHOTO_BYTES = 8 * 1024 * 1024
 
 
@@ -87,9 +88,12 @@ class DiseaseService:
         return DiseaseCaseDetailRead(**summary.model_dump(), observations=observations, photos=photos)
 
     def create_case(self, owner_id: UUID, payload: DiseaseCaseCreate, created_by_id: UUID) -> DiseaseCase:
-        parcel, row_id, tree_id = self._resolve_scope(
-            owner_id, payload.parcel_id, payload.row_id, payload.tree_id
+        parcel, row_id, tree_id, extra_notes = self._resolve_scope(
+            owner_id, payload.parcel_id, payload.row_id, payload.tree_id, payload.tree_ids
         )
+        notes = payload.notes
+        if extra_notes:
+            notes = f"{notes.strip()}\n{extra_notes}".strip() if notes else extra_notes
         case = DiseaseCase(
             farm_id=parcel.farm_id,
             parcel_id=parcel.id,
@@ -102,21 +106,20 @@ class DiseaseService:
             status=payload.status,
             detected_on=payload.detected_on,
             resolved_on=date.today() if payload.status == DiseaseCaseStatus.RESOLVED else None,
-            notes=payload.notes,
+            notes=notes,
             created_by_id=created_by_id,
         )
         self.cases.add(case)
         self.db.flush()
-        if payload.symptoms:
-            self.observations.add(
-                DiseaseObservation(
-                    disease_case_id=case.id,
-                    observed_on=payload.detected_on,
-                    symptoms=payload.symptoms,
-                    notes=payload.notes,
-                    created_by_id=created_by_id,
-                )
+        self.observations.add(
+            DiseaseObservation(
+                disease_case_id=case.id,
+                observed_on=payload.detected_on,
+                symptoms=payload.symptoms,
+                notes=notes,
+                created_by_id=created_by_id,
             )
+        )
         if tree_id is not None:
             self.sync_tree_health(tree_id)
         self.db.commit()
@@ -176,13 +179,19 @@ class DiseaseService:
         caption: str | None,
         uploaded_by_id: UUID,
     ) -> Photo:
+        content_type = (content_type or "").split(";")[0].strip().lower()
+        if content_type == "image/jpg":
+            content_type = "image/jpeg"
         if content_type not in ALLOWED_PHOTO_TYPES:
             raise AppError("Prihvataju se samo JPEG, PNG, WebP i GIF slike", status_code=422, code="invalid_photo")
         if len(content) > MAX_PHOTO_BYTES:
             raise AppError("Fotografija je veća od 8 MB", status_code=422, code="photo_too_large")
         farm_id = self._farm_for_entity(owner_id, entity_type, entity_id)
-        extension = _extension(filename, content_type)
-        key = f"photos/{farm_id}/{uuid4().hex}{extension}"
+        compressed = compress_photo(content, filename)
+        content = compressed.content
+        content_type = compressed.content_type
+        filename = compressed.filename
+        key = f"photos/{farm_id}/{uuid4().hex}{compressed.extension}"
         self.storage.put(key, content, content_type)
         photo = Photo(
             farm_id=farm_id,
@@ -324,25 +333,38 @@ class DiseaseService:
         parcel_id: UUID,
         row_id: UUID | None,
         tree_id: UUID | None,
-    ) -> tuple[Parcel, UUID | None, UUID | None]:
+        tree_ids: list[UUID] | None = None,
+    ) -> tuple[Parcel, UUID | None, UUID | None, str | None]:
         parcel = self.parcels.get_for_owner(parcel_id, owner_id)
         if parcel is None:
             raise NotFoundError("Parcela nije pronađena")
+        selected_ids = list(dict.fromkeys([*(tree_ids or []), *([tree_id] if tree_id else [])]))
+        extra_notes = None
         resolved_row_id = row_id
         resolved_tree_id = tree_id
-        if tree_id is not None:
-            found = self.trees.get_for_parcel(parcel.id, tree_id)
-            if found is None:
-                raise NotFoundError("Stablo nije pronađeno")
-            tree, _row_number = found
-            resolved_tree_id = tree.id
-            resolved_row_id = tree.row_id
+        if selected_ids:
+            trees = []
+            for item_id in selected_ids:
+                found = self.trees.get_for_parcel(parcel.id, item_id)
+                if found is None:
+                    raise NotFoundError("Stablo nije pronađeno")
+                tree, _row_number = found
+                trees.append(tree)
+            if len(trees) == 1:
+                resolved_tree_id = trees[0].id
+                resolved_row_id = trees[0].row_id
+            else:
+                resolved_tree_id = None
+                row_ids = {item.row_id for item in trees}
+                resolved_row_id = next(iter(row_ids)) if len(row_ids) == 1 else row_id
+                extra_notes = "Zahvaćena stabla: " + ", ".join(item.public_id for item in trees)
         elif row_id is not None:
             row = self.rows.get_for_parcel(parcel.id, row_id)
             if row is None:
                 raise NotFoundError("Red nije pronađen")
             resolved_row_id = row.id
-        return parcel, resolved_row_id, resolved_tree_id
+            resolved_tree_id = None
+        return parcel, resolved_row_id, resolved_tree_id, extra_notes
 
     def _farm_for_entity(self, owner_id: UUID, entity_type: AttachmentEntityType, entity_id: UUID) -> UUID:
         if entity_type == AttachmentEntityType.OBSERVATION:
@@ -384,17 +406,3 @@ class DiseaseService:
                 raise NotFoundError("Berba nije pronađena")
             return event.farm_id
         raise AppError("Fotografije se mogu vezati samo za stablo, opažanje, slučaj ili berbu", status_code=422)
-
-
-def _extension(filename: str, content_type: str) -> str:
-    mapping = {
-        "image/jpeg": ".jpg",
-        "image/png": ".png",
-        "image/webp": ".webp",
-        "image/gif": ".gif",
-    }
-    if "." in filename:
-        suffix = "." + filename.rsplit(".", 1)[-1].lower()
-        if suffix in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
-            return ".jpg" if suffix == ".jpeg" else suffix
-    return mapping.get(content_type, ".bin")

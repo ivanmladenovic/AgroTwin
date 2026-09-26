@@ -15,6 +15,7 @@ from app.repositories.farm import FarmRepository
 from app.repositories.invoice import InvoiceRepository
 from app.schemas.invoice import InvoiceRead
 from app.storage import get_storage
+from app.storage.images import compress_photo
 
 MAX_FILE_BYTES = 15 * 1024 * 1024
 ALLOWED_TYPES = {
@@ -67,8 +68,14 @@ class InvoiceService:
         if not content:
             raise AppError("Datoteka je prazna", status_code=422, code="empty_file")
         farm = self._farm(owner_id)
-        key = f"invoices/{farm.id}/{uuid4().hex}.{extension}"
         stored_type = "application/pdf" if extension == "pdf" else content_type
+        if extension != "pdf":
+            compressed = compress_photo(content, filename)
+            content = compressed.content
+            stored_type = compressed.content_type
+            filename = compressed.filename
+            extension = compressed.extension.lstrip(".")
+        key = f"invoices/{farm.id}/{uuid4().hex}.{extension}"
         self.storage.put(key, content, stored_type)
         invoice = Invoice(
             farm_id=farm.id,

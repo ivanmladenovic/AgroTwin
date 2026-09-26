@@ -52,7 +52,9 @@ def create_conversation(
     db: DBSession,
 ) -> ConversationDetail:
     service = AgronomistService(db)
-    item = service.create_conversation(current_user.id, payload.title, payload.parcel_id)
+    item = service.create_conversation(
+        current_user.id, payload.title, payload.parcel_id, payload.disease_case_id
+    )
     return service.to_detail(service.get_conversation(item.id, current_user.id))
 
 

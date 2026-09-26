@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, File, Form, UploadFile
+from fastapi.responses import FileResponse, Response
 
 from app.api.deps import CurrentUser, DBSession
 from app.models.enums import KnowledgeCategory
@@ -43,6 +44,43 @@ async def upload_document(
 def get_document(document_id: UUID, current_user: CurrentUser, db: DBSession) -> DocumentRead:
     service = KnowledgeService(db)
     return service.to_document_read(service.get_document(document_id, current_user.id))
+
+
+@router.get("/documents/{document_id}/file")
+def get_document_file(document_id: UUID, current_user: CurrentUser, db: DBSession) -> Response:
+    service = KnowledgeService(db)
+    document = service.get_document(document_id, current_user.id)
+    local = service.file_local_path(document)
+    filename = document.original_filename or f"{document.title}.pdf"
+    if local is not None and local.exists():
+        return FileResponse(local, media_type=document.content_type or "application/pdf", filename=filename)
+    content, content_type = service.file_bytes(document)
+    return Response(
+        content=content,
+        media_type=content_type,
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )
+
+
+@router.get("/documents/{document_id}/pages/{page_number}/file")
+def get_document_page_file(
+    document_id: UUID,
+    page_number: int,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> Response:
+    service = KnowledgeService(db)
+    document = service.get_document(document_id, current_user.id)
+    local = service.page_local_path(document, page_number)
+    filename = f"{document.title}-strana-{page_number}.jpg"
+    if local is not None and local.exists():
+        return FileResponse(local, media_type="image/jpeg", filename=filename)
+    content, content_type = service.page_bytes(document, page_number)
+    return Response(
+        content=content,
+        media_type=content_type,
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )
 
 
 @router.get("/documents/{document_id}/chunks", response_model=list[KnowledgeChunkRead])

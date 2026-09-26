@@ -8,6 +8,7 @@ ACTIVITY_TYPES: list[tuple[str, str, str]] = [
     ("irrigation", "Navodnjavanje", "Voda naneta na parcelu, red ili stablo."),
     ("spraying", "Prskanje", "Zaštita bilja ili folijarno prskanje."),
     ("fertilization", "Đubrenje", "Unošenje hraniva."),
+    ("soil_analysis", "Analiza zemljišta", "Laboratorijska analiza uzoraka zemljišta sa parcele."),
     ("pruning", "Rezidba", "Rezidba krošnje ili izdanaka."),
     ("planting", "Sadnja", "Sadnja novih stabala."),
     ("harvesting", "Berba", "Sakupljanje plodova i radovi u berbi."),

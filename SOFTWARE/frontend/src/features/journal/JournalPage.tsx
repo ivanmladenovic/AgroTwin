@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 
 import { JournalCalendar } from '@/features/journal/JournalCalendar'
 import { listActivities, listActivityTypes } from '@/features/journal/api'
-import { daysInMonth, monthWindow, todayKey } from '@/features/journal/calendar'
+import { daysInMonth, journalCalendarSpan, monthRange, todayKey } from '@/features/journal/calendar'
 import { activityCalendarKind, activityStatusLabel, activityStatuses } from '@/features/journal/labels'
 import { listParcels, listParcelRows, listParcelTrees } from '@/features/orchard/api'
 import type { ActivityFilters, ActivityScope, ActivityStatus } from '@/shared/api/types'
@@ -17,7 +17,7 @@ import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 
 export function JournalPage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [view, setView] = useState<'calendar' | 'list'>(() => (searchParams.get('view') === 'list' ? 'list' : 'calendar'))
   const [selectedDay, setSelectedDay] = useState<string | null>(() => todayKey())
   const [filters, setFilters] = useState<ActivityFilters>(() => ({
@@ -25,13 +25,21 @@ export function JournalPage() {
     date_from: searchParams.get('date_from') || '',
     date_to: searchParams.get('date_to') || '',
     activity_type_id: searchParams.get('activity_type_id') || '',
+    scope_type: (searchParams.get('scope_type') as ActivityScope | '') || '',
+    row_id: searchParams.get('row_id') || '',
+    tree_id: searchParams.get('tree_id') || '',
     status: (searchParams.get('status') as ActivityStatus | '') || '',
   }))
+  const listReturnTo = useMemo(() => journalListPath(filters), [filters])
+  const createActivityTo =
+    view === 'list'
+      ? `/activities/new?returnTo=${encodeURIComponent(listReturnTo)}`
+      : '/activities/new'
   const typesQuery = useQuery({ queryKey: ['activity-types'], queryFn: listActivityTypes })
   const parcelsQuery = useQuery({ queryKey: ['parcels'], queryFn: listParcels })
   const calendarRange = useMemo(() => {
-    const now = new Date()
-        const months = monthWindow(now.getFullYear(), now.getMonth() + 1, 48, 6)
+    const span = journalCalendarSpan()
+    const months = monthRange(span.fromYear, span.fromMonth, span.toYear, span.toMonth)
     const first = months[0]
     const last = months[months.length - 1]
     return {
@@ -76,6 +84,14 @@ export function JournalPage() {
     return [...map.entries()]
   }, [listActivitiesData])
 
+  function setJournalView(next: 'calendar' | 'list') {
+    setView(next)
+    const params = new URLSearchParams(searchParams)
+    if (next === 'list') params.set('view', 'list')
+    else params.delete('view')
+    setSearchParams(params, { replace: true })
+  }
+
   function update<K extends keyof ActivityFilters>(key: K, value: ActivityFilters[K]) {
     setFilters((current) => {
       const next = { ...current, [key]: value }
@@ -101,14 +117,17 @@ export function JournalPage() {
         </div>
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
           <div className="inline-flex rounded-lg border border-border p-0.5">
-            <ViewButton active={view === 'calendar'} onClick={() => setView('calendar')}>
+            <ViewButton active={view === 'calendar'} onClick={() => setJournalView('calendar')}>
               Kalendar
             </ViewButton>
-            <ViewButton active={view === 'list'} onClick={() => setView('list')}>
+            <ViewButton active={view === 'list'} onClick={() => setJournalView('list')}>
               Lista
             </ViewButton>
           </div>
-          <Link to="/activities/new">
+          <Link to="/journal/schedule">
+            <Button variant="outline">Planiranje</Button>
+          </Link>
+          <Link to={createActivityTo}>
             <Button>+ Dodaj aktivnost</Button>
           </Link>
         </div>
@@ -222,7 +241,11 @@ export function JournalPage() {
               {items.map((activity) => {
                 const kind = activityCalendarKind(activity.status, activity.performed_on, todayKey())
                 return (
-                  <Link key={activity.id} to={`/activities/${activity.id}`} className="block">
+                  <Link
+                    key={activity.id}
+                    to={`/activities/${activity.id}?returnTo=${encodeURIComponent(listReturnTo)}`}
+                    className="block"
+                  >
                     <Card className="hover:bg-muted/40">
                       <CardContent className="flex items-center justify-between gap-3 py-4">
                         <div className="min-w-0">
@@ -281,4 +304,12 @@ function Filter({ label, children }: { label: string; children: ReactNode }) {
       {children}
     </div>
   )
+}
+
+function journalListPath(filters: ActivityFilters) {
+  const params = new URLSearchParams({ view: 'list' })
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) params.set(key, String(value))
+  }
+  return `/journal?${params.toString()}`
 }

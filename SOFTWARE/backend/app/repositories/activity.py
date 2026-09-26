@@ -22,6 +22,7 @@ class ActivityRepository:
             .options(
                 selectinload(Activity.activity_type),
                 selectinload(Activity.costs).selectinload(Cost.cost_category),
+                selectinload(Activity.soil_analyses),
             )
         )
 
@@ -64,6 +65,45 @@ class ActivityRepository:
         stmt = stmt.order_by(Activity.performed_on.desc(), Activity.created_at.desc())
         if limit is not None:
             stmt = stmt.limit(limit)
+        return list(self.db.scalars(stmt).unique().all())
+
+    def list_overlapping_scope(
+        self,
+        owner_id: UUID,
+        *,
+        parcel_id: UUID,
+        row_id: UUID | None = None,
+        tree_id: UUID | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+        include_activity_id: UUID | None = None,
+    ) -> list[Activity]:
+        """One query: inherit parcel → row → tree without N+1 lookups."""
+        stmt = self._owned(owner_id).where(Activity.parcel_id == parcel_id)
+        if date_from is not None:
+            stmt = stmt.where(Activity.performed_on >= date_from)
+        if date_to is not None:
+            stmt = stmt.where(Activity.performed_on <= date_to)
+        scope_filter = None
+        if tree_id is not None and row_id is not None:
+            scope_filter = or_(
+                Activity.tree_id == tree_id,
+                Activity.row_id == row_id,
+                Activity.extra_row_ids.contains([str(row_id)]),
+                Activity.scope_type == ScopeType.PARCEL,
+            )
+        elif row_id is not None:
+            scope_filter = or_(
+                Activity.row_id == row_id,
+                Activity.extra_row_ids.contains([str(row_id)]),
+                Activity.scope_type == ScopeType.PARCEL,
+            )
+        if include_activity_id is not None:
+            extra = Activity.id == include_activity_id
+            scope_filter = extra if scope_filter is None else or_(scope_filter, extra)
+        if scope_filter is not None:
+            stmt = stmt.where(scope_filter)
+        stmt = stmt.order_by(Activity.performed_on.desc(), Activity.created_at.desc())
         return list(self.db.scalars(stmt).unique().all())
 
     def get_for_owner(self, activity_id: UUID, owner_id: UUID) -> Activity | None:

@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 from app.core.maps import normalize_maps_url
 from app.core.varieties import DEFAULT_VARIETIES, main_variety_name
 from app.models.enums import WellLocation
+from app.core.geojson import InvalidParcelGeometry, validate_boundary_geojson
 from app.schemas.common import IDSchema
 from app.services.orchard_layout import MAX_TREES
 
@@ -37,6 +38,8 @@ class ParcelRead(IDSchema):
     area_hectares: Decimal | None
     latitude: Decimal | None
     longitude: Decimal | None
+    altitude: Decimal | None = None
+    boundary: dict | None = None
     notes: str | None
     maps_url: str | None = None
     row_count: int | None
@@ -69,11 +72,18 @@ class ParcelCreate(BaseModel):
     well_location: WellLocation | None = None
     notes: str | None = None
     maps_url: str | None = None
+    altitude: Decimal | None = Field(default=None, ge=-500, le=9000)
+    boundary: dict | None = None
 
     @field_validator("maps_url", mode="before")
     @classmethod
     def validate_maps_url(cls, value: str | None) -> str | None:
         return normalize_maps_url(value)
+
+    @field_validator("boundary")
+    @classmethod
+    def validate_boundary(cls, value: dict | None) -> dict | None:
+        return _validated_boundary(value)
 
     @model_validator(mode="after")
     def normalize_planting_plan(self) -> ParcelCreate:
@@ -137,6 +147,15 @@ def normalize_varieties_and_plan(
     return resolved, default_name, plan
 
 
+def _validated_boundary(value: dict | None) -> dict | None:
+    if value is None:
+        return None
+    try:
+        return validate_boundary_geojson(value)
+    except InvalidParcelGeometry as exc:
+        raise ValueError(str(exc)) from exc
+
+
 class ParcelUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     area_hectares: Decimal | None = Field(default=None, gt=0)
@@ -145,8 +164,15 @@ class ParcelUpdate(BaseModel):
     planting_year: int | None = Field(default=None, ge=1900, le=2100)
     varieties: list[VarietySpec] | None = None
     row_plan: list[RowPlanItem] | None = None
+    altitude: Decimal | None = Field(default=None, ge=-500, le=9000)
+    boundary: dict | None = None
 
     @field_validator("maps_url", mode="before")
     @classmethod
     def validate_maps_url(cls, value: str | None) -> str | None:
         return normalize_maps_url(value)
+
+    @field_validator("boundary")
+    @classmethod
+    def validate_boundary(cls, value: dict | None) -> dict | None:
+        return _validated_boundary(value)

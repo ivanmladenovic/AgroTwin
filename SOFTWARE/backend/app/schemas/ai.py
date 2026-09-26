@@ -18,6 +18,7 @@ class AIStatusRead(BaseModel):
 class ConversationCreate(BaseModel):
     title: str | None = None
     parcel_id: UUID | None = None
+    disease_case_id: UUID | None = None
 
 
 class ChatMessageCreate(BaseModel):
@@ -53,6 +54,7 @@ class ConversationSummary(IDSchema):
     title: str
     farm_id: UUID | None
     parcel_id: UUID | None
+    disease_case_id: UUID | None = None
     message_count: int = 0
     last_message_at: datetime | None = None
 

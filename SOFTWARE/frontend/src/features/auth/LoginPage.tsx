@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
 
@@ -13,17 +13,20 @@ import { Label } from '@/shared/ui/label'
 
 export function LoginPage() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: 'demo@agrotwin.com',
-      password: 'demo12345',
+      email: 'admin@agrotwin.rs',
+      password: 'admin',
     },
   })
 
   const mutation = useMutation({
     mutationFn: login,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
+      await queryClient.cancelQueries()
+      queryClient.clear()
       setAccessToken(data.access_token)
       void navigate('/')
     },

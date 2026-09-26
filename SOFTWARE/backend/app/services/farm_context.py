@@ -14,11 +14,13 @@ from app.models.row import Row
 from app.models.tree import Tree
 from app.repositories.farm import FarmRepository
 from app.repositories.parcel import ParcelRepository
+from app.repositories.soil import SoilProfileRepository
 from app.services.activity import ActivityService
 from app.services.disease import DiseaseService
 from app.services.journal import JournalService
 from app.services.knowledge import KnowledgeService
 from app.services.orchard import OrchardService
+from app.soil.properties import PROVIDER_NAME, SOURCE_TYPE
 
 
 TOOL_SPECS = [
@@ -132,6 +134,9 @@ class FarmContextService:
             "row_spacing_m": str(parcel.row_spacing_m) if parcel.row_spacing_m is not None else None,
             "tree_spacing_m": str(parcel.tree_spacing_m) if parcel.tree_spacing_m is not None else None,
             "maps_url": parcel.maps_url,
+            "latitude": str(parcel.latitude) if parcel.latitude is not None else None,
+            "longitude": str(parcel.longitude) if parcel.longitude is not None else None,
+            "soil": self._soil_context(parcel),
         }
 
     def get_tree_history(
@@ -301,6 +306,24 @@ class FarmContextService:
             if needle in item.name.lower() or needle == item.code.lower():
                 return item
         return parcels[0]
+
+    def _soil_context(self, parcel: Parcel) -> dict:
+        snapshot = self.soil.get_for_parcel(parcel.id)
+        if snapshot is None:
+            return {
+                "source": PROVIDER_NAME,
+                "source_type": SOURCE_TYPE,
+                "available": False,
+                "data": None,
+            }
+        return {
+            "source": PROVIDER_NAME,
+            "source_type": SOURCE_TYPE,
+            "available": True,
+            "status": snapshot.status,
+            "fetched_at": snapshot.fetched_at.isoformat() if snapshot.fetched_at else None,
+            "data": snapshot.values,
+        }
 
     def _tree(
         self,

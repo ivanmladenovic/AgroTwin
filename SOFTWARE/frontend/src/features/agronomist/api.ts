@@ -9,10 +9,17 @@ export function listConversations() {
   return apiRequest<ConversationSummary[]>('/ai/conversations')
 }
 
-export function createConversation(title?: string) {
+export function createConversation(
+  title?: string,
+  extras?: { parcel_id?: string | null; disease_case_id?: string | null },
+) {
   return apiRequest<ConversationDetail>('/ai/conversations', {
     method: 'POST',
-    body: JSON.stringify({ title: title || null }),
+    body: JSON.stringify({
+      title: title || null,
+      parcel_id: extras?.parcel_id || null,
+      disease_case_id: extras?.disease_case_id || null,
+    }),
   })
 }
 

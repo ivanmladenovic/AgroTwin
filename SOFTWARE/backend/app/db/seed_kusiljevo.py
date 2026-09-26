@@ -52,7 +52,7 @@ def seed_kusiljevo_presentation(db: Session, user: User, farm: Farm) -> None:
     farm.location_name = "Kusiljevo, Srbija"
     farm.description = "Zasad lesnika Tonda di Giffoni sa oprašivačima, 26 redova × 73 mesta."
     farm.area_hectares = parcel.area_hectares or Decimal("4.7500")
-    user.full_name = "Milan Petrović"
+    user.full_name = "Ivan Mladenović"
     parcel.notes = (
         "Zasad iz 2022. na blagoj padini iznad sela. Glavna sorta Tonda di Giffoni, "
         "oprašivači Tonda Gentile Romana i Nocchione. Sistem kap po kap od prve godine."

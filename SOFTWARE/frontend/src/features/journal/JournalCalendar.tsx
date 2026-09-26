@@ -4,10 +4,11 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 import { activityCalendarKind, activityStatusLabel, type CalendarKind } from '@/features/journal/labels'
 import {
+  journalCalendarSpan,
   monthBounds,
   monthCells,
   monthName,
-  monthWindow,
+  monthRange,
   shiftMonth,
   todayKey,
   WEEKDAYS,
@@ -16,6 +17,7 @@ import type { Activity } from '@/shared/api/types'
 import { activityTarget, formatDate, formatMoney, formatWorkQuantities, scopeLabel } from '@/shared/lib/format'
 import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
+import { Select } from '@/shared/ui/select'
 
 const KIND_DOT: Record<CalendarKind, string> = {
   done: 'bg-ok',
@@ -37,12 +39,26 @@ export function JournalCalendar({ selectedDay, activities, onSelectDay }: Journa
     const date = new Date()
     return { year: date.getFullYear(), month: date.getMonth() + 1 }
   }, [])
-  const months = useMemo(() => monthWindow(now.year, now.month, 12, 12), [now.month, now.year])
+  const span = useMemo(() => journalCalendarSpan(new Date(now.year, now.month - 1, 1)), [now.month, now.year])
+  const months = useMemo(
+    () => monthRange(span.fromYear, span.fromMonth, span.toYear, span.toMonth),
+    [span.fromMonth, span.fromYear, span.toMonth, span.toYear],
+  )
+  const years = useMemo(() => {
+    const list: number[] = []
+    for (let year = span.fromYear; year <= span.toYear; year += 1) list.push(year)
+    return list
+  }, [span.fromYear, span.toYear])
   const scrollerRef = useRef<HTMLDivElement>(null)
   const monthRefs = useRef(new Map<string, HTMLElement>())
+  const pendingScroll = useRef<MonthCursor | null>(null)
+  const navigationReady = useRef(false)
   const [visible, setVisible] = useState<MonthCursor>(now)
   const visibleRef = useRef(visible)
   visibleRef.current = visible
+
+  const canGoPrev = !(visible.year === span.fromYear && visible.month === span.fromMonth)
+  const canGoNext = !(visible.year === span.toYear && visible.month === span.toMonth)
 
   const byDay = new Map<string, Activity[]>()
   for (const activity of activities) {
@@ -62,20 +78,37 @@ export function JournalCalendar({ selectedDay, activities, onSelectDay }: Journa
   }
 
   function scrollToMonth(item: MonthCursor, behavior: ScrollBehavior = 'smooth') {
+    const clamped = clampMonth(item, span)
     const root = scrollerRef.current
-    const node = monthRefs.current.get(monthKey(item))
-    if (!root || !node) return
-    const top = node.getBoundingClientRect().top - root.getBoundingClientRect().top + root.scrollTop
-    root.scrollTo({ top, behavior })
-    setVisible(item)
+    const node = monthRefs.current.get(monthKey(clamped))
+    if (!root || !node) {
+      pendingScroll.current = clamped
+      setVisible(clamped)
+      return
+    }
+    pendingScroll.current = null
+    root.scrollTo({ top: node.offsetTop, behavior })
+    setVisible(clamped)
   }
 
   useEffect(() => {
-    const frame = window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => scrollToMonth(now, 'auto'))
-    })
-    return () => window.cancelAnimationFrame(frame)
+    navigationReady.current = false
+    pendingScroll.current = now
+    const timer = window.setTimeout(() => {
+      scrollToMonth(now, 'auto')
+      navigationReady.current = true
+    }, 50)
+    return () => window.clearTimeout(timer)
+    // Intentionally only when "today" changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [now])
+
+  useEffect(() => {
+    const target = pendingScroll.current
+    if (!target) return
+    const frame = window.requestAnimationFrame(() => scrollToMonth(target, 'auto'))
+    return () => window.cancelAnimationFrame(frame)
+  }, [months])
 
   useEffect(() => {
     const root = scrollerRef.current
@@ -98,13 +131,14 @@ export function JournalCalendar({ selectedDay, activities, onSelectDay }: Journa
       root.removeEventListener('wheel', onWheel)
       window.clearTimeout(unlockTimer)
     }
-  }, [months])
+  }, [months, span])
 
   useEffect(() => {
     const root = scrollerRef.current
     if (!root) return
     const observer = new IntersectionObserver(
       (entries) => {
+        if (!navigationReady.current) return
         const best = entries
           .filter((entry) => entry.isIntersecting)
           .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
@@ -123,26 +157,61 @@ export function JournalCalendar({ selectedDay, activities, onSelectDay }: Journa
     <div className="grid gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-stretch">
       <div className="flex min-w-0 flex-col gap-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => scrollToMonth(shiftMonth(visible.year, visible.month, -1))}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+              disabled={!canGoPrev}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
               aria-label="Prethodni mesec"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <p className="min-w-0 text-center text-base font-semibold sm:min-w-40 sm:text-lg">
-              {monthName(visible.year, visible.month)} {visible.year}
-            </p>
+            <Select
+              aria-label="Mesec"
+              className="h-11 w-[9.5rem] bg-background lg:h-11"
+              value={String(visible.month)}
+              onChange={(event) => scrollToMonth({ year: visible.year, month: Number(event.target.value) })}
+            >
+              {Array.from({ length: 12 }, (_, index) => {
+                const month = index + 1
+                return (
+                  <option key={month} value={month}>
+                    {monthName(visible.year, month)}
+                  </option>
+                )
+              })}
+            </Select>
+            <Select
+              aria-label="Godina"
+              className="h-11 w-[5.5rem] bg-background lg:h-11"
+              value={String(visible.year)}
+              onChange={(event) => scrollToMonth({ year: Number(event.target.value), month: visible.month })}
+            >
+              {years.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </Select>
             <button
               type="button"
               onClick={() => scrollToMonth(shiftMonth(visible.year, visible.month, 1))}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
+              disabled={!canGoNext}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
               aria-label="Sledeći mesec"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
+            {visible.year !== now.year || visible.month !== now.month ? (
+              <button
+                type="button"
+                onClick={() => scrollToMonth(now)}
+                className="h-11 rounded-lg border border-border px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                Danas
+              </button>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             <Legend color={KIND_DOT.done} label={`Urađeno ${visibleCounts.done}`} />
@@ -329,4 +398,13 @@ function createPath(day: string, today: string) {
   const status = day > today ? 'planned' : 'completed'
   const params = new URLSearchParams({ date: day, status, returnTo: '/journal' })
   return `/activities/new?${params.toString()}`
+}
+
+function clampMonth(item: MonthCursor, span: { fromYear: number; fromMonth: number; toYear: number; toMonth: number }) {
+  const value = item.year * 12 + item.month
+  const from = span.fromYear * 12 + span.fromMonth
+  const to = span.toYear * 12 + span.toMonth
+  if (value < from) return { year: span.fromYear, month: span.fromMonth }
+  if (value > to) return { year: span.toYear, month: span.toMonth }
+  return item
 }

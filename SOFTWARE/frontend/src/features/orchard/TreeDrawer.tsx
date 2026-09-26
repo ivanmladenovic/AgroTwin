@@ -29,20 +29,20 @@ export function TreeDrawer({
 
   return (
     <div className="flex h-full flex-col border-border bg-card lg:border-l">
-      <div className="flex items-start justify-between border-b border-border px-4 py-3">
+      <div className="flex items-start justify-between border-b border-border px-4 py-2.5">
         <div>
           <p className="kicker">Stablo</p>
-          <h2 className="mt-1 font-mono text-lg">{tree.public_id}</h2>
+          <h2 className="mt-0.5 font-mono text-base">{tree.public_id}</h2>
         </div>
         <Button variant="ghost" size="sm" onClick={onClose}>
           Zatvori
         </Button>
       </div>
-      <dl className="flex-1 space-y-3 overflow-auto px-4 py-4">
+      <dl className="grid flex-1 grid-cols-2 gap-x-4 gap-y-2.5 overflow-auto px-4 py-3">
         {fields.map((field) => (
-          <div key={field.label}>
-            <dt className="text-[11px] uppercase tracking-wide text-muted-foreground">{field.label}</dt>
-            <dd className="mt-1 text-sm">{field.value}</dd>
+          <div key={field.label} className="min-w-0">
+            <dt className="text-[11px] leading-none text-muted-foreground">{field.label}</dt>
+            <dd className="mt-0.5 truncate text-sm font-medium">{field.value}</dd>
           </div>
         ))}
       </dl>

@@ -79,7 +79,7 @@ export function ParcelReportPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 print:max-w-none print:space-y-5">
+    <div className="w-full space-y-6 print:space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4 print:hidden">
         <div>
           <p className="kicker">Izveštaj</p>

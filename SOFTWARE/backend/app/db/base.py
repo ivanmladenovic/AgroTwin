@@ -13,6 +13,10 @@ from app.models.knowledge import KnowledgeBaseItem, KnowledgeChunk, KnowledgeAss
 from app.models.parcel import Parcel
 from app.models.photo import Photo
 from app.models.row import Row
+from app.models.soil import SoilProfileSnapshot
+from app.models.soil_lab import SoilLabAnalysis
+from app.models.subsidy import Subsidy
+from app.models.schedule import OrchardSeason, TaskSchedule
 from app.models.tree import Tree
 from app.models.user import User
 
@@ -31,9 +35,14 @@ __all__ = [
     "KnowledgeChunk",
     "KnowledgeAsset",
     "KnowledgePage",
+    "OrchardSeason",
     "Parcel",
     "Photo",
     "Row",
+    "SoilLabAnalysis",
+    "SoilProfileSnapshot",
+    "Subsidy",
+    "TaskSchedule",
     "Tree",
     "User",
     "WeatherForecastCache",

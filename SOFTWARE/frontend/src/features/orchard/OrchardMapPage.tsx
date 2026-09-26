@@ -8,6 +8,7 @@ import { orchardFilters, type OrchardTreeFilter } from '@/features/orchard/healt
 import { OrchardCanvas } from '@/features/orchard/OrchardCanvas'
 import { ParcelSummary } from '@/features/orchard/ParcelSummary'
 import { ParcelWeatherForecast } from '@/features/orchard/ParcelWeatherForecast'
+import { ParcelSoilCard } from '@/features/orchard/ParcelSoilCard'
 import { TreeDrawer } from '@/features/orchard/TreeDrawer'
 import { formatNumber } from '@/shared/lib/format'
 import { cn } from '@/shared/lib/utils'
@@ -95,6 +96,7 @@ export function OrchardMapPage() {
       <ParcelSummary stats={twin.stats} />
 
       <ParcelWeatherForecast parcelId={parcelId} />
+      <ParcelSoilCard parcelId={parcelId} />
 
       <div className="relative z-30 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <FilterMenu value={healthFilter} onChange={setHealthFilter} />
@@ -119,7 +121,7 @@ export function OrchardMapPage() {
           onSelectTree={setSelectedTreeId}
         />
         {selectedTreeId && treeQuery.data ? (
-          <div className="absolute inset-x-0 bottom-0 z-20 max-h-[75%] overflow-hidden rounded-t-2xl border-t border-border shadow-lg lg:inset-y-0 lg:right-0 lg:left-auto lg:max-h-none lg:w-80 lg:rounded-none lg:border-t-0">
+          <div className="absolute inset-x-0 bottom-0 z-20 max-h-[75%] overflow-hidden rounded-t-2xl border-t border-border shadow-lg lg:inset-y-0 lg:right-0 lg:left-auto lg:max-h-none lg:w-96 lg:rounded-none lg:border-t-0">
             <TreeDrawer
               tree={treeQuery.data}
               parcelId={parcelId}

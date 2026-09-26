@@ -75,7 +75,7 @@ export function ProductionPage() {
   const addHref = selectedParcelId ? `/orchard/${selectedParcelId}/production/new?year=${year}` : ''
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 pb-20 sm:pb-0">
+    <div className="w-full space-y-6 pb-20 sm:pb-0">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="kicker">Proizvodnja</p>
@@ -235,7 +235,7 @@ function ProductionBody({ production }: { production: ParcelProduction }) {
           <CardTitle>Zapisi berbe</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
-          <table className="w-full min-w-[40rem] text-left text-sm">
+          <table className="w-full min-w-[36rem] text-left text-sm">
             <thead className="text-xs uppercase tracking-wide text-muted-foreground">
               <tr className="border-b border-border">
                 <th className="py-2 font-semibold">Datum</th>
@@ -244,7 +244,6 @@ function ProductionBody({ production }: { production: ParcelProduction }) {
                 <th className="py-2 text-right font-semibold">Bruto</th>
                 <th className="py-2 text-right font-semibold">Gubitak</th>
                 <th className="py-2 text-right font-semibold">Neto</th>
-                <th className="py-2 font-semibold">Kvalitet</th>
               </tr>
             </thead>
             <tbody>
@@ -260,7 +259,6 @@ function ProductionBody({ production }: { production: ParcelProduction }) {
                   <td className="py-2.5 text-right font-mono">{formatKg(event.gross_kg ?? event.gross_quantity)}</td>
                   <td className="py-2.5 text-right font-mono">{formatKg(event.loss_kg ?? event.loss_quantity)}</td>
                   <td className="py-2.5 text-right font-mono">{formatKg(event.net_kg ?? event.net_quantity)}</td>
-                  <td className="py-2.5">{qualityLabel(event.quality_category)}</td>
                 </tr>
               ))}
             </tbody>

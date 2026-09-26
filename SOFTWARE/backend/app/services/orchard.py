@@ -116,6 +116,8 @@ class OrchardService:
             well_location=payload.well_location,
             well_x=layout.well_x,
             well_y=layout.well_y,
+            altitude=payload.altitude,
+            boundary=payload.boundary,
         )
         self._apply_maps_url(parcel, payload.maps_url)
         self.parcels.add(parcel)
@@ -136,6 +138,10 @@ class OrchardService:
             parcel.notes = payload.notes
         if "maps_url" in payload.model_fields_set:
             self._apply_maps_url(parcel, payload.maps_url)
+        if "altitude" in payload.model_fields_set:
+            parcel.altitude = payload.altitude
+        if "boundary" in payload.model_fields_set:
+            parcel.boundary = payload.boundary
         if payload.planting_year is not None:
             parcel.default_planting_year = payload.planting_year
 

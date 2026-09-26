@@ -7,9 +7,10 @@ import { Button } from '@/shared/ui/button'
 
 type OrchardPickerDialogProps = {
   parcelId: string
-  mode: 'rows' | 'tree'
+  mode: 'rows' | 'tree' | 'trees'
   selectedRowIds: string[]
   selectedTreeId: string | null
+  selectedTreeIds?: string[]
   onToggleRow: (rowId: string) => void
   onSelectAllRows?: () => void
   onClearRows?: () => void
@@ -22,6 +23,7 @@ export function OrchardPickerDialog({
   mode,
   selectedRowIds,
   selectedTreeId,
+  selectedTreeIds = [],
   onToggleRow,
   onSelectAllRows,
   onClearRows,
@@ -35,6 +37,7 @@ export function OrchardPickerDialog({
   })
   const twin = twinQuery.data
   const selectedTree = twin?.trees.find((tree) => tree.id === selectedTreeId)
+  const selectedTrees = (twin?.trees ?? []).filter((tree) => selectedTreeIds.includes(tree.id))
   const selectedRows = (twin?.rows ?? [])
     .filter((row) => selectedRowIds.includes(row.id))
     .map((row) => rowLabel(row.row_number))
@@ -45,12 +48,14 @@ export function OrchardPickerDialog({
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div>
             <h2 className="text-lg font-semibold">
-              {mode === 'rows' ? 'Označite redove na zasadu' : 'Označite stablo na zasadu'}
+              {mode === 'rows' ? 'Označite redove na zasadu' : mode === 'trees' ? 'Označite sadnice na zasadu' : 'Označite stablo na zasadu'}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {mode === 'rows'
                 ? 'Kliknite red ili stablo da dodate ili uklonite red.'
-                : 'Kliknite stablo koje želite da vežete za aktivnost.'}
+                : mode === 'trees'
+                  ? 'Kliknite sadnice koje želite da prijavite. Ponovni klik skida oznaku.'
+                  : 'Kliknite stablo koje želite da vežete.'}
             </p>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={onClose}>
@@ -64,8 +69,9 @@ export function OrchardPickerDialog({
             <OrchardCanvas
               twin={twin}
               selectedTreeId={selectedTreeId}
-              pickMode={mode}
+              pickMode={mode === 'rows' ? 'rows' : mode === 'trees' ? 'trees' : 'tree'}
               selectedRowIds={selectedRowIds}
+              selectedTreeIds={selectedTreeIds}
               onToggleRow={onToggleRow}
               onSelectTree={(treeId) => {
                 const tree = twin.trees.find((item) => item.id === treeId)
@@ -84,9 +90,13 @@ export function OrchardPickerDialog({
                   ? `Izabrano: ${selectedRows.length} redova`
                   : `Izabrano: ${selectedRows.join(', ')}`
                 : 'Nijedan red nije izabran'
-              : selectedTree
-                ? `Izabrano: ${selectedTree.public_id}`
-                : 'Nijedno stablo nije izabrano'}
+              : mode === 'trees'
+                ? selectedTrees.length
+                  ? `Izabrano: ${selectedTrees.length} sadnica`
+                  : 'Nijedna sadnica nije izabrana'
+                : selectedTree
+                  ? `Izabrano: ${selectedTree.public_id}`
+                  : 'Nijedno stablo nije izabrano'}
           </p>
           <div className="flex flex-wrap gap-2">
             {mode === 'rows' ? (

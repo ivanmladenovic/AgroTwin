@@ -48,6 +48,7 @@ class DiseaseCaseCreate(BaseModel):
     severity: DiseaseSeverity = DiseaseSeverity.MEDIUM
     notes: str | None = None
     symptoms: str | None = None
+    tree_ids: list[UUID] = Field(default_factory=list)
 
 
 class DiseaseCaseUpdate(BaseModel):

@@ -40,7 +40,7 @@ export function HarvestDetailPage() {
   const backHref = `/orchard/${parcelId}/production?year=${harvestYear}`
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6">
+    <div className="w-full space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="kicker">Proizvodnja</p>

@@ -45,13 +45,26 @@ class AgronomistService:
             raise NotFoundError("Razgovor nije pronađen")
         return item
 
-    def create_conversation(self, owner_id: UUID, title: str | None, parcel_id: UUID | None) -> AIConversation:
+    def create_conversation(
+        self,
+        owner_id: UUID,
+        title: str | None,
+        parcel_id: UUID | None,
+        disease_case_id: UUID | None = None,
+    ) -> AIConversation:
         farms = self.farms.list_by_owner(owner_id)
         farm_id = farms[0].id if farms else None
+        if disease_case_id is not None:
+            from app.services.disease import DiseaseService
+
+            case = DiseaseService(self.db).get_case(disease_case_id, owner_id)
+            parcel_id = parcel_id or case.parcel_id
+            title = title or case.title
         conversation = AIConversation(
             user_id=owner_id,
             farm_id=farm_id,
             parcel_id=parcel_id,
+            disease_case_id=disease_case_id,
             title=(title or "Pitanje o voćnjaku").strip()[:255],
         )
         self.conversations.add(conversation)
@@ -142,12 +155,24 @@ class AgronomistService:
             ChatMessage(role="system", content=system_prompt),
             ChatMessage(role="system", content=knowledge_block),
         ]
+        case_block, photo_parts = self._problem_context(
+            conversation,
+            owner_id,
+            first_turn=not any(
+                item.role == AIMessageRole.USER.value and item.id != user_message.id for item in conversation.messages
+            ),
+        )
+        if case_block:
+            history.append(ChatMessage(role="system", content=case_block))
         for message in conversation.messages:
             if message.id == user_message.id:
                 continue
             if message.role in {AIMessageRole.USER.value, AIMessageRole.ASSISTANT.value}:
                 history.append(ChatMessage(role=message.role, content=message.content))
-        history.append(ChatMessage(role="user", content=content.strip()))
+        user_content: str | list = content.strip()
+        if photo_parts:
+            user_content = [{"type": "text", "text": content.strip()}, *photo_parts]
+        history.append(ChatMessage(role="user", content=user_content))
 
         structured_refs: list[dict] = []
         if answer_text:
@@ -199,6 +224,50 @@ class AgronomistService:
         assert loaded is not None
         return loaded
 
+    def _problem_context(
+        self,
+        conversation: AIConversation,
+        owner_id: UUID,
+        *,
+        first_turn: bool,
+    ) -> tuple[str | None, list[dict]]:
+        if conversation.disease_case_id is None:
+            return None, []
+        import base64
+
+        from app.services.disease import DiseaseService
+
+        diseases = DiseaseService(self.db)
+        detail = diseases.get_case_detail(conversation.disease_case_id, owner_id)
+        location = detail.tree_public_id or (
+            f"Red {detail.row_number}" if detail.row_number is not None else detail.parcel_name or "parcela"
+        )
+        symptoms = next((item.symptoms for item in detail.observations if item.symptoms), None)
+        lines = [
+            "PRIJAVLJENI PROBLEM IZ EVIDENCIJE:",
+            f"Naslov: {detail.title}",
+            f"Parcela: {detail.parcel_name or '-'}",
+            f"Lokacija: {location}",
+            f"Kategorija: {detail.category.value}",
+            f"Ozbiljnost: {detail.severity.value}",
+            f"Datum: {detail.detected_on}",
+            f"Opis: {detail.description or '-'}",
+            f"Simptomi: {symptoms or '-'}",
+            f"Beleške: {detail.notes or '-'}",
+            f"Broj fotografija: {detail.photo_count}",
+            "Odgovorite u razgovoru sa proizvođačem. Ovo nije potvrđena dijagnoza.",
+        ]
+        photo_parts: list[dict] = []
+        if first_turn:
+            for photo in detail.photos[:3]:
+                stored = diseases.get_photo(photo.id, owner_id)
+                image, mime = diseases.photo_bytes(stored)
+                encoded = base64.b64encode(image).decode("ascii")
+                photo_parts.append(
+                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{encoded}"}}
+                )
+        return "\n".join(lines), photo_parts
+
     def to_summary(self, conversation: AIConversation) -> ConversationSummary:
         messages = list(conversation.messages or [])
         last = messages[-1] if messages else None
@@ -209,6 +278,7 @@ class AgronomistService:
             title=conversation.title,
             farm_id=conversation.farm_id,
             parcel_id=conversation.parcel_id,
+            disease_case_id=conversation.disease_case_id,
             message_count=len(messages),
             last_message_at=last.created_at if last else conversation.updated_at,
         )

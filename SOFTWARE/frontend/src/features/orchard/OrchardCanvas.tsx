@@ -12,8 +12,9 @@ type OrchardCanvasProps = {
   selectedTreeId: string | null
   healthFilter?: OrchardTreeFilter
   onSelectTree?: (treeId: string) => void
-  pickMode?: 'tree' | 'rows'
+  pickMode?: 'tree' | 'rows' | 'trees'
   selectedRowIds?: string[]
+  selectedTreeIds?: string[]
   onToggleRow?: (rowId: string) => void
 }
 
@@ -32,6 +33,7 @@ export function OrchardCanvas({
   onSelectTree,
   pickMode,
   selectedRowIds = [],
+  selectedTreeIds = [],
   onToggleRow,
 }: OrchardCanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null)
@@ -184,7 +186,7 @@ export function OrchardCanvas({
                 tree={tree}
                 radius={radius}
                 color={tree.variety ? colors.get(tree.variety) : undefined}
-                selected={tree.id === selectedTreeId}
+                selected={tree.id === selectedTreeId || selectedTreeIds.includes(tree.id)}
                 dimmed={pickMode === 'rows' ? false : visibility.dimmed}
                 faint={visibility.faint}
                 onSelect={() => handleTreeSelect(tree)}

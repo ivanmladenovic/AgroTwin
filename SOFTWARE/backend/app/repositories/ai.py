@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from uuid import UUID
 
 from sqlalchemy import select
@@ -5,6 +7,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models.ai import AIConversation, AIMessage
 from app.models.analysis import DiseaseAnalysis
+from app.models.disease import DiseaseCase
 
 
 class ConversationRepository:
@@ -51,6 +54,18 @@ class AnalysisRepository:
             .order_by(DiseaseAnalysis.created_at.desc())
         )
         return list(self.db.scalars(stmt).all())
+
+    def list_for_parcel(self, owner_id: UUID, parcel_id: UUID) -> list[tuple[DiseaseAnalysis, DiseaseCase]]:
+        from app.models.farm import Farm
+
+        stmt = (
+            select(DiseaseAnalysis, DiseaseCase)
+            .join(DiseaseCase, DiseaseAnalysis.disease_case_id == DiseaseCase.id)
+            .join(Farm, DiseaseCase.farm_id == Farm.id)
+            .where(Farm.owner_id == owner_id, DiseaseCase.parcel_id == parcel_id)
+            .order_by(DiseaseAnalysis.created_at.desc())
+        )
+        return list(self.db.execute(stmt).all())
 
     def add(self, analysis: DiseaseAnalysis) -> DiseaseAnalysis:
         self.db.add(analysis)

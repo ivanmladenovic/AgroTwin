@@ -4,11 +4,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 
-import { addActivityCost, getActivity, listCostCategories, updateActivity } from '@/features/journal/api'
+import { addActivityCost, downloadSoilAnalysis, getActivity, listCostCategories, updateActivity } from '@/features/journal/api'
 import { activityCalendarKind, activityStatusLabel } from '@/features/journal/labels'
 import { todayKey } from '@/features/journal/calendar'
 import { costFormSchema, type CostFormValues } from '@/features/journal/schemas'
-import { activityTarget, formatDate, formatLineItem, formatMoney, formatWorkQuantities, scopeLabel } from '@/shared/lib/format'
+import { activityTarget, formatDate, formatLineItem, formatMoney, formatWorkQuantities, rowLabel, scopeLabel } from '@/shared/lib/format'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
@@ -228,6 +228,31 @@ export function ActivityDetailPage() {
           + Dodaj stavku troška
         </Button>
       )}
+
+      {activity.soil_analyses?.length ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Analize zemljišta</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {activity.soil_analyses.map((analysis) => (
+              <div key={analysis.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{analysis.original_filename}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDate(analysis.sampled_on)}
+                    {analysis.row_number != null ? ` · ${rowLabel(analysis.row_number)}` : ''}
+                    {analysis.tree_public_id ? ` · ${analysis.tree_public_id}` : ''}
+                  </p>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={() => void downloadSoilAnalysis(analysis)}>
+                  Preuzmi PDF
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {activity.description || activity.notes || activity.line_items?.length || activity.quantity ? (
         <Card>

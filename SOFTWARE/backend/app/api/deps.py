@@ -5,7 +5,7 @@ from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import UnauthorizedError
+from app.core.exceptions import ForbiddenError, UnauthorizedError
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.user import User
@@ -32,4 +32,11 @@ def get_current_user(
     return AuthService(db).get_active_user(str(subject))
 
 
+def get_current_superuser(current_user: Annotated[User, Depends(get_current_user)]) -> User:
+    if not current_user.is_superuser:
+        raise ForbiddenError("Samo developer/admin nalog može koristiti ovaj alat")
+    return current_user
+
+
 CurrentUser = Annotated[User, Depends(get_current_user)]
+CurrentSuperuser = Annotated[User, Depends(get_current_superuser)]

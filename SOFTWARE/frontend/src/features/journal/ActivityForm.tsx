@@ -2,17 +2,33 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { MapPinned, Plus, X } from 'lucide-react'
-import { useFieldArray, useForm } from 'react-hook-form'
+import { useFieldArray, useForm, type UseFormRegister } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
 
-import { createActivity, listActivityTypes } from '@/features/journal/api'
+import { createActivity, listActivityTypes, uploadSoilAnalysis } from '@/features/journal/api'
+import {
+  activityLineKind,
+  activityLineSectionLabel,
+  emptyActivityLineItem,
+  emptyIrrigationEquipmentItem,
+  emptyIrrigationFuelItem,
+  isIrrigationFuelName,
+  parseOptionalNumber,
+  type ActivityLineKind,
+} from '@/features/journal/activityLineItems'
 import { defaultActivityStatus } from '@/features/journal/labels'
 import { OrchardPickerDialog } from '@/features/journal/OrchardPickerDialog'
+import {
+  emptySoilSample,
+  soilSamplesError,
+  SoilAnalysisSamples,
+  type SoilSampleDraft,
+} from '@/features/journal/SoilAnalysisSamples'
 import { activityFormSchema, type ActivityFormValues } from '@/features/journal/schemas'
 import { todayKey } from '@/features/journal/calendar'
 import { listParcelRows, listParcels, listParcelTrees } from '@/features/orchard/api'
 import type { ActivityScope, ActivityStatus } from '@/shared/api/types'
-import { isEurUnit, rowLabel } from '@/shared/lib/format'
+import { rowLabel } from '@/shared/lib/format'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
@@ -32,6 +48,8 @@ type Prefill = {
 export function ActivityForm({ prefill }: { prefill: Prefill }) {
   const navigate = useNavigate()
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [soilSamples, setSoilSamples] = useState<SoilSampleDraft[]>([])
+  const [soilError, setSoilError] = useState<string | null>(null)
   const typesQuery = useQuery({ queryKey: ['activity-types'], queryFn: listActivityTypes })
   const parcelsQuery = useQuery({ queryKey: ['parcels'], queryFn: listParcels })
 
@@ -47,12 +65,12 @@ export function ActivityForm({ prefill }: { prefill: Prefill }) {
       row_ids: prefill.row_id ? [prefill.row_id] : [],
       tree_id: prefill.tree_id ?? '',
       description: '',
-      line_items: [{ quantity: '', unit: '' }],
+      line_items: [emptyActivityLineItem('other')],
     },
   })
 
   const items = useFieldArray({ control: form.control, name: 'line_items' })
-  const lineItems = form.watch('line_items')
+  const activityTypeId = form.watch('activity_type_id')
   const scope = form.watch('scope_type')
   const performedOn = form.watch('performed_on')
   const parcelId = form.watch('parcel_id') || prefill.parcel_id || ''
@@ -76,12 +94,28 @@ export function ActivityForm({ prefill }: { prefill: Prefill }) {
   const parcelName = (parcelsQuery.data ?? []).find((parcel) => parcel.id === parcelId)?.name
   const rows = rowsQuery.data ?? []
   const selectedTree = (treesQuery.data ?? []).find((tree) => tree.id === treeId)
+  const selectedType = (typesQuery.data ?? []).find((item) => item.id === activityTypeId)
+  const lineKind = activityLineKind(selectedType)
+  const previousLineKind = useRef(lineKind)
 
   useEffect(() => {
     if (typesQuery.data?.[0] && !form.getValues('activity_type_id')) {
       form.setValue('activity_type_id', typesQuery.data[0].id)
     }
   }, [form, typesQuery.data])
+
+  useEffect(() => {
+    if (previousLineKind.current === lineKind) return
+    previousLineKind.current = lineKind
+    form.setValue('line_items', lineKind === 'irrigation' ? [emptyIrrigationFuelItem()] : [emptyActivityLineItem(lineKind)])
+    if (lineKind === 'soil_analysis') {
+      form.setValue('scope_type', 'parcel')
+      setSoilSamples((current) => (current.length ? current : [emptySoilSample(form.getValues('performed_on'))]))
+    } else {
+      setSoilSamples([])
+      setSoilError(null)
+    }
+  }, [form, lineKind])
 
   useEffect(() => {
     const parcels = parcelsQuery.data ?? []
@@ -128,7 +162,20 @@ export function ActivityForm({ prefill }: { prefill: Prefill }) {
   }, [form, performedOn])
 
   const mutation = useMutation({
-    mutationFn: createActivity,
+    mutationFn: async (payload: Parameters<typeof createActivity>[0]) => {
+      const activity = await createActivity(payload)
+      if (lineKind === 'soil_analysis') {
+        for (const sample of soilSamples) {
+          if (!sample.file || !sample.tree_id) continue
+          await uploadSoilAnalysis(activity.id, {
+            file: sample.file,
+            tree_id: sample.tree_id,
+            sampled_on: sample.sampled_on,
+          })
+        }
+      }
+      return activity
+    },
     onSuccess: (activity) => {
       const params = new URLSearchParams()
       if (prefill.return_to) params.set('returnTo', prefill.return_to)
@@ -160,28 +207,54 @@ export function ActivityForm({ prefill }: { prefill: Prefill }) {
     <form
       className="space-y-5"
       onSubmit={form.handleSubmit((values) => {
-        const lineItems = values.line_items
-          .map((item) => ({
-            quantity: item.quantity?.trim() ? Number(item.quantity) : null,
-            unit: item.unit?.trim() || null,
-          }))
-          .filter((item) => item.quantity != null || item.unit)
-        const first = lineItems[0]
+        if (lineKind === 'soil_analysis') {
+          const error = soilSamplesError(soilSamples)
+          setSoilError(error)
+          if (error) return
+        }
+        const lineItems =
+          lineKind === 'soil_analysis'
+            ? []
+            : values.line_items
+                .map((item, index) => {
+            const quantity = parseOptionalNumber(item.quantity)
+            const amount = parseOptionalNumber(item.amount)
+            const isFuel = lineKind === 'irrigation' && (index === 0 || isIrrigationFuelName(item.name))
+            const typedName = isFuel ? '' : item.name?.trim() || ''
+            const hasValues = quantity != null || amount != null || Boolean(typedName)
+            const name = typedName || (isFuel && hasValues ? 'Nafta' : '')
+            const unit = isFuel
+              ? quantity != null
+                ? 'L'
+                : null
+              : lineKind === 'fertilization'
+                ? quantity != null
+                  ? 'kg'
+                  : null
+                : item.unit?.trim() || null
+            return {
+              name: name || null,
+              quantity,
+              unit,
+              volume: null,
+              volume_unit: null,
+              amount,
+            }
+          })
+          .filter((item) => item.name || item.quantity != null || item.amount != null)
+        const first = lineItems.find((item) => item.quantity != null && item.unit !== 'EUR')
         mutation.mutate({
           activity_type_id: values.activity_type_id,
           performed_on: values.performed_on,
-          scope_type: values.scope_type,
+          scope_type: lineKind === 'soil_analysis' ? 'parcel' : values.scope_type,
           parcel_id: values.parcel_id,
-          row_id: values.scope_type === 'parcel' ? null : values.row_id || values.row_ids[0] || null,
-          row_ids: values.scope_type === 'row' ? values.row_ids : [],
-          tree_id: values.scope_type === 'tree' ? values.tree_id || null : null,
+          row_id: lineKind === 'soil_analysis' || values.scope_type === 'parcel' ? null : values.row_id || values.row_ids[0] || null,
+          row_ids: lineKind === 'soil_analysis' || values.scope_type !== 'row' ? [] : values.row_ids,
+          tree_id: lineKind === 'soil_analysis' || values.scope_type !== 'tree' ? null : values.tree_id || null,
           description: values.description || null,
-          quantity: first?.quantity != null && !Number.isNaN(first.quantity) ? first.quantity : null,
+          quantity: first?.quantity ?? null,
           unit: first?.unit || null,
-          line_items: lineItems.map((item) => ({
-            quantity: item.quantity != null && !Number.isNaN(item.quantity) ? item.quantity : null,
-            unit: item.unit,
-          })),
+          line_items: lineItems,
           status: values.status,
         })
       })}
@@ -214,7 +287,7 @@ export function ActivityForm({ prefill }: { prefill: Prefill }) {
           </Select>
         </Field>
         <Field label="Obuhvat">
-          <Select {...form.register('scope_type')}>
+          <Select {...form.register('scope_type')} disabled={lineKind === 'soil_analysis'}>
             <option value="parcel">Parcela</option>
             <option value="row">Red</option>
             <option value="tree">Stablo</option>
@@ -224,7 +297,7 @@ export function ActivityForm({ prefill }: { prefill: Prefill }) {
 
       {parcelName ? <p className="text-sm text-muted-foreground">Zasad: {parcelName}</p> : null}
 
-      {scope === 'row' ? (
+      {scope === 'row' && lineKind !== 'soil_analysis' ? (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Label>Redovi</Label>
@@ -260,7 +333,7 @@ export function ActivityForm({ prefill }: { prefill: Prefill }) {
         </div>
       ) : null}
 
-      {scope === 'tree' ? (
+      {scope === 'tree' && lineKind !== 'soil_analysis' ? (
         <div className="grid gap-4 md:grid-cols-2">
           <Field label="Red" error={form.formState.errors.row_id?.message}>
             <Select
@@ -301,47 +374,77 @@ export function ActivityForm({ prefill }: { prefill: Prefill }) {
         </div>
       ) : null}
 
-      <div className="space-y-2">
-        <Label>Količina i jedinica</Label>
-        {items.fields.map((field, index) => {
-          const eur = isEurUnit(lineItems[index]?.unit)
-          return (
-            <div key={field.id} className="flex flex-wrap items-center gap-2">
-              <Input
-                type="number"
-                step={eur ? '0.01' : '0.001'}
-                min="0"
-                placeholder={eur ? 'Iznos' : 'Količina'}
-                className="min-w-0 flex-1 basis-28"
-                {...form.register(`line_items.${index}.quantity`)}
+      {lineKind === 'soil_analysis' ? (
+        <div className="space-y-2">
+          <SoilAnalysisSamples parcelId={parcelId} samples={soilSamples} onChange={setSoilSamples} />
+          {soilError ? <p className="text-xs text-danger">{soilError}</p> : null}
+        </div>
+      ) : lineKind === 'irrigation' ? (
+        <>
+          <div className="space-y-2">
+            <Label>Nafta</Label>
+            {items.fields[0] ? (
+              <ActivityLineRow
+                key={items.fields[0].id}
+                kind="irrigation"
+                variant="fuel"
+                index={0}
+                register={form.register}
+                canRemove={false}
+                isLast={false}
+                onRemove={() => undefined}
+                onAdd={() => undefined}
               />
-              <Input
-                list="activity-units"
-                placeholder="EUR, L, kg, m³, sati"
-                className="min-w-0 w-full flex-1 basis-28 sm:w-36 sm:flex-none"
-                {...form.register(`line_items.${index}.unit`)}
-              />
-              {items.fields.length > 1 ? (
-                <Button type="button" variant="ghost" size="sm" aria-label="Ukloni stavku" onClick={() => items.remove(index)}>
-                  <X className="h-4 w-4" />
-                </Button>
-              ) : null}
-              {index === items.fields.length - 1 ? (
-                <Button type="button" variant="outline" size="sm" aria-label="Dodaj stavku" onClick={() => items.append({ quantity: '', unit: '' })}>
-                  <Plus className="h-4 w-4" />
-                </Button>
-              ) : null}
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <Label>Oprema</Label>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => items.append(emptyIrrigationEquipmentItem())}
+              >
+                <Plus className="h-4 w-4" />
+                Dodaj opremu
+              </Button>
             </div>
-          )
-        })}
-        <datalist id="activity-units">
-          <option value="EUR" />
-          <option value="L" />
-          <option value="kg" />
-          <option value="m³" />
-          <option value="sati" />
-        </datalist>
-      </div>
+            {items.fields.slice(1).map((field, offset) => {
+              const index = offset + 1
+              return (
+                <ActivityLineRow
+                  key={field.id}
+                  kind="irrigation"
+                  variant="equipment"
+                  index={index}
+                  register={form.register}
+                  canRemove
+                  isLast={false}
+                  onRemove={() => items.remove(index)}
+                  onAdd={() => undefined}
+                />
+              )
+            })}
+          </div>
+        </>
+      ) : (
+        <div className="space-y-2">
+          <Label>{activityLineSectionLabel(lineKind)}</Label>
+          {items.fields.map((field, index) => (
+            <ActivityLineRow
+              key={field.id}
+              kind={lineKind}
+              index={index}
+              register={form.register}
+              canRemove={items.fields.length > 1}
+              isLast={index === items.fields.length - 1}
+              onRemove={() => items.remove(index)}
+              onAdd={() => items.append(emptyActivityLineItem(lineKind))}
+            />
+          ))}
+        </div>
+      )}
 
       <Field label="Opis">
         <Textarea rows={3} {...form.register('description')} />
@@ -376,6 +479,171 @@ export function ActivityForm({ prefill }: { prefill: Prefill }) {
         />
       ) : null}
     </form>
+  )
+}
+
+function ActivityLineRow({
+  kind,
+  variant,
+  index,
+  register,
+  canRemove,
+  isLast,
+  onRemove,
+  onAdd,
+}: {
+  kind: ActivityLineKind
+  variant?: 'fuel' | 'equipment'
+  index: number
+  register: UseFormRegister<ActivityFormValues>
+  canRemove: boolean
+  isLast: boolean
+  onRemove: () => void
+  onAdd: () => void
+}) {
+  const irrigationFuel = kind === 'irrigation' && variant !== 'equipment'
+  const irrigationEquipment = kind === 'irrigation' && variant === 'equipment'
+  return (
+    <div className="flex flex-col gap-2 rounded-xl border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end">
+      {irrigationFuel ? (
+        <>
+          <LineField label="Količina nafte">
+            <div className="flex items-center gap-2">
+              <Input type="number" step="0.001" min="0" placeholder="0" {...register(`line_items.${index}.quantity`)} />
+              <span className="text-xs text-muted-foreground">L</span>
+            </div>
+          </LineField>
+          <LineField label="Ukupna cena">
+            <div className="flex items-center gap-2">
+              <Input type="number" step="0.01" min="0" placeholder="0.00" {...register(`line_items.${index}.amount`)} />
+              <span className="text-xs text-muted-foreground">EUR</span>
+            </div>
+          </LineField>
+        </>
+      ) : null}
+      {irrigationEquipment ? (
+        <>
+          <LineField label="Naziv opreme" className="min-w-0 flex-1 basis-40">
+            <Input placeholder="Naziv opreme" {...register(`line_items.${index}.name`)} />
+          </LineField>
+          <LineField label="Količina" className="sm:w-56">
+            <div className="flex gap-2">
+              <Input type="number" step="0.001" min="0" placeholder="0" className="min-w-0 flex-1" {...register(`line_items.${index}.quantity`)} />
+              <Select className="w-24 flex-none" {...register(`line_items.${index}.unit`)}>
+                <option value="kom">kom</option>
+                <option value="sati">sati</option>
+                <option value="m">m</option>
+                <option value="L">L</option>
+              </Select>
+            </div>
+          </LineField>
+          <LineField label="Ukupna cena" className="sm:w-36">
+            <div className="flex items-center gap-2">
+              <Input type="number" step="0.01" min="0" placeholder="0.00" {...register(`line_items.${index}.amount`)} />
+              <span className="text-xs text-muted-foreground">EUR</span>
+            </div>
+          </LineField>
+        </>
+      ) : null}
+      {kind === 'spraying' ? (
+        <>
+          <LineField label="Preparat" className="min-w-0 flex-1 basis-40">
+            <Input placeholder="Naziv preparata" {...register(`line_items.${index}.name`)} />
+          </LineField>
+          <LineField label="Litraža / težina" className="sm:w-56">
+            <div className="flex gap-2">
+              <Input type="number" step="0.001" min="0" placeholder="0" className="min-w-0 flex-1" {...register(`line_items.${index}.quantity`)} />
+              <Select className="w-20 flex-none" {...register(`line_items.${index}.unit`)}>
+                <option value="L">L</option>
+                <option value="kg">kg</option>
+              </Select>
+            </div>
+          </LineField>
+          <LineField label="Ukupna cena" className="sm:w-36">
+            <div className="flex items-center gap-2">
+              <Input type="number" step="0.01" min="0" placeholder="0.00" {...register(`line_items.${index}.amount`)} />
+              <span className="text-xs text-muted-foreground">EUR</span>
+            </div>
+          </LineField>
+        </>
+      ) : null}
+      {kind === 'fertilization' ? (
+        <>
+          <LineField label="Preparat" className="min-w-0 flex-1 basis-40">
+            <Input placeholder="Naziv preparata" {...register(`line_items.${index}.name`)} />
+          </LineField>
+          <LineField label="Težina" className="sm:w-36">
+            <div className="flex items-center gap-2">
+              <Input type="number" step="0.001" min="0" placeholder="0" {...register(`line_items.${index}.quantity`)} />
+              <span className="text-xs text-muted-foreground">kg</span>
+            </div>
+          </LineField>
+          <LineField label="Ukupna cena" className="sm:w-36">
+            <div className="flex items-center gap-2">
+              <Input type="number" step="0.01" min="0" placeholder="0.00" {...register(`line_items.${index}.amount`)} />
+              <span className="text-xs text-muted-foreground">EUR</span>
+            </div>
+          </LineField>
+        </>
+      ) : null}
+      {kind === 'other' ? (
+        <>
+          <LineField label="Naziv" className="min-w-0 flex-1 basis-40">
+            <Input placeholder="Naziv stavke" {...register(`line_items.${index}.name`)} />
+          </LineField>
+          <LineField label="Količina" className="sm:w-56">
+            <div className="flex gap-2">
+              <Input type="number" step="0.001" min="0" placeholder="0" className="min-w-0 flex-1" {...register(`line_items.${index}.quantity`)} />
+              <Select className="w-24 flex-none" {...register(`line_items.${index}.unit`)}>
+                <option value="">jed.</option>
+                <option value="kg">kg</option>
+                <option value="L">L</option>
+                <option value="m³">m³</option>
+                <option value="sati">sati</option>
+                <option value="kom">kom</option>
+              </Select>
+            </div>
+          </LineField>
+          <LineField label="Cena" className="sm:w-36">
+            <div className="flex items-center gap-2">
+              <Input type="number" step="0.01" min="0" placeholder="0.00" {...register(`line_items.${index}.amount`)} />
+              <span className="text-xs text-muted-foreground">EUR</span>
+            </div>
+          </LineField>
+        </>
+      ) : null}
+      {canRemove || isLast ? (
+        <div className="flex items-center gap-2 sm:pb-0.5">
+          {canRemove ? (
+            <Button type="button" variant="ghost" size="sm" aria-label="Ukloni stavku" onClick={onRemove}>
+              <X className="h-4 w-4" />
+            </Button>
+          ) : null}
+          {isLast ? (
+            <Button type="button" variant="outline" size="sm" aria-label="Dodaj stavku" onClick={onAdd}>
+              <Plus className="h-4 w-4" />
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function LineField({
+  label,
+  className,
+  children,
+}: {
+  label: string
+  className?: string
+  children: ReactNode
+}) {
+  return (
+    <div className={`min-w-0 flex-1 space-y-1 ${className ?? ''}`}>
+      <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
+      {children}
+    </div>
   )
 }
 

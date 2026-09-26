@@ -34,7 +34,32 @@ class Settings(BaseSettings):
     ai_vision_model: str | None = None
     ai_embedding_dim: int = 1536
 
+    # Benchmark providers (developer tool). Keys stay on the server only.
+    gemini_api_key: str | None = None
+    openai_api_key: str | None = None
+    gemini_model: str = "gemini-3.8-flash"
+    openai_benchmark_model: str = "gpt-5"
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
+    openai_benchmark_base_url: str = "https://api.openai.com/v1"
+    benchmark_temperature: float = 0.2
+    benchmark_max_output_tokens: int = 2048
+    benchmark_timeout_seconds: float = 90.0
+    benchmark_rate_limit_per_minute: int = 10
+    benchmark_max_image_bytes: int = 8 * 1024 * 1024
+    benchmark_max_image_edge: int = 4096
+    benchmark_gemini_input_usd_per_mtok: float = 0.75
+    benchmark_gemini_output_usd_per_mtok: float = 3.75
+    benchmark_openai_input_usd_per_mtok: float = 1.25
+    benchmark_openai_output_usd_per_mtok: float = 10.0
+
     yr_user_agent: str = "AgroTwin/1.0 (contact@agrotwin.com)"
+
+    soilgrids_base_url: str = "https://rest.isric.org"
+    soilgrids_user_agent: str = "AgroTwin/1.0 (contact@agrotwin.com)"
+    soilgrids_timeout_seconds: float = 90
+    soilgrids_cache_days: int = 30
+    soilgrids_min_interval_seconds: float = 12
+    soilgrids_min_refresh_seconds: int = 3600
 
     postgres_user: str = "agrotwin"
     postgres_password: str = "agrotwin"

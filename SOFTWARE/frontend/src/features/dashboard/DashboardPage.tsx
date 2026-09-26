@@ -27,15 +27,15 @@ const ParcelsMap = lazy(async () => {
   return { default: module.ParcelsMap }
 })
 
-function monthLabel(month: number) {
-  return new Intl.DateTimeFormat('sr-Latn-RS', { month: 'short' }).format(new Date(2026, month - 1, 1))
+function monthLabel(month: number, width: 'short' | 'long' = 'short') {
+  return new Intl.DateTimeFormat('sr-Latn-RS', { month: width }).format(new Date(2026, month - 1, 1))
 }
 
 export function DashboardPage() {
   const dashboardQuery = useQuery({ queryKey: ['dashboard'], queryFn: getDashboard })
   const data = dashboardQuery.data
 
-  if (dashboardQuery.isError) {
+  if (dashboardQuery.isError && !dashboardQuery.isFetching) {
     return (
       <div className="w-full">
         <p className="text-sm text-danger">Početna nije učitana. Osvežite stranicu.</p>
@@ -43,7 +43,7 @@ export function DashboardPage() {
     )
   }
 
-  if (dashboardQuery.isLoading || !data) {
+  if (!data) {
     return (
       <div className="w-full">
         <p className="text-sm text-muted-foreground">Učitavanje početne…</p>
@@ -55,12 +55,20 @@ export function DashboardPage() {
     <div className="w-full space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="text-xl font-semibold sm:text-2xl">Početna</h1>
-        <Link to="/activities/new">
-          <Button>
-            <Plus className="h-4 w-4" />
-            Unesi aktivnost
-          </Button>
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link to="/activities/new">
+            <Button>
+              <Plus className="h-4 w-4" />
+              Unesi aktivnost
+            </Button>
+          </Link>
+          <Link to="/agronomist">
+            <Button variant="outline">
+              <MessageCircle className="h-4 w-4" />
+              Pitaj agronoma
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
@@ -297,25 +305,33 @@ function Metric({ label, value }: { label: string; value: string }) {
   )
 }
 
+function CostKpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-background px-3 py-3 sm:px-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-1 text-lg font-semibold tabular-nums sm:text-xl">{value}</p>
+      {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
+    </div>
+  )
+}
+
 function YearAnalytics({ data }: { data: DashboardOverview }) {
-  const maxMonth = useMemo(() => {
-    return Math.max(...data.year_by_month.map((row) => Number(row.amount)), 0)
-  }, [data.year_by_month])
+  const currency = data.stats.currency
+  const year = data.stats.year
   const currentMonth = new Date().getMonth() + 1
-  const maxCategory = Math.max(...data.year_by_category.map((row) => Number(row.amount)), 0)
   const lifetime = data.lifetime_by_year ?? []
   const maxYear = Math.max(...lifetime.map((row) => Number(row.amount)), 0)
+  const maxMonth = useMemo(() => Math.max(...data.year_by_month.map((row) => Number(row.amount)), 0), [data.year_by_month])
+  const maxCategory = Math.max(...data.year_by_category.map((row) => Number(row.amount)), 0)
+  const lifetimeTotal = lifetime.reduce((sum, row) => sum + Number(row.amount || 0), 0)
   const plantingYear = lifetime[0]?.year
 
   return (
     <section className="rounded-xl border border-border bg-card p-5">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold">Analitika {data.stats.year}</h2>
-          <p className="text-sm text-muted-foreground">
-            {plantingYear ? `Troškovi od sadnje ${plantingYear}. ` : null}
-            Troškovi od 1. januara {data.stats.year}. Ovaj mesec {formatMoney(data.stats.month_costs, data.stats.currency)}.
-          </p>
+          <h2 className="text-base font-semibold">Troškovi</h2>
+          <p className="text-sm text-muted-foreground">Mesec, tekuća godina i ukupno od sadnje.</p>
         </div>
         <Link to="/costs">
           <Button variant="outline" size="sm">
@@ -324,24 +340,26 @@ function YearAnalytics({ data }: { data: DashboardOverview }) {
         </Link>
       </div>
 
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <CostKpi label="Ovaj mesec" value={formatMoney(data.stats.month_costs, currency)} hint={monthLabel(currentMonth, 'long')} />
+        <CostKpi label={`Godina ${year}`} value={formatMoney(data.stats.year_costs, currency)} />
+        <CostKpi
+          label="Od sadnje"
+          value={formatMoney(lifetimeTotal, currency)}
+          hint={plantingYear ? `od ${plantingYear}.` : undefined}
+        />
+      </div>
+
       {lifetime.length > 1 ? (
-        <div className="mb-6">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Od početka zasada</p>
-          <div className="mt-4 flex items-end gap-3">
+        <div className="mt-6">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Po godini</p>
+          <div className="mt-3 flex items-end gap-3">
             {lifetime.map((row) => {
               const amount = Number(row.amount)
               const height = maxYear > 0 ? Math.max((amount / maxYear) * 100, amount > 0 ? 8 : 2) : 2
-              const isCurrent = row.year === data.stats.year
+              const isCurrent = row.year === year
               return (
-                <div key={row.year} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
-                  <p
-                    className={cn(
-                      'w-full text-center text-[11px] font-medium leading-tight tabular-nums sm:text-xs',
-                      isCurrent ? 'text-accent' : 'text-foreground',
-                    )}
-                  >
-                    {formatChartMoney(row.amount, data.stats.currency)}
-                  </p>
+                <div key={row.year} className="flex min-w-0 flex-1 flex-col items-center">
                   <div className="flex h-28 w-full items-end">
                     <div
                       className={cn(
@@ -349,11 +367,19 @@ function YearAnalytics({ data }: { data: DashboardOverview }) {
                         isCurrent ? 'bg-accent' : amount > 0 ? 'bg-primary/80' : 'bg-muted',
                       )}
                       style={{ height: `${height}%` }}
-                      title={`${row.year}: ${formatMoney(row.amount, data.stats.currency)}`}
+                      title={`${row.year}: ${formatMoney(row.amount, currency)}`}
                     />
                   </div>
-                  <span className={cn('text-xs tabular-nums', isCurrent ? 'font-semibold text-accent' : 'text-muted-foreground')}>
+                  <span className={cn('mt-2 text-xs tabular-nums', isCurrent ? 'font-semibold text-accent' : 'text-muted-foreground')}>
                     {row.year}
+                  </span>
+                  <span
+                    className={cn(
+                      'mt-0.5 w-full text-center text-[11px] font-medium tabular-nums sm:text-xs',
+                      isCurrent ? 'text-accent' : 'text-foreground',
+                    )}
+                  >
+                    {formatChartMoney(row.amount, currency)}
                   </span>
                 </div>
               )
@@ -362,36 +388,36 @@ function YearAnalytics({ data }: { data: DashboardOverview }) {
         </div>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[1.4fr_0.8fr]">
+      <div className="mt-6 grid gap-6 border-t border-border pt-5 lg:grid-cols-[1.4fr_0.8fr]">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Po mesecu</p>
-          <div className="mt-4 flex items-end gap-1.5 sm:gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Po mesecu · {year}</p>
+          <div className="mt-3 flex items-end gap-1.5 sm:gap-2">
             {data.year_by_month.map((row) => {
               const amount = Number(row.amount)
               const height = maxMonth > 0 ? Math.max((amount / maxMonth) * 100, amount > 0 ? 6 : 2) : 2
               const isCurrent = row.month === currentMonth
               return (
-                <div key={row.month} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
-                  <p
-                    className={cn(
-                      'w-full text-center text-[9px] font-medium leading-tight tabular-nums sm:text-[10px]',
-                      isCurrent ? 'text-accent' : amount > 0 ? 'text-foreground' : 'text-muted-foreground',
-                    )}
-                  >
-                    {formatChartMoney(row.amount, data.stats.currency)}
-                  </p>
-                  <div className="flex h-32 w-full items-end">
+                <div key={row.month} className="flex min-w-0 flex-1 flex-col items-center">
+                  <div className="flex h-28 w-full items-end sm:h-32">
                     <div
                       className={cn(
                         'w-full rounded-t-md',
                         isCurrent ? 'bg-accent' : amount > 0 ? 'bg-primary/80' : 'bg-muted',
                       )}
                       style={{ height: `${height}%` }}
-                      title={`${monthLabel(row.month)}: ${formatMoney(row.amount, data.stats.currency)}`}
+                      title={`${monthLabel(row.month)}: ${formatMoney(row.amount, currency)}`}
                     />
                   </div>
-                  <span className={cn('text-[10px] uppercase', isCurrent ? 'font-semibold text-accent' : 'text-muted-foreground')}>
+                  <span className={cn('mt-2 text-[10px] uppercase', isCurrent ? 'font-semibold text-accent' : 'text-muted-foreground')}>
                     {monthLabel(row.month).replace('.', '')}
+                  </span>
+                  <span
+                    className={cn(
+                      'mt-0.5 min-h-[1rem] w-full text-center text-[10px] font-medium tabular-nums',
+                      isCurrent ? 'text-accent' : 'text-foreground',
+                    )}
+                  >
+                    {amount > 0 ? formatChartMoney(row.amount, currency) : ''}
                   </span>
                 </div>
               )
@@ -400,8 +426,8 @@ function YearAnalytics({ data }: { data: DashboardOverview }) {
         </div>
 
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Po kategoriji</p>
-          <div className="mt-4 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Po kategoriji · {year}</p>
+          <div className="mt-3 space-y-3">
             {data.year_by_category.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nema evidentiranih troškova ove godine.</p>
             ) : (
@@ -409,7 +435,7 @@ function YearAnalytics({ data }: { data: DashboardOverview }) {
                 <div key={row.id}>
                   <div className="mb-1 flex items-center justify-between gap-3 text-sm">
                     <span className="truncate">{row.name}</span>
-                    <span className="shrink-0 font-mono text-xs">{formatMoney(row.amount, data.stats.currency)}</span>
+                    <span className="shrink-0 font-medium tabular-nums">{formatChartMoney(row.amount, currency)}</span>
                   </div>
                   <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                     <div

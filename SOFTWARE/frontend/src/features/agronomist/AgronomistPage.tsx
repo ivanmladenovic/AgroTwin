@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Send, MessagesSquare, X } from 'lucide-react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Plus, Send, MessagesSquare, ShieldAlert, X } from 'lucide-react'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { createConversation, getConversation, listConversations, sendChatMessage } from '@/features/agronomist/api'
+import { ReportProblemForm } from '@/features/health/ReportProblemForm'
 import type { ChatMessageRecord, ConversationSummary } from '@/shared/api/types'
 import { formatDate } from '@/shared/lib/format'
 import { cn } from '@/shared/lib/utils'
@@ -11,6 +12,8 @@ import { Button } from '@/shared/ui/button'
 
 export function AgronomistPage() {
   const { conversationId } = useParams()
+  const [params] = useSearchParams()
+  const location = useLocation()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [draft, setDraft] = useState('')
@@ -18,6 +21,8 @@ export function AgronomistPage() {
   const [listOpen, setListOpen] = useState(false)
   const threadRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const sentInitial = useRef<string | null>(null)
+  const reporting = params.get('report') === '1' && !conversationId
 
   const listQuery = useQuery({ queryKey: ['ai-conversations'], queryFn: listConversations })
   const conversationQuery = useQuery({
@@ -48,8 +53,8 @@ export function AgronomistPage() {
 
   useEffect(() => {
     setListOpen(false)
-    inputRef.current?.focus()
-  }, [conversationId])
+    if (!reporting) inputRef.current?.focus()
+  }, [conversationId, reporting])
 
   async function ask(content: string) {
     const text = content.trim()
@@ -86,14 +91,29 @@ export function AgronomistPage() {
     }
   }
 
+  useEffect(() => {
+    const initial = (location.state as { initialMessage?: string } | null)?.initialMessage
+    if (!conversationId || !initial || sentInitial.current === conversationId) return
+    sentInitial.current = conversationId
+    navigate(`/agronomist/${conversationId}`, { replace: true, state: {} })
+    void ask(initial)
+  }, [conversationId, location.state, navigate])
+
+  const heading = reporting ? 'Prijavi problem' : title
+  const subtitle = reporting
+    ? 'Uslikajte ili dodajte fotografije, opišite simptome i pošaljite agronomu na analizu.'
+    : 'Pitajte agronoma o voćnjaku i nastavite prethodni razgovor.'
+
   return (
     <div className="-mx-4 -mb-4 flex min-h-0 flex-1 flex-col lg:mx-0 lg:mb-0 lg:flex-row lg:gap-4">
       <aside className="hidden w-60 shrink-0 flex-col rounded-xl border border-border bg-card lg:flex">
         <ConversationList
           conversations={conversations}
           conversationId={conversationId}
+          reporting={reporting}
           loading={listQuery.isLoading}
           onNew={() => navigate('/agronomist')}
+          onReport={() => navigate('/agronomist?report=1')}
           onOpen={(id) => navigate(`/agronomist/${id}`)}
         />
       </aside>
@@ -110,10 +130,15 @@ export function AgronomistPage() {
             <ConversationList
               conversations={conversations}
               conversationId={conversationId}
+              reporting={reporting}
               loading={listQuery.isLoading}
               onNew={() => {
                 setListOpen(false)
                 navigate('/agronomist')
+              }}
+              onReport={() => {
+                setListOpen(false)
+                navigate('/agronomist?report=1')
               }}
               onOpen={(id) => navigate(`/agronomist/${id}`)}
             />
@@ -128,20 +153,26 @@ export function AgronomistPage() {
             Razgovori
           </Button>
           <div className="min-w-0 flex-1">
-            <h2 className="truncate text-lg font-semibold">{title}</h2>
-            <p className="mt-0.5 hidden text-sm text-muted-foreground sm:block">
-              Pitajte agronoma o voćnjaku i nastavite prethodni razgovor.
-            </p>
+            <h2 className="truncate text-lg font-semibold">{heading}</h2>
+            <p className="mt-0.5 hidden text-sm text-muted-foreground sm:block">{subtitle}</p>
           </div>
         </div>
 
+        {reporting ? (
+          <div className="min-h-0 flex-1 overflow-auto px-4 py-4 lg:px-5">
+            <ReportProblemForm variant="agronomist" onCancel={() => navigate('/agronomist')} />
+          </div>
+        ) : (
+          <>
         <div ref={threadRef} className="min-h-0 flex-1 space-y-3 overflow-auto px-4 py-4 lg:px-5">
           {conversationId && conversationQuery.isLoading ? (
             <p className="text-sm text-muted-foreground">Učitavanje razgovora…</p>
           ) : conversationId && conversationQuery.isError ? (
             <p className="text-sm text-danger">Razgovor nije pronađen.</p>
           ) : messages.length === 0 && !pendingText ? (
-            <p className="text-sm text-muted-foreground">Napišite pitanje. Agronom odgovara na osnovu evidencije voćnjaka.</p>
+            <p className="text-sm text-muted-foreground">
+              Napišite pitanje. Agronom odgovara na osnovu evidencije voćnjaka. Problem sadnice, više sadnica ili reda možete prijaviti dugmetom u listi razgovora.
+            </p>
           ) : (
             <>
               {messages.map((message) => (
@@ -180,6 +211,8 @@ export function AgronomistPage() {
             </Button>
           </div>
         </form>
+          </>
+        )}
       </section>
     </div>
   )
@@ -188,14 +221,18 @@ export function AgronomistPage() {
 function ConversationList({
   conversations,
   conversationId,
+  reporting = false,
   loading,
   onNew,
+  onReport,
   onOpen,
 }: {
   conversations: ConversationSummary[]
   conversationId?: string
+  reporting?: boolean
   loading: boolean
   onNew: () => void
+  onReport: () => void
   onOpen: (id: string) => void
 }) {
   return (
@@ -205,9 +242,13 @@ function ConversationList({
           <p className="kicker">Agronom</p>
           <h1 className="mt-1 text-lg font-semibold">Razgovori</h1>
         </div>
-        <Button size="sm" className="w-full" variant={conversationId ? 'outline' : 'default'} onClick={onNew}>
+        <Button size="sm" className="w-full" variant={conversationId || reporting ? 'outline' : 'default'} onClick={onNew}>
           <Plus className="h-4 w-4" />
           Novi razgovor
+        </Button>
+        <Button size="sm" className="w-full" variant={reporting ? 'default' : 'outline'} onClick={onReport}>
+          <ShieldAlert className="h-4 w-4" />
+          Prijavi problem
         </Button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-2">

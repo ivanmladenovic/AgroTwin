@@ -53,10 +53,22 @@ class Activity(UUIDPrimaryKeyMixin, TimestampMixin, ScopedEntityMixin, Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
+    schedule_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("task_schedules.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     activity_type: Mapped[ActivityType] = relationship("ActivityType", back_populates="activities")
+    schedule: Mapped["TaskSchedule | None"] = relationship("TaskSchedule", back_populates="activities")
     costs: Mapped[list["Cost"]] = relationship(
         "Cost",
+        back_populates="activity",
+        cascade="all, delete-orphan",
+    )
+    soil_analyses: Mapped[list["SoilLabAnalysis"]] = relationship(
+        "SoilLabAnalysis",
         back_populates="activity",
         cascade="all, delete-orphan",
     )

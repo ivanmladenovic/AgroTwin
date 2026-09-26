@@ -9,12 +9,28 @@ export function isEurUnit(unit: string | null | undefined) {
   return value === 'EUR' || value === 'EURO'
 }
 
-export function formatLineItem(item: { quantity: string | number | null; unit: string | null }) {
-  if (isEurUnit(item.unit) && item.quantity != null && item.quantity !== '') {
-    return formatMoney(item.quantity, 'EUR')
+export function formatLineItem(item: {
+  name?: string | null
+  quantity: string | number | null
+  unit: string | null
+  volume?: string | number | null
+  volume_unit?: string | null
+  amount?: string | number | null
+}) {
+  const parts: string[] = []
+  if (item.name?.trim()) parts.push(item.name.trim())
+  if (!isEurUnit(item.unit) && item.quantity != null && item.quantity !== '') {
+    parts.push(`${formatQuantity(item.quantity)} ${item.unit ?? ''}`.trim())
   }
-  if (item.quantity == null || item.quantity === '') return item.unit ?? '—'
-  return `${formatQuantity(item.quantity)} ${item.unit ?? ''}`.trim()
+  if (item.volume != null && item.volume !== '') {
+    parts.push(`Litraža ${formatQuantity(item.volume)} ${item.volume_unit || 'L'}`.trim())
+  }
+  if (item.amount != null && item.amount !== '') {
+    parts.push(formatMoney(item.amount, 'EUR'))
+  } else if (isEurUnit(item.unit) && item.quantity != null && item.quantity !== '') {
+    parts.push(formatMoney(item.quantity, 'EUR'))
+  }
+  return parts.join(' · ') || '—'
 }
 
 function formatQuantity(value: string | number) {
@@ -24,11 +40,28 @@ function formatQuantity(value: string | number) {
 }
 
 export function formatWorkQuantities(
-  items: Array<{ quantity: string | number | null; unit: string | null }> | null | undefined,
+  items: Array<{
+    name?: string | null
+    quantity: string | number | null
+    unit: string | null
+    volume?: string | number | null
+    volume_unit?: string | null
+    amount?: string | number | null
+  }> | null | undefined,
 ) {
   return (items ?? [])
-    .filter((item) => !isEurUnit(item.unit) && item.quantity != null && item.quantity !== '')
-    .map(formatLineItem)
+    .map((item) => {
+      const parts: string[] = []
+      if (item.name?.trim()) parts.push(item.name.trim())
+      if (!isEurUnit(item.unit) && item.quantity != null && item.quantity !== '') {
+        parts.push(`${formatQuantity(item.quantity)} ${item.unit ?? ''}`.trim())
+      }
+      if (item.volume != null && item.volume !== '') {
+        parts.push(`Litraža ${formatQuantity(item.volume)} ${item.volume_unit || 'L'}`.trim())
+      }
+      return parts.join(' ')
+    })
+    .filter(Boolean)
     .join(' · ')
 }
 

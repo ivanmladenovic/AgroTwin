@@ -18,10 +18,14 @@ from app.repositories.catalog import CatalogRepository
 from app.repositories.cost import CostRepository
 from app.repositories.parcel import ParcelRepository
 from app.repositories.row import RowRepository
+from app.repositories.subsidy import SubsidyRepository
 from app.repositories.tree import TreeRepository
 from app.schemas.activity import ActivityCreate, ActivityLineItem, ActivityRead, ActivityUpdate
 from app.schemas.catalog import CatalogItemRead
 from app.schemas.cost import CostCreate, CostItemRead, CostSummaryRead, NamedAmount, QuantityLineRead, YearAmount
+from app.schemas.soil_lab import SoilLabAnalysisRead
+from app.services.soil_lab import SoilLabAnalysisService
+from app.services.subsidy import _percent
 
 
 class ActivityService:
@@ -33,6 +37,7 @@ class ActivityService:
         self.parcels = ParcelRepository(db)
         self.rows = RowRepository(db)
         self.trees = TreeRepository(db)
+        self.subsidies = SubsidyRepository(db)
 
     def list_activities(
         self,
@@ -80,7 +85,7 @@ class ActivityService:
         else:
             status = ActivityStatus.COMPLETED
         line_items = self._normalize_line_items(payload)
-        first_item = line_items[0] if line_items else None
+        first_item = next((item for item in line_items if _is_work_quantity(item)), None)
         activity = Activity(
             activity_type_id=activity_type.id,
             title=(payload.title or activity_type.name).strip(),
@@ -102,7 +107,7 @@ class ActivityService:
         )
         self.activities.add(activity)
         self.db.flush()
-        self._add_costs_from_line_items(activity, line_items, created_by_id)
+        self._add_costs_from_line_items(activity, line_items, created_by_id, activity_type.slug)
         if payload.cost_amount and payload.cost_amount > 0 and not any(_is_eur_unit(item.unit) for item in line_items):
             self._add_inline_cost(activity, payload.cost_amount, created_by_id, description=activity.title)
         self.db.commit()
@@ -177,6 +182,8 @@ class ActivityService:
             YearAmount(year=year, amount=yearly.get(year, Decimal("0")))
             for year in range(years[0], today.year + 1)
         ]
+        total_subsidies = self.subsidies.sum_for_owner(owner_id, parcel_id=parcel_id)
+        subsidy_percent = _percent(total_subsidies, total) if total > 0 else None
         return CostSummaryRead(
             total_costs=total,
             current_year_costs=year_total,
@@ -195,6 +202,8 @@ class ActivityService:
             ],
             by_year=by_year,
             parcel_id=parcel_id,
+            total_subsidies=total_subsidies,
+            subsidy_percent_of_costs=subsidy_percent,
         )
 
     def list_costs(
@@ -246,6 +255,7 @@ class ActivityService:
             row_number=row_numbers[0] if row_numbers else row_number,
             tree_public_id=tree_public_id,
             costs=costs,
+            soil_analyses=[SoilLabAnalysisService(self.db).to_read(item) for item in activity.soil_analyses],
             total_cost=total,
             currency=currency,
         )
@@ -258,7 +268,14 @@ class ActivityService:
         )
         line_items = (
             [
-                QuantityLineRead(quantity=item.quantity, unit=item.unit)
+                QuantityLineRead(
+                    name=item.name,
+                    quantity=item.quantity,
+                    unit=item.unit,
+                    volume=item.volume,
+                    volume_unit=item.volume_unit,
+                    amount=item.amount,
+                )
                 for item in self._read_line_items(cost.activity)
             ]
             if cost.activity is not None
@@ -326,15 +343,21 @@ class ActivityService:
         return parcel.farm_id, parcel.id, row_id, tree_id, extra_row_ids
 
     def _normalize_line_items(self, payload: ActivityCreate) -> list[ActivityLineItem]:
-        items = [
-            item
-            for item in payload.line_items
-            if item.quantity is not None or (item.unit or "").strip()
-        ]
+        items = [item for item in payload.line_items if _line_item_has_value(item)]
         if items:
-            return items
+            return [
+                ActivityLineItem(
+                    name=_clean_text(item.name),
+                    quantity=item.quantity,
+                    unit=_clean_text(item.unit),
+                    volume=item.volume,
+                    volume_unit=_clean_text(item.volume_unit),
+                    amount=item.amount,
+                )
+                for item in items
+            ]
         if payload.quantity is not None or (payload.unit or "").strip():
-            return [ActivityLineItem(quantity=payload.quantity, unit=payload.unit)]
+            return [ActivityLineItem(quantity=payload.quantity, unit=_clean_text(payload.unit))]
         return []
 
     def _read_line_items(self, activity: Activity) -> list[ActivityLineItem]:
@@ -343,12 +366,16 @@ class ActivityService:
         for item in raw:
             if not isinstance(item, dict):
                 continue
-            items.append(
-                ActivityLineItem(
-                    quantity=item.get("quantity"),
-                    unit=item.get("unit"),
-                )
+            parsed = ActivityLineItem(
+                name=item.get("name"),
+                quantity=item.get("quantity"),
+                unit=item.get("unit"),
+                volume=item.get("volume"),
+                volume_unit=item.get("volume_unit"),
+                amount=item.get("amount"),
             )
+            if _line_item_has_value(parsed):
+                items.append(parsed)
         if items:
             return items
         if activity.quantity is not None or activity.unit:
@@ -373,12 +400,23 @@ class ActivityService:
         return [item[0] for item in pairs], [item[1] for item in pairs]
 
     def _add_costs_from_line_items(
-        self, activity: Activity, line_items: list[ActivityLineItem], created_by_id: UUID
+        self,
+        activity: Activity,
+        line_items: list[ActivityLineItem],
+        created_by_id: UUID,
+        activity_slug: str,
     ) -> None:
         for item in line_items:
-            if not _is_eur_unit(item.unit) or item.quantity is None or item.quantity <= 0:
+            amount = _line_item_cost(item)
+            if amount is None:
                 continue
-            self._add_inline_cost(activity, item.quantity, created_by_id, description=activity.title)
+            self._add_inline_cost(
+                activity,
+                amount,
+                created_by_id,
+                description=_clean_text(item.name) or activity.title,
+                category_slug=_cost_category_for_line_item(activity_slug, item),
+            )
 
     def _add_inline_cost(
         self,
@@ -386,9 +424,14 @@ class ActivityService:
         amount: Decimal,
         created_by_id: UUID,
         description: str | None = None,
+        category_slug: str = "other",
     ) -> None:
         categories = self.catalogs.list_cost_categories()
-        category = self.catalogs.get_cost_category_by_slug("other") or (categories[0] if categories else None)
+        category = (
+            self.catalogs.get_cost_category_by_slug(category_slug)
+            or self.catalogs.get_cost_category_by_slug("other")
+            or (categories[0] if categories else None)
+        )
         if category is None:
             raise AppError("Kategorija troška nije pronađena", status_code=422, code="missing_cost_category")
         cost = Cost(
@@ -431,3 +474,53 @@ class ActivityService:
 def _is_eur_unit(unit: str | None) -> bool:
     value = (unit or "").strip().upper().replace("€", "EUR")
     return value in {"EUR", "EURO"}
+
+
+def _clean_text(value: str | None) -> str | None:
+    text = (value or "").strip()
+    return text or None
+
+
+def _line_item_has_value(item: ActivityLineItem) -> bool:
+    return bool(
+        _clean_text(item.name)
+        or item.quantity is not None
+        or _clean_text(item.unit)
+        or item.volume is not None
+        or _clean_text(item.volume_unit)
+        or item.amount is not None
+    )
+
+
+def _is_work_quantity(item: ActivityLineItem) -> bool:
+    return item.quantity is not None and not _is_eur_unit(item.unit)
+
+
+def _line_item_cost(item: ActivityLineItem) -> Decimal | None:
+    if item.amount is not None and item.amount > 0:
+        return item.amount
+    if _is_eur_unit(item.unit) and item.quantity is not None and item.quantity > 0:
+        return item.quantity
+    return None
+
+
+def _cost_category_for_activity(slug: str) -> str:
+    return {
+        "irrigation": "fuel",
+        "spraying": "plant_protection",
+        "fertilization": "fertilizers",
+        "planting": "planting_material",
+        "harvesting": "harvesting",
+        "maintenance": "maintenance",
+    }.get(slug, "other")
+
+
+def _is_fuel_line_item(item: ActivityLineItem) -> bool:
+    name = (item.name or "").strip().casefold()
+    return name in {"nafta", "dizel", "diesel", "gorivo"}
+
+
+def _cost_category_for_line_item(activity_slug: str, item: ActivityLineItem) -> str:
+    if activity_slug == "irrigation" and not _is_fuel_line_item(item):
+        return "equipment"
+    return _cost_category_for_activity(activity_slug)

@@ -10,6 +10,7 @@ import {
 } from '@/features/invoices/api'
 import { todayKey } from '@/features/journal/calendar'
 import type { Invoice, InvoiceCategory, InvoiceKind } from '@/shared/api/types'
+import { compressPhoto } from '@/shared/lib/compressImage'
 import { formatDate, formatMoney } from '@/shared/lib/format'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader } from '@/shared/ui/card'
@@ -153,10 +154,11 @@ function InvoiceForm({ category, onClose }: { category: InvoiceCategory; onClose
   const [file, setFile] = useState<File | null>(null)
 
   const mutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       if (!file) throw new Error('Izaberite dokument')
+      const upload = file.type.startsWith('image/') ? await compressPhoto(file) : file
       return createInvoice({
-        file,
+        file: upload,
         title: title.trim() || file.name,
         category,
         kind: category === 'other' ? kind : undefined,

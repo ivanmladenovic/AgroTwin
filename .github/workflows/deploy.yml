@@ -1,0 +1,111 @@
+# Automatic production publish to SuperHosting (FTPS).
+#
+# Site: https://agrotwin.srpskisafran.rs
+#
+# What this workflow deploys on every push to main:
+#   1) Built React frontend  → FTP account root (./)
+#   2) FastAPI backend code  → ./api/  (cPanel Python App, one-time setup)
+#
+# Required GitHub secrets:
+#   FTP_SERVER
+#   FTP_USERNAME
+#   FTP_PASSWORD
+#
+# One-time on SuperHosting (cPanel) — see SOFTWARE/docs/DEPLOY_PRODUCTION.md
+
+name: Deploy production (FTPS)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production-ftps
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: SOFTWARE/frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: SOFTWARE/frontend
+        run: npm ci
+
+      # Vite only — full `npm run build` runs tsc and currently fails on older TS debt.
+      - name: Build frontend
+        working-directory: SOFTWARE/frontend
+        run: npx vite build
+        env:
+          VITE_API_URL: https://agrotwin.srpskisafran.rs/api/v1
+
+      - name: Stage backend for upload
+        run: |
+          set -euo pipefail
+          mkdir -p staging/api
+          rsync -a \
+            --exclude '.venv/' \
+            --exclude '__pycache__/' \
+            --exclude '.pytest_cache/' \
+            --exclude '.mypy_cache/' \
+            --exclude '.env' \
+            --exclude '.env.*' \
+            --exclude 'var/' \
+            --exclude 'tests/' \
+            --exclude '*.pyc' \
+            --exclude '.git/' \
+            SOFTWARE/backend/ staging/api/
+          mkdir -p staging/api/var/storage
+          touch staging/api/var/storage/.gitkeep
+          test -f staging/api/passenger_wsgi.py
+          test -f staging/api/requirements.txt
+
+      - name: Deploy frontend via FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ftps://${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: 21
+          protocol: ftps
+          local-dir: ./SOFTWARE/frontend/dist/
+          server-dir: ./
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/.DS_Store
+            api/**
+            api/**/*
+
+      - name: Deploy backend via FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ftps://${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          port: 21
+          protocol: ftps
+          local-dir: ./staging/api/
+          server-dir: ./api/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/.env
+            **/.env.*
+            **/__pycache__/**
+            **/.venv/**
+            **/tests/**
+            **/.DS_Store

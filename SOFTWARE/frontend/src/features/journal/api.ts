@@ -1,4 +1,4 @@
-import { apiDownload, apiRequest } from '@/shared/lib/api'
+import { apiDownload, apiRequest, apiUpload } from '@/shared/lib/api'
 import type {
   Activity,
   ActivityCreatePayload,
@@ -8,6 +8,9 @@ import type {
   CostCreatePayload,
   CostItem,
   CostSummary,
+  SoilLabAnalysis,
+  Subsidy,
+  SubsidyCreatePayload,
 } from '@/shared/api/types'
 
 function queryString(filters: ActivityFilters = {}) {
@@ -68,4 +71,35 @@ export function listCosts(parcelId?: string) {
 
 export function downloadCostsCsv(filters: ActivityFilters = {}) {
   return apiDownload(`/costs/export.csv${queryString(filters)}`, 'costs.csv')
+}
+
+export function uploadSoilAnalysis(
+  activityId: string,
+  payload: { file: File; tree_id: string; sampled_on: string },
+) {
+  const form = new FormData()
+  form.append('file', payload.file)
+  form.append('tree_id', payload.tree_id)
+  form.append('sampled_on', payload.sampled_on)
+  return apiUpload<SoilLabAnalysis>(`/activities/${activityId}/soil-analyses`, form)
+}
+
+export function downloadSoilAnalysis(analysis: SoilLabAnalysis) {
+  return apiDownload(`/soil-analyses/${analysis.id}/file`, analysis.original_filename)
+}
+
+export function listSubsidies(parcelId?: string) {
+  const query = parcelId ? `?parcel_id=${parcelId}` : ''
+  return apiRequest<Subsidy[]>(`/subsidies${query}`)
+}
+
+export function createSubsidy(payload: SubsidyCreatePayload) {
+  return apiRequest<Subsidy>('/subsidies', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export function deleteSubsidy(subsidyId: string) {
+  return apiRequest<void>(`/subsidies/${subsidyId}`, { method: 'DELETE' })
 }

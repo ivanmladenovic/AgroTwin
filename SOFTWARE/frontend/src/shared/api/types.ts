@@ -3,6 +3,7 @@ export type User = {
   email: string
   full_name: string
   is_active: boolean
+  is_superuser: boolean
   created_at: string
   updated_at: string
 }
@@ -52,6 +53,8 @@ export type Parcel = {
   tree_count: number
   created_at: string
   updated_at: string
+  altitude: string | null
+  boundary: Record<string, unknown> | null
 }
 
 export type FarmDetail = Farm & {
@@ -193,8 +196,12 @@ export type CatalogItem = {
 }
 
 export type ActivityLineItem = {
+  name?: string | null
   quantity: string | null
   unit: string | null
+  volume?: string | null
+  volume_unit?: string | null
+  amount?: string | null
 }
 
 export type CostItem = {
@@ -246,8 +253,25 @@ export type Activity = {
   row_number: number | null
   tree_public_id: string | null
   costs: CostItem[]
+  soil_analyses: SoilLabAnalysis[]
   total_cost: string
   currency: string
+}
+
+export type SoilLabAnalysis = {
+  id: string
+  created_at: string
+  updated_at: string
+  activity_id: string
+  parcel_id: string
+  tree_id: string
+  tree_public_id: string | null
+  row_id: string | null
+  row_number: number | null
+  sampled_on: string
+  original_filename: string
+  content_type: string
+  size_bytes: number | null
 }
 
 export type ActivityCreatePayload = {
@@ -262,7 +286,14 @@ export type ActivityCreatePayload = {
   description?: string | null
   quantity?: number | null
   unit?: string | null
-  line_items?: Array<{ quantity?: number | null; unit?: string | null }>
+  line_items?: Array<{
+    name?: string | null
+    quantity?: number | null
+    unit?: string | null
+    volume?: number | null
+    volume_unit?: string | null
+    amount?: number | null
+  }>
   cost_amount?: number | null
   notes?: string | null
   status?: ActivityStatus
@@ -310,6 +341,8 @@ export type CostSummary = {
   by_activity_type: NamedAmount[]
   by_year: YearAmount[]
   parcel_id: string | null
+  total_subsidies: string
+  subsidy_percent_of_costs: string | null
 }
 
 export type MonthAmount = {
@@ -444,6 +477,7 @@ export type DiseaseCaseCreatePayload = {
   severity: DiseaseSeverity
   notes?: string | null
   symptoms?: string | null
+  tree_ids?: string[]
 }
 
 export type DiseaseCaseUpdatePayload = {
@@ -549,6 +583,15 @@ export type AgronomyQueryResult = {
   out_of_scope: boolean
   answer: string
   citations: string[]
+  evidence?: {
+    sources: Array<{
+      document_id: string
+      document_title: string
+      pages: number[]
+      section: string | null
+      content: string
+    }>
+  }
   debug?: {
     query: string
     detected_domain: string | null
@@ -590,6 +633,7 @@ export type ConversationSummary = {
   title: string
   farm_id: string | null
   parcel_id: string | null
+  disease_case_id?: string | null
   message_count: number
   last_message_at: string | null
 }
@@ -987,3 +1031,218 @@ export type ParcelWeather = {
   fetched_at: string | null
   source: string
 }
+
+export type SoilStatus =
+  | 'ok'
+  | 'partial'
+  | 'stale'
+  | 'location_required'
+  | 'unavailable'
+  | 'rate_limited'
+  | 'timeout'
+  | 'malformed'
+
+export type SoilDepthValue = {
+  depth: string
+  depth_label: string
+  value: number
+  unit: string
+  uncertainty: number | null
+  lower: number | null
+  upper: number | null
+}
+
+export type SoilProperty = {
+  key: string
+  label: string
+  unit: string
+  value: number | null
+  depth: string | null
+  depth_label: string | null
+  source: string
+  source_type: 'modeled_estimate'
+  source_label: string
+  measured_at: string | null
+  generated_at: string | null
+  is_modeled: boolean
+  available: boolean
+  depths: SoilDepthValue[]
+}
+
+export type ParcelSoilProfile = {
+  available: boolean
+  status: SoilStatus
+  is_stale: boolean
+  message: string | null
+  parcel_id: string
+  parcel_name: string
+  latitude: number | null
+  longitude: number | null
+  provider: string
+  source: string
+  source_type: 'modeled_estimate'
+  source_label: string
+  source_explanation: string
+  dataset_version: string | null
+  spatial_resolution: string
+  fetched_at: string | null
+  generated_at: string | null
+  is_modeled: boolean
+  can_refresh: boolean
+  refresh_available_at: string | null
+  depths: string[]
+  properties: SoilProperty[]
+  missing_properties: string[]
+}
+
+export type ContextRequestType =
+  | 'PHOTO_ANALYSIS'
+  | 'PROBLEM_ANALYSIS'
+  | 'PARCEL_ANALYSIS'
+  | 'SEASON_ANALYSIS'
+  | 'ACTIVITY_ANALYSIS'
+
+export type ContextBuildRequest = {
+  request_type: ContextRequestType
+  parcel_id?: string
+  row_id?: string
+  tree_id?: string
+  photo_id?: string
+  activity_id?: string
+  disease_case_id?: string
+  season_year?: number
+  event_date?: string
+  query?: string
+  include_debug?: boolean
+}
+
+export type ContextDebugRecord = {
+  kind: string
+  id: string
+  scope: string | null
+  date: string | null
+  relevance_score: number
+  selected: boolean
+  reasons: string[]
+  temporal_relation: string | null
+}
+
+export type AgroTwinContext = {
+  context_id: string
+  context_version: string
+  created_at: string
+  request: {
+    type: ContextRequestType
+    query: string | null
+    season_year: number | null
+    event_date: string
+  }
+  subject: {
+    type: string
+    farm: { id: string; name: string }
+    parcel: { id: string; name: string } | null
+    row: { id: string; row_number: number } | null
+    tree: { id: string; public_id: string } | null
+  }
+  soil: { status: string; source_type: string; is_stale: boolean } | null
+  weather: { status: string; source: string } | null
+  activities: Array<{ id: string; type: string; date: string; scope: string; relevance_score: number }>
+  costs: { status: string; total: string | null } | null
+  harvest: { status: string; event_count: number } | null
+  photos: Array<{ id: string; url: string; is_current: boolean; relevance_score: number }>
+  previous_ai_analyses: Array<{ id: string; finding: string; confidence: number; source_type: string }>
+  warnings: Array<{ type: string; source: string; message: string }>
+  data_quality: Record<string, string | null>
+  debug: {
+    providers_used: string[]
+    provider_failures: Array<{ source: string; error: string }>
+    collected: Record<string, number>
+    filtered: Record<string, number>
+    selected: Record<string, number>
+    duration_ms: number
+    records: ContextDebugRecord[]
+  } | null
+}
+
+export type Subsidy = {
+  id: string
+  created_at: string
+  updated_at: string
+  farm_id: string
+  parcel_id: string | null
+  parcel_name: string | null
+  title: string
+  total_cost: string
+  subsidy_amount: string
+  subsidy_percent: string | null
+  currency: string
+  received_on: string
+  notes: string | null
+  created_by_id: string | null
+}
+
+export type SubsidyCreatePayload = {
+  title: string
+  total_cost: number
+  subsidy_amount: number
+  received_on: string
+  parcel_id?: string | null
+  notes?: string | null
+}
+
+export type OrchardSeason = {
+  id: string
+  created_at: string
+  updated_at: string
+  farm_id: string
+  parcel_id: string | null
+  parcel_name: string | null
+  name: string
+  starts_on: string
+  ends_on: string
+  notes: string | null
+  created_by_id: string | null
+}
+
+export type OrchardSeasonPayload = {
+  name: string
+  starts_on: string
+  ends_on: string
+  parcel_id?: string | null
+  notes?: string | null
+}
+
+export type TaskSchedule = {
+  id: string
+  created_at: string
+  updated_at: string
+  farm_id: string
+  parcel_id: string | null
+  parcel_name: string | null
+  season_id: string | null
+  season_name: string | null
+  activity_type: CatalogItem
+  title: string
+  starts_on: string
+  ends_on: string
+  weekdays: number[]
+  notes: string | null
+  is_active: boolean
+  created_by_id: string | null
+  planned_count: number
+}
+
+export type TaskSchedulePayload = {
+  title: string
+  activity_type_id: string
+  weekdays: number[]
+  starts_on?: string | null
+  ends_on?: string | null
+  season_id?: string | null
+  parcel_id?: string | null
+  notes?: string | null
+  is_active?: boolean
+  whole_year?: boolean
+  year?: number
+}
+

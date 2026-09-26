@@ -1,8 +1,12 @@
 import { z } from 'zod'
 
 export const activityLineItemSchema = z.object({
+  name: z.string().optional(),
   quantity: z.string().optional(),
   unit: z.string().optional(),
+  volume: z.string().optional(),
+  volume_unit: z.string().optional(),
+  amount: z.string().optional(),
 })
 
 export const activityFormSchema = z
@@ -12,10 +16,10 @@ export const activityFormSchema = z
     scope_type: z.enum(['parcel', 'row', 'tree']),
     parcel_id: z.string().min(1, 'Parcela nije izabrana'),
     row_id: z.string().optional(),
-    row_ids: z.array(z.string()).default([]),
+    row_ids: z.array(z.string()),
     tree_id: z.string().optional(),
     description: z.string().optional(),
-    line_items: z.array(activityLineItemSchema).min(1),
+    line_items: z.array(activityLineItemSchema),
     status: z.enum(['planned', 'in_progress', 'completed', 'cancelled']),
   })
   .superRefine((values, context) => {
@@ -29,6 +33,7 @@ export const activityFormSchema = z
   })
 
 export type ActivityFormValues = z.infer<typeof activityFormSchema>
+export type ActivityLineItemValues = z.infer<typeof activityLineItemSchema>
 
 export const costFormSchema = z.object({
   description: z.string().min(1, 'Unesite opis'),

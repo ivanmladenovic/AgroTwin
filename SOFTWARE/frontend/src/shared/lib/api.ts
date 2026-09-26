@@ -1,6 +1,6 @@
-import { clearAccessToken, getAccessToken } from '@/shared/lib/auth'
+import { expireAccessToken, getAccessToken } from '@/shared/lib/auth'
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1'
+const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') || '/api/v1'
 
 export class ApiError extends Error {
   status: number
@@ -27,21 +27,28 @@ async function parseError(response: Response): Promise<ApiError> {
   }
 }
 
+function handleUnauthorized(sentToken: string | null): void {
+  if (expireAccessToken(sentToken) && window.location.pathname !== '/login') {
+    window.location.assign('/login')
+  }
+}
+
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { skipAuth, headers, ...rest } = options
   const token = skipAuth ? null : getAccessToken()
+  const hasJsonBody = typeof rest.body === 'string'
 
   const response = await fetch(`${API_URL}${path}`, {
     ...rest,
     headers: {
-      'Content-Type': 'application/json',
+      ...(hasJsonBody ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...headers,
     },
   })
 
   if (response.status === 401 && !skipAuth) {
-    clearAccessToken()
+    handleUnauthorized(token)
   }
 
   if (!response.ok) {
@@ -63,7 +70,7 @@ export async function apiUpload<T>(path: string, formData: FormData): Promise<T>
     body: formData,
   })
   if (response.status === 401) {
-    clearAccessToken()
+    handleUnauthorized(token)
   }
   if (!response.ok) {
     throw await parseError(response)
@@ -77,7 +84,7 @@ export async function fetchObjectUrl(path: string): Promise<string> {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
   if (response.status === 401) {
-    clearAccessToken()
+    handleUnauthorized(token)
   }
   if (!response.ok) {
     throw await parseError(response)
@@ -92,7 +99,7 @@ export async function apiDownload(path: string, filename: string): Promise<void>
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
   if (response.status === 401) {
-    clearAccessToken()
+    handleUnauthorized(token)
   }
   if (!response.ok) {
     throw await parseError(response)

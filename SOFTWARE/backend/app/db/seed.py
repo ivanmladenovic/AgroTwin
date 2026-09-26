@@ -42,14 +42,14 @@ from app.knowledge.pdf import build_text_pdf
 from app.storage import get_storage
 from app.storage.png import solid_png
 
-DEMO_EMAIL = "demo@agrotwin.com"
-DEMO_PASSWORD = "demo12345"
-DEMO_NAME = "Milan Petrović"
+DEMO_EMAIL = "admin@agrotwin.rs"
+DEMO_PASSWORD = "admin"
+DEMO_NAME = "Ivan Mladenović"
 DEMO_FARM_NAME = "Voćnjak Severna padina"
 DEMO_PARCEL_MAIN = "Severna padina"
 DEMO_PARCEL_NURSERY = "Rasadnik"
-LEGACY_DEMO_EMAIL = "demo@agrotwin.local"
-LEGACY_DEMO_NAMES = {"Demo Grower", "Demo proizvođač"}
+LEGACY_DEMO_EMAIL = "demo@agrotwin.com"
+LEGACY_DEMO_NAMES = {"Demo Grower", "Demo proizvođač", "Milan Petrović"}
 LEGACY_PARCEL_MAIN = "North Slope"
 LEGACY_PARCEL_NURSERY = "Nursery Block"
 
@@ -66,15 +66,17 @@ def seed_demo_data(db: Session) -> None:
             hashed_password=hash_password(DEMO_PASSWORD),
             full_name=DEMO_NAME,
             is_active=True,
-            is_superuser=False,
+            is_superuser=True,
         )
         users.add(user)
         db.flush()
     else:
         user.email = DEMO_EMAIL
-        if user.full_name in LEGACY_DEMO_NAMES:
+        user.hashed_password = hash_password(DEMO_PASSWORD)
+        if user.full_name in LEGACY_DEMO_NAMES or user.full_name != DEMO_NAME:
             user.full_name = DEMO_NAME
         user.is_active = True
+        user.is_superuser = True
 
     existing_farms = farms.list_by_owner(user.id)
     farm = existing_farms[0] if existing_farms else None

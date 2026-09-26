@@ -28,5 +28,4 @@ class CatalogRepository:
         return self.db.get(CostCategory, category_id)
 
     def get_cost_category_by_slug(self, slug: str) -> CostCategory | None:
-        stmt = select(CostCategory).where(CostCategory.slug == slug)
-        return self.db.scalars(stmt).first()
+        return next((item for item in self.list_cost_categories() if item.slug == slug), None)

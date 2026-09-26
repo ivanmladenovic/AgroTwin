@@ -1,0 +1,26 @@
+# AgroTwin SPA on Apache (SuperHosting / cPanel)
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Existing files and directories (assets, favicon, etc.)
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # React Router — all other routes → index.html
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Do not list directories
+Options -Indexes
+
+# Cache hashed Vite assets aggressively; keep HTML fresh
+<IfModule mod_headers.c>
+  <FilesMatch "\.(js|css|png|jpg|jpeg|webp|svg|woff2?)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  <FilesMatch "\.(html|json)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>

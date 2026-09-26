@@ -30,6 +30,7 @@ TIMELINE_PRIORITY = {
     "disease_treatment": 6,
     "maintenance": 7,
     "inspection": 8,
+    "soil_analysis": 9,
 }
 
 METRIC_SEMANTICS: dict[str, MetricSemantics] = {

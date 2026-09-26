@@ -10,8 +10,12 @@ from app.schemas.common import IDSchema
 
 
 class QuantityLineRead(BaseModel):
+    name: str | None = None
     quantity: Decimal | None = None
     unit: str | None = None
+    volume: Decimal | None = None
+    volume_unit: str | None = None
+    amount: Decimal | None = None
 
 
 class CostCreate(BaseModel):
@@ -71,3 +75,5 @@ class CostSummaryRead(BaseModel):
     by_activity_type: list[NamedAmount]
     by_year: list[YearAmount] = []
     parcel_id: UUID | None = None
+    total_subsidies: Decimal = Decimal("0")
+    subsidy_percent_of_costs: Decimal | None = None

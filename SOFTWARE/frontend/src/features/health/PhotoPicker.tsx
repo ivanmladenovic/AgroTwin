@@ -1,6 +1,7 @@
 import { Camera, ImagePlus, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
+import { compressPhoto } from '@/shared/lib/compressImage'
 import { Button } from '@/shared/ui/button'
 
 type PhotoPickerProps = {
@@ -12,12 +13,21 @@ type PhotoPickerProps = {
 export function PhotoPicker({ files, onChange, description }: PhotoPickerProps) {
   const galleryInputRef = useRef<HTMLInputElement>(null)
   const cameraInputRef = useRef<HTMLInputElement>(null)
+  const filesRef = useRef(files)
   const [cameraOpen, setCameraOpen] = useState(false)
+  const [compressing, setCompressing] = useState(false)
+  filesRef.current = files
 
-  function addFiles(incoming: File[]) {
-    const images = incoming.filter((file) => file.type.startsWith('image/'))
+  async function addFiles(incoming: File[]) {
+    const images = incoming.filter((file) => file.type.startsWith('image/') || !file.type)
     if (images.length === 0) return
-    onChange([...files, ...images])
+    setCompressing(true)
+    try {
+      const compressed = await Promise.all(images.map((file) => compressPhoto(file)))
+      onChange([...filesRef.current, ...compressed])
+    } finally {
+      setCompressing(false)
+    }
   }
 
   function openCamera() {
@@ -36,6 +46,8 @@ export function PhotoPicker({ files, onChange, description }: PhotoPickerProps) 
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
         {description ?? 'U voćnjaku otvorite kameru i uslikajte simptom, ili izaberite fotografiju iz galerije.'}
+        {' '}
+        Fotografije se odmah kompresuju da zauzmu manje prostora.
       </p>
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" onClick={openCamera}>
@@ -54,7 +66,7 @@ export function PhotoPicker({ files, onChange, description }: PhotoPickerProps) 
         multiple
         className="hidden"
         onChange={(event) => {
-          addFiles(Array.from(event.target.files ?? []))
+          void addFiles(Array.from(event.target.files ?? []))
           event.target.value = ''
         }}
       />
@@ -65,10 +77,11 @@ export function PhotoPicker({ files, onChange, description }: PhotoPickerProps) 
         capture="environment"
         className="hidden"
         onChange={(event) => {
-          addFiles(Array.from(event.target.files ?? []))
+          void addFiles(Array.from(event.target.files ?? []))
           event.target.value = ''
         }}
       />
+      {compressing ? <p className="text-xs text-muted-foreground">Kompresija fotografija…</p> : null}
       {files.length > 0 ? (
         <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           {files.map((file, index) => (
@@ -83,7 +96,7 @@ export function PhotoPicker({ files, onChange, description }: PhotoPickerProps) 
       {cameraOpen ? (
         <CameraCapture
           onCapture={(file) => {
-            addFiles([file])
+            void addFiles([file])
             setCameraOpen(false)
           }}
           onClose={() => setCameraOpen(false)}
@@ -139,8 +152,8 @@ function CameraCapture({
           audio: false,
           video: {
             facingMode: { ideal: 'environment' },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
+            width: { ideal: 1600 },
+            height: { ideal: 1200 },
           },
         })
         if (cancelled) {
@@ -171,12 +184,13 @@ function CameraCapture({
   function capture() {
     const video = videoRef.current
     if (!video || video.videoWidth === 0) return
+    const scale = Math.min(1, 1600 / Math.max(video.videoWidth, video.videoHeight))
     const canvas = document.createElement('canvas')
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
+    canvas.width = Math.max(1, Math.round(video.videoWidth * scale))
+    canvas.height = Math.max(1, Math.round(video.videoHeight * scale))
     const context = canvas.getContext('2d')
     if (!context) return
-    context.drawImage(video, 0, 0)
+    context.drawImage(video, 0, 0, canvas.width, canvas.height)
     canvas.toBlob(
       (blob) => {
         if (!blob) return
@@ -184,7 +198,7 @@ function CameraCapture({
         onCapture(new File([blob], `uslikano-${stamp}.jpg`, { type: 'image/jpeg' }))
       },
       'image/jpeg',
-      0.92,
+      0.72,
     )
   }
 

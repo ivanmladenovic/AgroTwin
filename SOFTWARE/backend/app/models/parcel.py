@@ -26,6 +26,8 @@ class Parcel(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     area_hectares: Mapped[Decimal | None] = mapped_column(Numeric(10, 4), nullable=True)
     latitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
     longitude: Mapped[Decimal | None] = mapped_column(Numeric(9, 6), nullable=True)
+    altitude: Mapped[Decimal | None] = mapped_column(Numeric(8, 2), nullable=True)
+    boundary: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     maps_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     row_count: Mapped[int | None] = mapped_column(Integer, nullable=True)

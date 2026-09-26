@@ -59,6 +59,13 @@ class KnowledgeRepository:
         for chunk in self.chunks_for_document(document_id):
             self.db.delete(chunk)
 
+    def get_page(self, document_id: UUID, page_number: int) -> KnowledgePage | None:
+        stmt = select(KnowledgePage).where(
+            KnowledgePage.document_id == document_id,
+            KnowledgePage.page_number == page_number,
+        )
+        return self.db.scalars(stmt).first()
+
     def delete_pages(self, document_id: UUID) -> None:
         stmt = select(KnowledgePage).where(KnowledgePage.document_id == document_id)
         for page in self.db.scalars(stmt).all():

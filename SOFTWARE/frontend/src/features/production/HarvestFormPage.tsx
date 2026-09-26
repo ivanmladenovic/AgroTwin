@@ -10,7 +10,7 @@ export function HarvestFormPage() {
   if (!parcelId) return null
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6">
+    <div className="w-full space-y-6">
       <div>
         <p className="kicker">Proizvodnja</p>
         <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Nova berba</h1>
