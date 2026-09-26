@@ -33,6 +33,7 @@ class OpenAICompatibleProvider:
         self.chat_model = settings.ai_chat_model
         self.embedding_model = settings.ai_embedding_model
         self.vision_model = settings.ai_vision_model or settings.ai_chat_model
+        self.embedding_dim = settings.ai_embedding_dim
         self.timeout = 60.0
 
     def chat(
@@ -111,15 +112,27 @@ class OpenAICompatibleProvider:
         return payload
 
     def generate_embedding(self, text: str) -> list[float]:
-        data = self._post("/embeddings", {"model": self.embedding_model, "input": text})
-        return list((data.get("data") or [{}])[0].get("embedding") or [])
+        payload: dict[str, Any] = {"model": self.embedding_model, "input": text}
+        if self.embedding_dim:
+            payload["dimensions"] = self.embedding_dim
+        data = self._post("/embeddings", payload)
+        return _trim_embedding(
+            list((data.get("data") or [{}])[0].get("embedding") or []),
+            self.embedding_dim,
+        )
 
     def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
         if not texts:
             return []
-        data = self._post("/embeddings", {"model": self.embedding_model, "input": texts})
+        payload: dict[str, Any] = {"model": self.embedding_model, "input": texts}
+        if self.embedding_dim:
+            payload["dimensions"] = self.embedding_dim
+        data = self._post("/embeddings", payload)
         rows = sorted(data.get("data") or [], key=lambda item: item.get("index", 0))
-        return [list(item.get("embedding") or []) for item in rows]
+        return [
+            _trim_embedding(list(item.get("embedding") or []), self.embedding_dim)
+            for item in rows
+        ]
 
     def _post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         try:
@@ -157,6 +170,14 @@ def _dump_message(message: ChatMessage) -> dict[str, Any]:
             for item in message.tool_calls
         ]
     return payload
+
+
+def _trim_embedding(vector: list[float], dim: int | None) -> list[float]:
+    if not dim or len(vector) == dim:
+        return vector
+    if len(vector) > dim:
+        return vector[:dim]
+    return vector
 
 
 def _parse_analysis(content: str) -> ImageAnalysisResult:

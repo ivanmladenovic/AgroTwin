@@ -94,7 +94,23 @@ https://agrotwin-web.onrender.com,https://agrotwin.srpskisafran.rs
 
 ---
 
-## Korak 6 — Demo nalog (seed)
+## AI Agronom (Gemini first)
+
+On **agrotwin-api** set:
+
+```text
+AI_PROVIDER=openai_compatible
+AI_API_KEY=<your Gemini API key>
+AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
+AI_CHAT_MODEL=gemini-3.8-flash
+AI_VISION_MODEL=gemini-3.8-flash
+AI_EMBEDDING_MODEL=gemini-embedding-001
+AI_EMBEDDING_DIM=1536
+```
+
+`AI_API_KEY` must be set manually in the Render dashboard (Blueprint marks it `sync: false`).
+
+To switch later to GPT-5, change base URL/models and use the OpenAI key.
 
 Blueprint ima `RUN_SEED=true` za prvi start.
 

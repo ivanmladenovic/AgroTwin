@@ -33,8 +33,22 @@ services:
         value: local
       - key: STORAGE_LOCAL_PATH
         value: var/storage
+      # AI Agronom — Option A: Gemini 3.8 Flash via OpenAI-compatible endpoint
       - key: AI_PROVIDER
-        value: local
+        value: openai_compatible
+      - key: AI_BASE_URL
+        value: https://generativelanguage.googleapis.com/v1beta/openai/
+      - key: AI_CHAT_MODEL
+        value: gemini-3.8-flash
+      - key: AI_VISION_MODEL
+        value: gemini-3.8-flash
+      - key: AI_EMBEDDING_MODEL
+        value: gemini-embedding-001
+      - key: AI_EMBEDDING_DIM
+        value: "1536"
+      # Set in Render Dashboard → agrotwin-api → Environment (Gemini API key)
+      - key: AI_API_KEY
+        sync: false
       - key: RUN_SEED
         value: "false"
       - key: YR_USER_AGENT
