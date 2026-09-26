@@ -1,8 +1,8 @@
 # Render Blueprint — AgroTwin full stack
 # Docs: https://render.com/docs/blueprint-spec
 #
-# After first deploy, set the frontend VITE_API_URL to the API's public URL
-# (Dashboard → agrotwin-web → Environment), then Clear build cache + Redeploy.
+# After first deploy, set frontend VITE_API_URL to the real API URL, then
+# Clear build cache & redeploy agrotwin-web.
 
 databases:
   - name: agrotwin-db
@@ -24,7 +24,6 @@ services:
       - key: SECRET_KEY
         generateValue: true
       - key: CORS_ORIGINS
-        # Update after frontend URL is known (include both if keeping SuperHosting too)
         value: https://agrotwin-web.onrender.com,https://agrotwin.srpskisafran.rs
       - key: DATABASE_URL
         fromDatabase:
@@ -44,9 +43,8 @@ services:
   - type: web
     name: agrotwin-web
     runtime: static
-    rootDirectory: SOFTWARE/frontend
-    buildCommand: npm ci && npx vite build
-    staticPublishPath: dist
+    buildCommand: cd SOFTWARE/frontend && npm ci && npx vite build
+    staticPublishPath: SOFTWARE/frontend/dist
     plan: free
     routes:
       - type: rewrite
@@ -54,6 +52,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        # Replace with the real agrotwin-api URL after the first API deploy
-        # Example: https://agrotwin-api.onrender.com/api/v1
         value: https://agrotwin-api.onrender.com/api/v1
