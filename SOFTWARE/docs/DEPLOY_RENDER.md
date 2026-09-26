@@ -107,7 +107,7 @@ Posle uspešnog seed-a **isključi seed** da se ne ponavlja:
 Login:
 
 - email: `admin@agrotwin.rs`
-- password: `admin`
+- password: the value configured for production (not the old demo `admin`)
 
 **Odmah promeni lozinku** na produkciji kad budeš mogao.
 

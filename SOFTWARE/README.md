@@ -78,10 +78,10 @@ npm run dev
 
 Open [http://localhost:5174](http://localhost:5174).
 
-Demo user (seeded automatically):
+Demo user (seeded automatically for local development):
 
 - email: `admin@agrotwin.rs`
-- password: `admin`
+- password: see `DEMO_PASSWORD` in `backend/app/db/seed.py` (change for production)
 
 ### Full stack with Docker
 
