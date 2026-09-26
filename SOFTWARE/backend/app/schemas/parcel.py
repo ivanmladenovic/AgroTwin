@@ -1,5 +1,5 @@
 from decimal import Decimal
-from typing import Literal
+from typing import Literal, Self
 from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -86,7 +86,7 @@ class ParcelCreate(BaseModel):
         return _validated_boundary(value)
 
     @model_validator(mode="after")
-    def normalize_planting_plan(self) -> ParcelCreate:
+    def normalize_planting_plan(self) -> Self:
         varieties, default_name, plan = normalize_varieties_and_plan(
             row_count=self.row_count,
             trees_per_row=self.trees_per_row,
