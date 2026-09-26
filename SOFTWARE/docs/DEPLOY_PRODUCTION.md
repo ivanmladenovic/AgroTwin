@@ -2,8 +2,8 @@
 
 After you push to `main`, GitHub Actions builds the frontend and uploads:
 
-- Frontend (static) → FTP account root  
-- Backend (Python) → `./api/`
+- Frontend (static) → `./agrotwin.srpskisafran.rs/` (cPanel document root)  
+- Backend (Python) → `./agrotwin.srpskisafran.rs/api/`
 
 ## GitHub secrets (already set)
 
@@ -22,7 +22,7 @@ In cPanel create a PostgreSQL database + user. Note host, name, user, password.
 | Field | Value |
 | --- | --- |
 | Python version | 3.12 if available (else newest 3.x) |
-| Application root | `agrotwin.srpskisafran.rs/api` (path that contains `passenger_wsgi.py`) |
+| Application root | `agrotwin.srpskisafran.rs/api` (folder that contains `passenger_wsgi.py`) |
 | Application URL | `/api` |
 | Application startup file | `passenger_wsgi.py` |
 | Application Entry point | `application` |

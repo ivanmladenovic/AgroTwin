@@ -3,8 +3,10 @@
 # Site: https://agrotwin.srpskisafran.rs
 #
 # What this workflow deploys on every push to main:
-#   1) Built React frontend  → FTP account root (./)
-#   2) FastAPI backend code  → ./api/  (cPanel Python App, one-time setup)
+#   1) Built React frontend  → ./agrotwin.srpskisafran.rs/
+#   2) FastAPI backend code  → ./agrotwin.srpskisafran.rs/api/
+#
+# Document root (cPanel "Osnovni direktorijum"): /agrotwin.srpskisafran.rs
 #
 # Required GitHub secrets:
 #   FTP_SERVER    — hostname ONLY (e.g. ftp.srpskisafran.rs or sgXX.superhosting.bg)
@@ -82,7 +84,7 @@ jobs:
           security: loose
           timeout: 600000
           local-dir: ./SOFTWARE/frontend/dist/
-          server-dir: ./
+          server-dir: ./agrotwin.srpskisafran.rs/
           exclude: |
             **/.git*
             **/.git*/**
@@ -102,7 +104,7 @@ jobs:
           security: loose
           timeout: 600000
           local-dir: ./staging/api/
-          server-dir: ./api/
+          server-dir: ./agrotwin.srpskisafran.rs/api/
           exclude: |
             **/.git*
             **/.git*/**
