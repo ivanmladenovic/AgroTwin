@@ -7,11 +7,10 @@
 #   2) FastAPI backend code  → ./api/  (cPanel Python App, one-time setup)
 #
 # Required GitHub secrets:
-#   FTP_SERVER
+#   FTP_SERVER    — hostname ONLY (e.g. ftp.srpskisafran.rs or sgXX.superhosting.bg)
+#                   Do NOT include ftps:// or a path
 #   FTP_USERNAME
 #   FTP_PASSWORD
-#
-# One-time on SuperHosting (cPanel) — see SOFTWARE/docs/DEPLOY_PRODUCTION.md
 
 name: Deploy production (FTPS)
 
@@ -75,11 +74,13 @@ jobs:
       - name: Deploy frontend via FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ftps://${{ secrets.FTP_SERVER }}
+          server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          port: 21
           protocol: ftps
+          port: 21
+          security: loose
+          timeout: 600000
           local-dir: ./SOFTWARE/frontend/dist/
           server-dir: ./
           exclude: |
@@ -87,17 +88,19 @@ jobs:
             **/.git*/**
             **/node_modules/**
             **/.DS_Store
-            api/**
-            api/**/*
+            **/api
+            **/api/**
 
       - name: Deploy backend via FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ftps://${{ secrets.FTP_SERVER }}
+          server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          port: 21
           protocol: ftps
+          port: 21
+          security: loose
+          timeout: 600000
           local-dir: ./staging/api/
           server-dir: ./api/
           exclude: |
