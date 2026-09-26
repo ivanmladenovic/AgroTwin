@@ -43,7 +43,7 @@ from app.storage import get_storage
 from app.storage.png import solid_png
 
 DEMO_EMAIL = "admin@agrotwin.rs"
-DEMO_PASSWORD = "admin"
+DEMO_PASSWORD = "Mladenovic12345!"
 DEMO_NAME = "Ivan Mladenović"
 DEMO_FARM_NAME = "Voćnjak Severna padina"
 DEMO_PARCEL_MAIN = "Severna padina"

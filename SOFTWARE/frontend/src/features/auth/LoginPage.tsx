@@ -17,8 +17,8 @@ export function LoginPage() {
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: 'admin@agrotwin.rs',
-      password: 'admin',
+      email: '',
+      password: '',
     },
   })
 
