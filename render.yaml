@@ -43,9 +43,9 @@ services:
   - type: web
     name: agrotwin-web
     runtime: static
+    # Static sites have no compute plan — do not set `plan`.
     buildCommand: cd SOFTWARE/frontend && npm ci && npx vite build
     staticPublishPath: SOFTWARE/frontend/dist
-    plan: free
     routes:
       - type: rewrite
         source: /*
