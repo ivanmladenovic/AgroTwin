@@ -22,6 +22,7 @@ import { CreateParcelPage } from '@/features/orchard/CreateParcelPage'
 import { EditParcelPage } from '@/features/orchard/EditParcelPage'
 import { OrchardIndexPage } from '@/features/orchard/OrchardIndexPage'
 import { OrchardMapPage } from '@/features/orchard/OrchardMapPage'
+import { ParcelSoilAnalysesPage } from '@/features/orchard/ParcelSoilAnalysesPage'
 import { TreeJournalPage } from '@/features/orchard/TreeJournalPage'
 import { HarvestDetailPage } from '@/features/production/HarvestDetailPage'
 import { HarvestFormPage } from '@/features/production/HarvestFormPage'
@@ -77,6 +78,7 @@ export function App() {
             <Route path="orchard" element={<OrchardIndexPage />} />
             <Route path="orchard/new" element={<CreateParcelPage />} />
             <Route path="orchard/:parcelId/edit" element={<EditParcelPage />} />
+            <Route path="orchard/:parcelId/soil-analyses" element={<ParcelSoilAnalysesPage />} />
             <Route path="orchard/:parcelId/production/new" element={<HarvestFormPage />} />
             <Route path="orchard/:parcelId/production/:harvestId" element={<HarvestDetailPage />} />
             <Route path="orchard/:parcelId/production" element={<ProductionPage />} />

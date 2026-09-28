@@ -1,4 +1,4 @@
-import { apiDownload, apiRequest, apiUpload } from '@/shared/lib/api'
+import { apiDownload, apiRequest, apiUpload, fetchObjectUrl } from '@/shared/lib/api'
 import type {
   Activity,
   ActivityCreatePayload,
@@ -84,8 +84,38 @@ export function uploadSoilAnalysis(
   return apiUpload<SoilLabAnalysis>(`/activities/${activityId}/soil-analyses`, form)
 }
 
+export function listParcelSoilAnalyses(parcelId: string) {
+  return apiRequest<SoilLabAnalysis[]>(`/parcels/${parcelId}/soil-analyses`)
+}
+
+export function uploadParcelSoilAnalysis(
+  parcelId: string,
+  payload: { file: File; tree_id: string; sampled_on: string },
+) {
+  const form = new FormData()
+  form.append('file', payload.file)
+  form.append('tree_id', payload.tree_id)
+  form.append('sampled_on', payload.sampled_on)
+  return apiUpload<SoilLabAnalysis>(`/parcels/${parcelId}/soil-analyses`, form)
+}
+
 export function downloadSoilAnalysis(analysis: SoilLabAnalysis) {
   return apiDownload(`/soil-analyses/${analysis.id}/file`, analysis.original_filename)
+}
+
+export async function openSoilAnalysis(analysis: SoilLabAnalysis) {
+  const popup = window.open('about:blank', '_blank')
+  try {
+    const url = await fetchObjectUrl(`/soil-analyses/${analysis.id}/file`)
+    if (popup && !popup.closed) {
+      popup.location.replace(url)
+      return true
+    }
+    return false
+  } catch (error) {
+    popup?.close()
+    throw error
+  }
 }
 
 export function listSubsidies(parcelId?: string) {

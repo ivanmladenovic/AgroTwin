@@ -11,6 +11,35 @@ from app.services.soil_lab import SoilLabAnalysisService
 router = APIRouter(tags=["soil-lab"])
 
 
+@router.get("/parcels/{parcel_id}/soil-analyses", response_model=list[SoilLabAnalysisRead])
+def list_parcel_soil_analyses(parcel_id: UUID, current_user: CurrentUser, db: DBSession) -> list[SoilLabAnalysisRead]:
+    return SoilLabAnalysisService(db).list_for_parcel(parcel_id, current_user.id)
+
+
+@router.post("/parcels/{parcel_id}/soil-analyses", response_model=SoilLabAnalysisRead, status_code=201)
+async def create_parcel_soil_analysis(
+    parcel_id: UUID,
+    current_user: CurrentUser,
+    db: DBSession,
+    file: UploadFile = File(...),
+    tree_id: UUID = Form(...),
+    sampled_on: date = Form(...),
+) -> SoilLabAnalysisRead:
+    content = await file.read()
+    service = SoilLabAnalysisService(db)
+    analysis = service.create_for_parcel(
+        parcel_id,
+        current_user.id,
+        tree_id=tree_id,
+        sampled_on=sampled_on,
+        filename=file.filename or "analiza.pdf",
+        content_type=file.content_type or "application/pdf",
+        content=content,
+        created_by_id=current_user.id,
+    )
+    return service.to_read(analysis)
+
+
 @router.get("/activities/{activity_id}/soil-analyses", response_model=list[SoilLabAnalysisRead])
 def list_soil_analyses(activity_id: UUID, current_user: CurrentUser, db: DBSession) -> list[SoilLabAnalysisRead]:
     return SoilLabAnalysisService(db).list_for_activity(activity_id, current_user.id)

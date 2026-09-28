@@ -20,6 +20,14 @@ class SoilLabAnalysisRepository:
         )
         return list(self.db.scalars(stmt).all())
 
+    def list_for_parcel(self, parcel_id: UUID) -> list[SoilLabAnalysis]:
+        stmt = (
+            select(SoilLabAnalysis)
+            .where(SoilLabAnalysis.parcel_id == parcel_id)
+            .order_by(SoilLabAnalysis.sampled_on.desc(), SoilLabAnalysis.created_at.desc())
+        )
+        return list(self.db.scalars(stmt).all())
+
     def get(self, analysis_id: UUID) -> SoilLabAnalysis | None:
         return self.db.get(SoilLabAnalysis, analysis_id)
 

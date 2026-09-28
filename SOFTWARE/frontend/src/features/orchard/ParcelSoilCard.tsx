@@ -37,7 +37,7 @@ export function ParcelSoilCard({ parcelId }: { parcelId: string }) {
   if (soilQuery.isLoading) {
     return (
       <Card>
-        <SoilHeader />
+        <SoilHeader parcelId={parcelId} />
         <CardContent className="px-4 py-3">
           <div className="h-16 animate-pulse rounded-lg bg-muted" />
         </CardContent>
@@ -48,7 +48,7 @@ export function ParcelSoilCard({ parcelId }: { parcelId: string }) {
   if (soilQuery.isError) {
     return (
       <Card>
-        <SoilHeader />
+        <SoilHeader parcelId={parcelId} />
         <CardContent className="px-4 py-3">
           <p className="text-xs text-muted-foreground">Podaci o zemljištu trenutno nisu dostupni.</p>
         </CardContent>
@@ -59,7 +59,7 @@ export function ParcelSoilCard({ parcelId }: { parcelId: string }) {
   if (!profile || profile.status === 'location_required') {
     return (
       <Card>
-        <SoilHeader />
+        <SoilHeader parcelId={parcelId} />
         <CardContent className="space-y-1 px-4 py-3">
           <p className="text-sm font-medium">Lokacija parcele nije podešena.</p>
           <p className="text-xs text-muted-foreground">
@@ -76,7 +76,7 @@ export function ParcelSoilCard({ parcelId }: { parcelId: string }) {
   if (!profile.available) {
     return (
       <Card>
-        <SoilHeader />
+        <SoilHeader parcelId={parcelId} />
         <CardContent className="px-4 py-3">
           <p className="text-xs text-muted-foreground">
             {profile.message || 'Podaci o zemljištu trenutno nisu dostupni.'}
@@ -91,6 +91,7 @@ export function ParcelSoilCard({ parcelId }: { parcelId: string }) {
   return (
     <Card>
       <SoilHeader
+        parcelId={parcelId}
         subtitle={profile.source_label}
         actions={
           <>
@@ -160,14 +161,29 @@ export function ParcelSoilCard({ parcelId }: { parcelId: string }) {
   )
 }
 
-function SoilHeader({ subtitle, actions }: { subtitle?: string; actions?: ReactNode }) {
+function SoilHeader({
+  parcelId,
+  subtitle,
+  actions,
+}: {
+  parcelId: string
+  subtitle?: string
+  actions?: ReactNode
+}) {
   return (
-    <CardHeader className="flex flex-row items-center justify-between gap-3 px-4 py-2.5">
+    <CardHeader className="flex flex-row items-start justify-between gap-3 px-4 py-2.5 sm:items-center">
       <div className="min-w-0">
         <CardTitle>Zemljište</CardTitle>
         <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{subtitle || 'Modelovana procena – SoilGrids'}</p>
       </div>
-      {actions ? <div className="flex flex-none items-center gap-1.5">{actions}</div> : null}
+      <div className="flex flex-none flex-wrap items-center justify-end gap-1.5">
+        <Link to={`/orchard/${parcelId}/soil-analyses`}>
+          <Button type="button" variant="outline" size="sm" className="h-8 px-2.5 text-xs">
+            Analize zemljišta
+          </Button>
+        </Link>
+        {actions}
+      </div>
     </CardHeader>
   )
 }

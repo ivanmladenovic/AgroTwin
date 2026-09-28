@@ -99,3 +99,22 @@ class SoilLabAnalysisApiTests(TestCase):
             files={"file": ("notes.txt", b"not a pdf", "text/plain")},
         )
         self.assertEqual(response.status_code, 422, response.text)
+
+    def test_parcel_soil_analyses_list_and_upload(self) -> None:
+        listed = self.client.get(f"/api/v1/parcels/{self.parcel['id']}/soil-analyses", headers=self.headers)
+        self.assertEqual(listed.status_code, 200, listed.text)
+        before = len(listed.json())
+        response = self.client.post(
+            f"/api/v1/parcels/{self.parcel['id']}/soil-analyses",
+            headers=self.headers,
+            data={"tree_id": self.trees[0]["id"], "sampled_on": date.today().isoformat()},
+            files={"file": ("parcel-analiza.pdf", MIN_PDF, "application/pdf")},
+        )
+        self.assertEqual(response.status_code, 201, response.text)
+        payload = response.json()
+        self.assertEqual(payload["parcel_id"], self.parcel["id"])
+        self.assertEqual(payload["tree_id"], self.trees[0]["id"])
+        self.assertEqual(payload["original_filename"], "parcel-analiza.pdf")
+        after = self.client.get(f"/api/v1/parcels/{self.parcel['id']}/soil-analyses", headers=self.headers)
+        self.assertEqual(after.status_code, 200, after.text)
+        self.assertEqual(len(after.json()), before + 1)
