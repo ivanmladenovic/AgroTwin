@@ -1,4 +1,4 @@
-# Build context is SOFTWARE/ (see render.yaml dockerContext).
+# Local compose/docs ignore helpers when building from SOFTWARE/ (not used by Render API).
 backend/.venv/
 backend/__pycache__/
 backend/**/__pycache__/

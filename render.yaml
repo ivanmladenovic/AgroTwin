@@ -13,7 +13,7 @@ services:
     name: agrotwin-api
     runtime: docker
     dockerfilePath: ./SOFTWARE/backend/Dockerfile
-    dockerContext: ./SOFTWARE
+    dockerContext: ./SOFTWARE/backend
     plan: free
     healthCheckPath: /api/v1/health
     envVars:
