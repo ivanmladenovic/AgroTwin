@@ -8,12 +8,12 @@ ENV PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y --no-install-recommends libpq-dev gcc \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+# Build context is SOFTWARE/ (Render Blueprint dockerContext).
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
-# Agriser manuals live in backend/Prirucnici so they ship with this context
-# (Render dockerContext is ./SOFTWARE/backend).
+COPY backend/ .
+# Manuals: backend/Prirucnici → /app/Prirucnici
 
 RUN chmod +x scripts/start.sh
 
