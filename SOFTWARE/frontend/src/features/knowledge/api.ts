@@ -1,5 +1,8 @@
-import { apiDownload, apiRequest, apiUpload, fetchObjectUrl } from '@/shared/lib/api'
+import { apiDownload, apiRequest, apiUpload, ApiError, fetchObjectUrl } from '@/shared/lib/api'
+import { getAccessToken } from '@/shared/lib/auth'
 import type { AgronomyQueryResult, KnowledgeCategory, KnowledgeDocument, KnowledgeHit } from '@/shared/api/types'
+
+const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') || '/api/v1'
 
 export function listKnowledgeDocuments() {
   return apiRequest<KnowledgeDocument[]>('/knowledge/documents')
@@ -47,6 +50,30 @@ export function knowledgePdfViewerUrl(objectUrl: string, page?: number | null) {
 /** Load PDF as a blob URL (auth required). Caller must revoke when done. */
 export function fetchKnowledgeDocumentUrl(documentId: string) {
   return fetchObjectUrl(knowledgeDocumentFilePath(documentId))
+}
+
+/** Load raw PDF bytes for in-app pdf.js viewing. */
+export async function fetchKnowledgeDocumentBytes(documentId: string): Promise<ArrayBuffer> {
+  const token = getAccessToken()
+  let response: Response
+  try {
+    response = await fetch(`${API_URL}${knowledgeDocumentFilePath(documentId)}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+  } catch {
+    throw new ApiError('Veza sa serverom nije uspela. Proverite mrežu i pokušajte ponovo.', 0)
+  }
+  if (!response.ok) {
+    let detail = 'PDF nije učitan'
+    try {
+      const body = (await response.json()) as { detail?: string }
+      if (body.detail) detail = body.detail
+    } catch {
+      /* ignore */
+    }
+    throw new ApiError(detail, response.status)
+  }
+  return response.arrayBuffer()
 }
 
 /**
