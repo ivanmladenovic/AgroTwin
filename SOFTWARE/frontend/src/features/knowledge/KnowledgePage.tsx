@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Download, Eye, Plus, Search, X } from 'lucide-react'
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 import {
@@ -270,28 +270,32 @@ function KnowledgePdfViewer({
   const [pageImageUrl, setPageImageUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [pdfLoading, setPdfLoading] = useState(false)
   const [mode, setMode] = useState<'page' | 'pdf'>(target.page && target.page > 0 ? 'page' : 'pdf')
+  const wantsPage = Boolean(target.page && target.page > 0)
+  const objectUrlRef = useRef<string | null>(null)
+  const pageImageUrlRef = useRef<string | null>(null)
 
   useEffect(() => {
     let active = true
-    const created: string[] = []
     setLoading(true)
     setError(null)
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current)
+      objectUrlRef.current = null
+    }
+    if (pageImageUrlRef.current) {
+      URL.revokeObjectURL(pageImageUrlRef.current)
+      pageImageUrlRef.current = null
+    }
     setObjectUrl(null)
     setPageImageUrl(null)
-    setMode(target.page && target.page > 0 ? 'page' : 'pdf')
+    setMode(wantsPage ? 'page' : 'pdf')
 
     void (async () => {
       try {
-        const pdfUrl = await fetchKnowledgeDocumentUrl(target.documentId)
-        if (!active) {
-          URL.revokeObjectURL(pdfUrl)
-          return
-        }
-        created.push(pdfUrl)
-        setObjectUrl(pdfUrl)
-
-        if (target.page && target.page > 0) {
+        // Prefer the page preview first — much smaller and reliable on mobile.
+        if (wantsPage && target.page) {
           try {
             const imageUrl = await fetchObjectUrl(
               `/knowledge/documents/${target.documentId}/pages/${target.page}/file`,
@@ -300,13 +304,23 @@ function KnowledgePdfViewer({
               URL.revokeObjectURL(imageUrl)
               return
             }
-            created.push(imageUrl)
+            pageImageUrlRef.current = imageUrl
             setPageImageUrl(imageUrl)
+            setLoading(false)
+            return
           } catch {
-            // Page preview is optional — full PDF still works.
-            if (active) setMode('pdf')
+            // Fall through to full PDF if page preview is unavailable.
           }
         }
+
+        const pdfUrl = await fetchKnowledgeDocumentUrl(target.documentId)
+        if (!active) {
+          URL.revokeObjectURL(pdfUrl)
+          return
+        }
+        objectUrlRef.current = pdfUrl
+        setObjectUrl(pdfUrl)
+        setMode('pdf')
       } catch (err) {
         if (active) {
           setError(err instanceof Error ? err.message : 'Priručnik nije učitan')
@@ -318,12 +332,49 @@ function KnowledgePdfViewer({
 
     return () => {
       active = false
-      for (const url of created) URL.revokeObjectURL(url)
+      if (objectUrlRef.current) {
+        URL.revokeObjectURL(objectUrlRef.current)
+        objectUrlRef.current = null
+      }
+      if (pageImageUrlRef.current) {
+        URL.revokeObjectURL(pageImageUrlRef.current)
+        pageImageUrlRef.current = null
+      }
     }
-  }, [target.documentId, target.page])
+  }, [target.documentId, target.page, wantsPage])
+
+  async function ensurePdfLoaded() {
+    if (objectUrlRef.current) return objectUrlRef.current
+    setPdfLoading(true)
+    setError(null)
+    try {
+      const pdfUrl = await fetchKnowledgeDocumentUrl(target.documentId)
+      objectUrlRef.current = pdfUrl
+      setObjectUrl(pdfUrl)
+      return pdfUrl
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'PDF nije učitan')
+      return null
+    } finally {
+      setPdfLoading(false)
+    }
+  }
+
+  async function showFullPdf() {
+    const url = await ensurePdfLoaded()
+    if (url) setMode('pdf')
+  }
+
+  async function handleDownload() {
+    await downloadKnowledgeDocument({
+      id: target.documentId,
+      title: target.title,
+      original_filename: target.filename || undefined,
+    })
+  }
 
   const pdfSrc = objectUrl ? knowledgePdfViewerUrl(objectUrl, target.page) : null
-  const pageLabel = target.page && target.page > 0 ? `Strana ${target.page}` : null
+  const pageLabel = wantsPage ? `Strana ${target.page}` : null
   const showPageImage = mode === 'page' && pageImageUrl
 
   return (
@@ -334,29 +385,21 @@ function KnowledgePdfViewer({
           {pageLabel ? <p className="mt-0.5 text-xs text-muted-foreground">{pageLabel}</p> : null}
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-          {pageImageUrl && objectUrl ? (
+          {pageImageUrl ? (
             <Button
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => setMode((current) => (current === 'page' ? 'pdf' : 'page'))}
+              disabled={pdfLoading}
+              onClick={() => {
+                if (mode === 'page') void showFullPdf()
+                else setMode('page')
+              }}
             >
-              {mode === 'page' ? 'Ceo PDF' : 'Samo strana'}
+              {pdfLoading ? 'Učitavanje…' : mode === 'page' ? 'Ceo PDF' : 'Samo strana'}
             </Button>
           ) : null}
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={!objectUrl}
-            onClick={() =>
-              void downloadKnowledgeDocument({
-                id: target.documentId,
-                title: target.title,
-                original_filename: target.filename || undefined,
-              })
-            }
-          >
+          <Button type="button" size="sm" variant="outline" onClick={() => void handleDownload()}>
             <Download className="h-4 w-4" />
             Preuzmi
           </Button>
@@ -374,20 +417,10 @@ function KnowledgePdfViewer({
       <div className="min-h-0 flex-1 overflow-auto bg-muted/40">
         {loading ? (
           <p className="p-6 text-sm text-muted-foreground">Učitavanje priručnika…</p>
-        ) : error ? (
+        ) : error && !pageImageUrl && !pdfSrc ? (
           <div className="space-y-3 p-6">
             <p className="text-sm text-danger">{error}</p>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                void downloadKnowledgeDocument({
-                  id: target.documentId,
-                  title: target.title,
-                  original_filename: target.filename || undefined,
-                })
-              }
-            >
+            <Button type="button" variant="outline" onClick={() => void handleDownload()}>
               Preuzmi PDF
             </Button>
           </div>
@@ -401,6 +434,13 @@ function KnowledgePdfViewer({
           </div>
         ) : pdfSrc ? (
           <iframe title={target.title} src={pdfSrc} className="h-full min-h-[70dvh] w-full border-0 bg-white" />
+        ) : error ? (
+          <div className="space-y-3 p-6">
+            <p className="text-sm text-danger">{error}</p>
+            <Button type="button" variant="outline" onClick={() => void handleDownload()}>
+              Preuzmi PDF
+            </Button>
+          </div>
         ) : null}
       </div>
     </div>

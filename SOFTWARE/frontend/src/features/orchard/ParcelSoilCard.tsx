@@ -38,7 +38,8 @@ export function ParcelSoilCard({ parcelId }: { parcelId: string }) {
     return (
       <Card>
         <SoilHeader parcelId={parcelId} />
-        <CardContent className="px-4 py-3">
+        <CardContent className="space-y-3 px-4 py-3">
+          <SoilAnalysesLink parcelId={parcelId} />
           <div className="h-16 animate-pulse rounded-lg bg-muted" />
         </CardContent>
       </Card>
@@ -49,8 +50,9 @@ export function ParcelSoilCard({ parcelId }: { parcelId: string }) {
     return (
       <Card>
         <SoilHeader parcelId={parcelId} />
-        <CardContent className="px-4 py-3">
+        <CardContent className="space-y-3 px-4 py-3">
           <p className="text-xs text-muted-foreground">Podaci o zemljištu trenutno nisu dostupni.</p>
+          <SoilAnalysesLink parcelId={parcelId} />
         </CardContent>
       </Card>
     )
@@ -60,14 +62,17 @@ export function ParcelSoilCard({ parcelId }: { parcelId: string }) {
     return (
       <Card>
         <SoilHeader parcelId={parcelId} />
-        <CardContent className="space-y-1 px-4 py-3">
-          <p className="text-sm font-medium">Lokacija parcele nije podešena.</p>
-          <p className="text-xs text-muted-foreground">
-            {profile?.message || 'Za prikaz modelovanih podataka o zemljištu unesite lokaciju parcele.'}
-          </p>
-          <Link to={`/orchard/${parcelId}/edit`} className="inline-flex text-xs font-medium text-primary hover:underline">
-            Unesite lokaciju parcele
-          </Link>
+        <CardContent className="space-y-3 px-4 py-3">
+          <div className="space-y-1">
+            <p className="text-sm font-medium">Lokacija parcele nije podešena.</p>
+            <p className="text-xs text-muted-foreground">
+              {profile?.message || 'Za prikaz modelovanih podataka o zemljištu unesite lokaciju parcele.'}
+            </p>
+            <Link to={`/orchard/${parcelId}/edit`} className="inline-flex text-xs font-medium text-primary hover:underline">
+              Unesite lokaciju parcele
+            </Link>
+          </div>
+          <SoilAnalysesLink parcelId={parcelId} />
         </CardContent>
       </Card>
     )
@@ -77,10 +82,11 @@ export function ParcelSoilCard({ parcelId }: { parcelId: string }) {
     return (
       <Card>
         <SoilHeader parcelId={parcelId} />
-        <CardContent className="px-4 py-3">
+        <CardContent className="space-y-3 px-4 py-3">
           <p className="text-xs text-muted-foreground">
             {profile.message || 'Podaci o zemljištu trenutno nisu dostupni.'}
           </p>
+          <SoilAnalysesLink parcelId={parcelId} />
         </CardContent>
       </Card>
     )
@@ -122,7 +128,8 @@ export function ParcelSoilCard({ parcelId }: { parcelId: string }) {
           </>
         }
       />
-      <CardContent className="space-y-2 px-4 py-3">
+      <CardContent className="space-y-3 px-4 py-3">
+        <SoilAnalysesLink parcelId={parcelId} />
         {profile.is_stale || profile.status === 'stale' || profile.status === 'partial' || profile.message ? (
           <p className="text-[11px] text-muted-foreground">{profile.message}</p>
         ) : null}
@@ -161,8 +168,18 @@ export function ParcelSoilCard({ parcelId }: { parcelId: string }) {
   )
 }
 
+function SoilAnalysesLink({ parcelId }: { parcelId: string }) {
+  return (
+    <Link to={`/orchard/${parcelId}/soil-analyses`} className="block">
+      <Button type="button" variant="outline" size="sm" className="h-9 w-full justify-center text-xs sm:w-auto">
+        Analize zemljišta
+      </Button>
+    </Link>
+  )
+}
+
 function SoilHeader({
-  parcelId,
+  parcelId: _parcelId,
   subtitle,
   actions,
 }: {
@@ -171,19 +188,12 @@ function SoilHeader({
   actions?: ReactNode
 }) {
   return (
-    <CardHeader className="flex flex-row items-start justify-between gap-3 px-4 py-2.5 sm:items-center">
+    <CardHeader className="flex flex-col gap-2 space-y-0 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
         <CardTitle>Zemljište</CardTitle>
         <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{subtitle || 'Modelovana procena – SoilGrids'}</p>
       </div>
-      <div className="flex flex-none flex-wrap items-center justify-end gap-1.5">
-        <Link to={`/orchard/${parcelId}/soil-analyses`}>
-          <Button type="button" variant="outline" size="sm" className="h-8 px-2.5 text-xs">
-            Analize zemljišta
-          </Button>
-        </Link>
-        {actions}
-      </div>
+      {actions ? <div className="flex flex-none flex-wrap items-center gap-1.5">{actions}</div> : null}
     </CardHeader>
   )
 }

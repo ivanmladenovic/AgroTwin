@@ -80,9 +80,14 @@ export async function apiUpload<T>(path: string, formData: FormData): Promise<T>
 
 export async function fetchObjectUrl(path: string): Promise<string> {
   const token = getAccessToken()
-  const response = await fetch(`${API_URL}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  })
+  let response: Response
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+  } catch {
+    throw new ApiError('Veza sa serverom nije uspela. Proverite mrežu i pokušajte ponovo.', 0)
+  }
   if (response.status === 401) {
     handleUnauthorized(token)
   }
