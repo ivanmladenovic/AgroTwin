@@ -1,4 +1,5 @@
 from uuid import UUID
+from urllib.parse import quote
 
 from fastapi import APIRouter, File, Form, UploadFile
 from fastapi.responses import FileResponse, Response
@@ -9,6 +10,19 @@ from app.schemas.knowledge import DocumentRead, KnowledgeChunkRead, KnowledgeSea
 from app.services.knowledge import KnowledgeService
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
+
+
+def _content_disposition(filename: str, *, inline: bool = True) -> str:
+    """ASCII fallback + RFC 5987 UTF-8 filename (latin headers only)."""
+    disposition = "inline" if inline else "attachment"
+    ascii_name = (
+        filename.encode("ascii", "replace")
+        .decode("ascii")
+        .replace("?", "_")
+        .replace('"', "")
+        or "download"
+    )
+    return f"{disposition}; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(filename)}"
 
 
 @router.get("/documents", response_model=list[DocumentRead])
@@ -58,7 +72,7 @@ def get_document_file(document_id: UUID, current_user: CurrentUser, db: DBSessio
     return Response(
         content=content,
         media_type=content_type,
-        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+        headers={"Content-Disposition": _content_disposition(filename)},
     )
 
 
@@ -79,7 +93,7 @@ def get_document_page_file(
     return Response(
         content=content,
         media_type=content_type,
-        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+        headers={"Content-Disposition": _content_disposition(filename)},
     )
 
 
