@@ -8,12 +8,12 @@ ENV PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y --no-install-recommends libpq-dev gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Build context is SOFTWARE/ (Render Blueprint dockerContext).
-COPY backend/requirements.txt .
+# IMPORTANT: dockerContext must be SOFTWARE/backend (Render Settings + render.yaml).
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY backend/ .
-# Manuals: backend/Prirucnici → /app/Prirucnici
+COPY . .
+# Includes Prirucnici/ → /app/Prirucnici for startup restore.
 
 RUN chmod +x scripts/start.sh
 
