@@ -164,6 +164,23 @@ class KnowledgeService:
         finally:
             pdf.close()
 
+    def list_chunks(self, document_id: UUID, owner_id: UUID) -> list[KnowledgeChunkRead]:
+        document = self.get_document(document_id, owner_id)
+        return [self.to_chunk_read(item, document) for item in self.docs.chunks_for_document(document.id)]
+
+    def search(self, owner_id: UUID, query: str, limit: int = 6) -> list[KnowledgeHit]:
+        farm = self._farm(owner_id)
+        return self.search_farm(farm.id, query, limit=limit)
+
+    def search_farm(self, farm_id: UUID, query: str, limit: int = 6) -> list[KnowledgeHit]:
+        if not query.strip():
+            return []
+        vector = self.provider.generate_embedding(query)
+        hits = self._search_pgvector(farm_id, vector, limit) if vector else []
+        if not hits:
+            hits = self._search_python(farm_id, vector, limit)
+        return hits
+
     def _storage_missing(self, key: str) -> bool:
         exists = getattr(self.storage, "exists", None)
         if callable(exists):
