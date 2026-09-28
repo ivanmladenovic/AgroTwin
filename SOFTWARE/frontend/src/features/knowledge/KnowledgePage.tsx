@@ -6,12 +6,14 @@ import { useSearchParams } from 'react-router-dom'
 import {
   deleteKnowledgeDocument,
   downloadKnowledgeDocument,
+  fetchKnowledgeDocumentUrl,
+  knowledgePdfViewerUrl,
   listKnowledgeDocuments,
-  openKnowledgeDocument,
   searchKnowledge,
   uploadKnowledgeDocument,
 } from '@/features/knowledge/api'
 import type { KnowledgeCategory, KnowledgeDocument, KnowledgeHit } from '@/shared/api/types'
+import { fetchObjectUrl } from '@/shared/lib/api'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
@@ -38,10 +40,18 @@ const documentStatusLabels: Record<string, string> = {
   failed: 'neuspelo',
 }
 
+type PdfViewerTarget = {
+  documentId: string
+  title: string
+  page?: number | null
+  filename?: string | null
+}
+
 export function KnowledgePage() {
   const docsQuery = useQuery({ queryKey: ['knowledge-docs'], queryFn: listKnowledgeDocuments })
   const [searchParams, setSearchParams] = useSearchParams()
   const [adding, setAdding] = useState(false)
+  const [viewer, setViewer] = useState<PdfViewerTarget | null>(null)
   const [query, setQuery] = useState(() => searchParams.get('q') || '')
   const [searchTerm, setSearchTerm] = useState(() => searchParams.get('q') || '')
   const searchQuery = useQuery({
@@ -81,6 +91,7 @@ export function KnowledgePage() {
       </div>
 
       {adding ? <UploadManualForm onClose={() => setAdding(false)} /> : null}
+      {viewer ? <KnowledgePdfViewer target={viewer} onClose={() => setViewer(null)} /> : null}
 
       <Card>
         <CardHeader>
@@ -93,7 +104,7 @@ export function KnowledgePage() {
             <p className="text-sm text-muted-foreground">Još nema priručnika.</p>
           ) : (
             (docsQuery.data ?? []).map((doc) => (
-              <ManualRow key={doc.id} document={doc} />
+              <ManualRow key={doc.id} document={doc} onOpen={setViewer} />
             ))
           )}
         </CardContent>
@@ -129,7 +140,7 @@ export function KnowledgePage() {
                 <p className="text-sm text-muted-foreground">Nema pogodaka za „{searchTerm}“.</p>
               ) : (
                 searchQuery.data.hits.map((hit) => (
-                  <SearchHitCard key={hit.chunk_id} hit={hit} />
+                  <SearchHitCard key={hit.chunk_id} hit={hit} onOpen={setViewer} />
                 ))
               )}
             </div>
@@ -142,8 +153,10 @@ export function KnowledgePage() {
 
 function ManualRow({
   document,
+  onOpen,
 }: {
   document: KnowledgeDocument
+  onOpen: (target: PdfViewerTarget) => void
 }) {
   const queryClient = useQueryClient()
   const deleteMutation = useMutation({
@@ -169,7 +182,13 @@ function ManualRow({
           type="button"
           size="sm"
           variant="outline"
-          onClick={() => void openKnowledgeDocument(document)}
+          onClick={() =>
+            onOpen({
+              documentId: document.id,
+              title: document.title,
+              filename: document.original_filename,
+            })
+          }
         >
           <Eye className="h-4 w-4" />
           Otvori
@@ -196,7 +215,13 @@ function ManualRow({
   )
 }
 
-function SearchHitCard({ hit }: { hit: KnowledgeHit }) {
+function SearchHitCard({
+  hit,
+  onOpen,
+}: {
+  hit: KnowledgeHit
+  onOpen: (target: PdfViewerTarget) => void
+}) {
   const location = [
     hit.page_number ? `Strana ${hit.page_number}` : null,
     hit.section_title?.trim() || null,
@@ -218,13 +243,167 @@ function SearchHitCard({ hit }: { hit: KnowledgeHit }) {
           size="sm"
           variant="outline"
           className="shrink-0"
-          onClick={() => void openKnowledgeDocument({ id: hit.document_id }, hit.page_number)}
+          onClick={() =>
+            onOpen({
+              documentId: hit.document_id,
+              title: hit.document_title,
+              page: hit.page_number,
+            })
+          }
         >
           <Eye className="h-4 w-4" />
           Otvori
         </Button>
       </div>
     </article>
+  )
+}
+
+function KnowledgePdfViewer({
+  target,
+  onClose,
+}: {
+  target: PdfViewerTarget
+  onClose: () => void
+}) {
+  const [objectUrl, setObjectUrl] = useState<string | null>(null)
+  const [pageImageUrl, setPageImageUrl] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [mode, setMode] = useState<'page' | 'pdf'>(target.page && target.page > 0 ? 'page' : 'pdf')
+
+  useEffect(() => {
+    let active = true
+    const created: string[] = []
+    setLoading(true)
+    setError(null)
+    setObjectUrl(null)
+    setPageImageUrl(null)
+    setMode(target.page && target.page > 0 ? 'page' : 'pdf')
+
+    void (async () => {
+      try {
+        const pdfUrl = await fetchKnowledgeDocumentUrl(target.documentId)
+        if (!active) {
+          URL.revokeObjectURL(pdfUrl)
+          return
+        }
+        created.push(pdfUrl)
+        setObjectUrl(pdfUrl)
+
+        if (target.page && target.page > 0) {
+          try {
+            const imageUrl = await fetchObjectUrl(
+              `/knowledge/documents/${target.documentId}/pages/${target.page}/file`,
+            )
+            if (!active) {
+              URL.revokeObjectURL(imageUrl)
+              return
+            }
+            created.push(imageUrl)
+            setPageImageUrl(imageUrl)
+          } catch {
+            // Page preview is optional — full PDF still works.
+            if (active) setMode('pdf')
+          }
+        }
+      } catch (err) {
+        if (active) {
+          setError(err instanceof Error ? err.message : 'Priručnik nije učitan')
+        }
+      } finally {
+        if (active) setLoading(false)
+      }
+    })()
+
+    return () => {
+      active = false
+      for (const url of created) URL.revokeObjectURL(url)
+    }
+  }, [target.documentId, target.page])
+
+  const pdfSrc = objectUrl ? knowledgePdfViewerUrl(objectUrl, target.page) : null
+  const pageLabel = target.page && target.page > 0 ? `Strana ${target.page}` : null
+  const showPageImage = mode === 'page' && pageImageUrl
+
+  return (
+    <div className="fixed inset-0 z-[2100] flex flex-col bg-background">
+      <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold">{target.title}</p>
+          {pageLabel ? <p className="mt-0.5 text-xs text-muted-foreground">{pageLabel}</p> : null}
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          {pageImageUrl && objectUrl ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setMode((current) => (current === 'page' ? 'pdf' : 'page'))}
+            >
+              {mode === 'page' ? 'Ceo PDF' : 'Samo strana'}
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={!objectUrl}
+            onClick={() =>
+              void downloadKnowledgeDocument({
+                id: target.documentId,
+                title: target.title,
+                original_filename: target.filename || undefined,
+              })
+            }
+          >
+            <Download className="h-4 w-4" />
+            Preuzmi
+          </Button>
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg hover:bg-muted"
+            aria-label="Zatvori"
+            onClick={onClose}
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+      </header>
+
+      <div className="min-h-0 flex-1 overflow-auto bg-muted/40">
+        {loading ? (
+          <p className="p-6 text-sm text-muted-foreground">Učitavanje priručnika…</p>
+        ) : error ? (
+          <div className="space-y-3 p-6">
+            <p className="text-sm text-danger">{error}</p>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() =>
+                void downloadKnowledgeDocument({
+                  id: target.documentId,
+                  title: target.title,
+                  original_filename: target.filename || undefined,
+                })
+              }
+            >
+              Preuzmi PDF
+            </Button>
+          </div>
+        ) : showPageImage ? (
+          <div className="flex justify-center p-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            <img
+              src={pageImageUrl}
+              alt={`${target.title}${pageLabel ? ` · ${pageLabel}` : ''}`}
+              className="h-auto w-full max-w-3xl rounded-lg border border-border bg-white shadow-sm"
+            />
+          </div>
+        ) : pdfSrc ? (
+          <iframe title={target.title} src={pdfSrc} className="h-full min-h-[70dvh] w-full border-0 bg-white" />
+        ) : null}
+      </div>
+    </div>
   )
 }
 
@@ -280,25 +459,29 @@ function UploadManualForm({ onClose }: { onClose: () => void }) {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label>PDF datoteka</Label>
-                <Input type="file" accept="application/pdf" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
+                <Label>PDF fajl</Label>
+                <Input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+                />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Beleške</Label>
-              <Textarea rows={2} value={description} onChange={(event) => setDescription(event.target.value)} />
+              <Label>Opis (opciono)</Label>
+              <Textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} />
             </div>
-            {uploadMutation.isError ? (
+            {uploadMutation.error ? (
               <p className="text-sm text-danger">
                 {uploadMutation.error instanceof Error ? uploadMutation.error.message : 'Otpremanje nije uspelo'}
               </p>
             ) : null}
-            <div className="flex flex-wrap gap-2">
-              <Button type="submit" disabled={uploadMutation.isPending || !file}>
-                {uploadMutation.isPending ? 'Indeksiranje…' : 'Otpremi i indeksiraj'}
-              </Button>
-              <Button type="button" variant="outline" disabled={uploadMutation.isPending} onClick={onClose}>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={onClose}>
                 Otkaži
+              </Button>
+              <Button type="submit" disabled={!file || uploadMutation.isPending}>
+                {uploadMutation.isPending ? 'Otpremanje…' : 'Sačuvaj'}
               </Button>
             </div>
           </form>

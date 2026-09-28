@@ -33,9 +33,40 @@ export function downloadKnowledgeDocument(document: Pick<KnowledgeDocument, 'id'
   return apiDownload(`/knowledge/documents/${document.id}/file`, document.original_filename || `${document.title}.pdf`)
 }
 
+export function knowledgeDocumentFilePath(documentId: string) {
+  return `/knowledge/documents/${documentId}/file`
+}
+
+export function knowledgePdfViewerUrl(objectUrl: string, page?: number | null) {
+  const parts: string[] = []
+  if (page && page > 0) parts.push(`page=${page}`)
+  parts.push('zoom=page-width')
+  return `${objectUrl}#${parts.join('&')}`
+}
+
+/** Load PDF as a blob URL (auth required). Caller must revoke when done. */
+export function fetchKnowledgeDocumentUrl(documentId: string) {
+  return fetchObjectUrl(knowledgeDocumentFilePath(documentId))
+}
+
+/**
+ * Open PDF in a new tab at an optional page.
+ * Opens the window synchronously first so mobile browsers do not block the popup
+ * after the authenticated fetch completes.
+ * Returns false when the popup was blocked (caller should show an in-app viewer).
+ */
 export async function openKnowledgeDocument(document: Pick<KnowledgeDocument, 'id'>, page?: number | null) {
-  const url = await fetchObjectUrl(`/knowledge/documents/${document.id}/file`)
-  const parts = ['zoom=25']
-  if (page && page > 0) parts.unshift(`page=${page}`)
-  window.open(`${url}#${parts.join('&')}`, '_blank', 'noopener')
+  const popup = window.open('about:blank', '_blank')
+  try {
+    const objectUrl = await fetchKnowledgeDocumentUrl(document.id)
+    const target = knowledgePdfViewerUrl(objectUrl, page)
+    if (popup && !popup.closed) {
+      popup.location.replace(target)
+      return true
+    }
+    return false
+  } catch (error) {
+    popup?.close()
+    throw error
+  }
 }
