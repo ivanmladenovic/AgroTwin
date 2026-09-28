@@ -17,7 +17,8 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
       APP_ENV: development
       SECRET_KEY: ${SECRET_KEY}
