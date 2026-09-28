@@ -154,15 +154,40 @@ class KnowledgeService:
             import fitz
         except ImportError as exc:
             raise AppError("PDF stranica nije dostupna", status_code=500, code="pdf_render") from exc
-        content = self.storage.get(document.storage_key)
-        pdf = fitz.open(stream=content, filetype="pdf")
+
+        local = self.storage.local_path(document.storage_key)
+        pdf = None
         try:
+            if local is not None and local.exists():
+                pdf = fitz.open(local)
+            else:
+                content = self.storage.get(document.storage_key)
+                pdf = fitz.open(stream=content, filetype="pdf")
             if page_number > pdf.page_count:
                 raise NotFoundError("Strana nije pronađena")
-            pixmap = pdf[page_number - 1].get_pixmap(matrix=fitz.Matrix(160 / 72, 160 / 72), alpha=False)
-            return pixmap.tobytes("jpeg")
+            page = pdf[page_number - 1]
+            # Keep under ~1k px wide — full manuals OOM Render free at high DPI.
+            zoom = min(1.25, 800 / max(float(page.rect.width), 1.0))
+            pixmap = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom), alpha=False)
+            try:
+                return pixmap.tobytes("jpeg")
+            except Exception:
+                return pixmap.tobytes("png")
+        except FileNotFoundError:
+            raise
+        except NotFoundError:
+            raise
+        except AppError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            raise AppError(
+                f"Render strane nije uspeo: {type(exc).__name__}: {exc}",
+                status_code=500,
+                code="pdf_render",
+            ) from exc
         finally:
-            pdf.close()
+            if pdf is not None:
+                pdf.close()
 
     def list_chunks(self, document_id: UUID, owner_id: UUID) -> list[KnowledgeChunkRead]:
         document = self.get_document(document_id, owner_id)
