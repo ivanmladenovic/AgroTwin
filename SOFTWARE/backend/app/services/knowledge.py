@@ -135,11 +135,25 @@ class KnowledgeService:
             except FileNotFoundError:
                 pass
         try:
-            return self._render_page(document, page_number), "image/jpeg"
+            data = self._render_page(document, page_number)
         except FileNotFoundError as exc:
             raise NotFoundError(
                 "Strana priručnika nije dostupna na serveru. Otpremite PDF ponovo iz Priručnika."
             ) from exc
+        # Persist so the next open is a cheap FileResponse (and survives within the instance).
+        try:
+            key = (
+                page.image_storage_key
+                if page and page.image_storage_key
+                else f"knowledge/{document.farm_id}/{document.id}/pages/{page_number}.jpg"
+            )
+            self.storage.put(key, data, "image/jpeg")
+            if page is not None and page.image_storage_key != key:
+                page.image_storage_key = key
+                self.db.flush()
+        except Exception:  # noqa: BLE001
+            pass
+        return data, "image/jpeg"
 
     def page_local_path(self, document: Document, page_number: int):
         page = self.docs.get_page(document.id, page_number)

@@ -293,8 +293,25 @@ function KnowledgePdfViewer({
     setMode(wantsPage ? 'page' : 'pdf')
 
     void (async () => {
+      // Start PDF immediately — always available as the reliable path.
+      const pdfPromise = fetchKnowledgeDocumentUrl(target.documentId)
+        .then((url) => {
+          if (!active) {
+            URL.revokeObjectURL(url)
+            return null
+          }
+          objectUrlRef.current = url
+          setObjectUrl(url)
+          return url
+        })
+        .catch((err: unknown) => {
+          if (active && !wantsPage) {
+            setError(err instanceof Error ? err.message : 'Priručnik nije učitan')
+          }
+          return null
+        })
+
       try {
-        // Prefer the page preview first — much smaller and reliable on mobile.
         if (wantsPage && target.page) {
           try {
             const imageUrl = await fetchObjectUrl(
@@ -306,24 +323,21 @@ function KnowledgePdfViewer({
             }
             pageImageUrlRef.current = imageUrl
             setPageImageUrl(imageUrl)
+            setMode('page')
             setLoading(false)
+            void pdfPromise
             return
           } catch {
-            // Fall through to full PDF if page preview is unavailable.
+            // Page preview failed — show full PDF at the target page.
           }
         }
 
-        const pdfUrl = await fetchKnowledgeDocumentUrl(target.documentId)
-        if (!active) {
-          URL.revokeObjectURL(pdfUrl)
-          return
-        }
-        objectUrlRef.current = pdfUrl
-        setObjectUrl(pdfUrl)
-        setMode('pdf')
-      } catch (err) {
-        if (active) {
-          setError(err instanceof Error ? err.message : 'Priručnik nije učitan')
+        const pdfUrl = await pdfPromise
+        if (!active) return
+        if (pdfUrl) {
+          setMode('pdf')
+        } else if (active) {
+          setError('Priručnik nije učitan')
         }
       } finally {
         if (active) setLoading(false)

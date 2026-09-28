@@ -86,7 +86,7 @@ def get_document_page_file(
     service = KnowledgeService(db)
     document = service.get_document(document_id, current_user.id)
     local = service.page_local_path(document, page_number)
-    filename = f"{document.title}-strana-{page_number}.jpg"
+    filename = f"strana-{page_number}.jpg"
     if local is not None and local.exists():
         return FileResponse(local, media_type="image/jpeg", filename=filename)
     content, content_type = service.page_bytes(document, page_number)
