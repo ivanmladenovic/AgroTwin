@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Send, MessagesSquare, ShieldAlert, X } from 'lucide-react'
+import { ChevronRight, MessagesSquare, Plus, Send, ShieldAlert, X } from 'lucide-react'
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { createConversation, getConversation, listConversations, sendChatMessage } from '@/features/agronomist/api'
@@ -22,7 +22,10 @@ export function AgronomistPage() {
   const threadRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const sentInitial = useRef<string | null>(null)
+
   const reporting = params.get('report') === '1' && !conversationId
+  const composing = params.get('new') === '1' && !conversationId && !reporting
+  const showHub = !conversationId && !reporting && !composing
 
   const listQuery = useQuery({ queryKey: ['ai-conversations'], queryFn: listConversations })
   const conversationQuery = useQuery({
@@ -53,8 +56,8 @@ export function AgronomistPage() {
 
   useEffect(() => {
     setListOpen(false)
-    if (!reporting) inputRef.current?.focus()
-  }, [conversationId, reporting])
+    if (!reporting && !showHub) inputRef.current?.focus()
+  }, [conversationId, reporting, showHub])
 
   async function ask(content: string) {
     const text = content.trim()
@@ -99,10 +102,28 @@ export function AgronomistPage() {
     void ask(initial)
   }, [conversationId, location.state, navigate])
 
-  const heading = reporting ? 'Prijavi problem' : title
+  function goHub() {
+    navigate('/agronomist')
+  }
+
+  function goNew() {
+    navigate('/agronomist?new=1')
+  }
+
+  function goReport() {
+    navigate('/agronomist?report=1')
+  }
+
+  function goConversation(id: string) {
+    navigate(`/agronomist/${id}`)
+  }
+
+  const heading = reporting ? 'Prijavi problem' : showHub ? 'Agronom' : title
   const subtitle = reporting
     ? 'Uslikajte ili dodajte fotografije, opišite simptome i pošaljite agronomu na analizu.'
-    : 'Pitajte agronoma o voćnjaku i nastavite prethodni razgovor.'
+    : showHub
+      ? 'Izaberite novi razgovor, prijavu problema ili nastavite ranije dopisivanje.'
+      : 'Pitajte agronoma o voćnjaku i nastavite prethodni razgovor.'
 
   return (
     <div className="-mx-4 -mb-4 flex min-h-0 flex-1 flex-col lg:mx-0 lg:mb-0 lg:flex-row lg:gap-4">
@@ -111,10 +132,13 @@ export function AgronomistPage() {
           conversations={conversations}
           conversationId={conversationId}
           reporting={reporting}
+          composing={composing}
+          hub={showHub}
           loading={listQuery.isLoading}
-          onNew={() => navigate('/agronomist')}
-          onReport={() => navigate('/agronomist?report=1')}
-          onOpen={(id) => navigate(`/agronomist/${id}`)}
+          onHub={goHub}
+          onNew={goNew}
+          onReport={goReport}
+          onOpen={goConversation}
         />
       </aside>
 
@@ -123,7 +147,12 @@ export function AgronomistPage() {
           <button type="button" className="absolute inset-0 bg-black/40" aria-label="Zatvori razgovore" onClick={() => setListOpen(false)} />
           <aside className="relative flex h-full w-[min(20rem,88vw)] flex-col bg-card pt-[env(safe-area-inset-top)] shadow-xl">
             <div className="flex items-center justify-end px-3 pt-2">
-              <button type="button" className="inline-flex h-11 w-11 items-center justify-center rounded-lg hover:bg-muted" aria-label="Zatvori" onClick={() => setListOpen(false)}>
+              <button
+                type="button"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg hover:bg-muted"
+                aria-label="Zatvori"
+                onClick={() => setListOpen(false)}
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
@@ -131,89 +160,215 @@ export function AgronomistPage() {
               conversations={conversations}
               conversationId={conversationId}
               reporting={reporting}
+              composing={composing}
+              hub={showHub}
               loading={listQuery.isLoading}
+              onHub={() => {
+                setListOpen(false)
+                goHub()
+              }}
               onNew={() => {
                 setListOpen(false)
-                navigate('/agronomist')
+                goNew()
               }}
               onReport={() => {
                 setListOpen(false)
-                navigate('/agronomist?report=1')
+                goReport()
               }}
-              onOpen={(id) => navigate(`/agronomist/${id}`)}
+              onOpen={(id) => {
+                setListOpen(false)
+                goConversation(id)
+              }}
             />
           </aside>
         </div>
       ) : null}
 
       <section className="flex min-h-0 min-w-0 flex-1 flex-col border-border bg-card lg:rounded-xl lg:border">
-        <div className="flex items-start gap-2 border-b border-border px-4 py-3 lg:px-5 lg:py-4">
-          <Button type="button" variant="outline" size="sm" className="mt-0.5 shrink-0 lg:hidden" onClick={() => setListOpen(true)}>
-            <MessagesSquare className="h-4 w-4" />
-            Razgovori
-          </Button>
-          <div className="min-w-0 flex-1">
-            <h2 className="truncate text-lg font-semibold">{heading}</h2>
-            <p className="mt-0.5 hidden text-sm text-muted-foreground sm:block">{subtitle}</p>
+        {!showHub ? (
+          <div className="flex items-start gap-2 border-b border-border px-4 py-3 lg:px-5 lg:py-4">
+            <Button type="button" variant="outline" size="sm" className="mt-0.5 shrink-0 lg:hidden" onClick={() => setListOpen(true)}>
+              <MessagesSquare className="h-4 w-4" />
+              Razgovori
+            </Button>
+            <div className="min-w-0 flex-1">
+              <h2 className="truncate text-lg font-semibold">{heading}</h2>
+              <p className="mt-0.5 hidden text-sm text-muted-foreground sm:block">{subtitle}</p>
+            </div>
+            <Button type="button" variant="ghost" size="sm" className="mt-0.5 shrink-0" onClick={goHub}>
+              Nazad
+            </Button>
           </div>
-        </div>
+        ) : null}
 
-        {reporting ? (
+        {showHub ? (
+          <HubScreen
+            conversations={conversations}
+            loading={listQuery.isLoading}
+            onNew={goNew}
+            onReport={goReport}
+            onOpen={goConversation}
+          />
+        ) : reporting ? (
           <div className="min-h-0 flex-1 overflow-auto px-4 py-4 lg:px-5">
-            <ReportProblemForm variant="agronomist" onCancel={() => navigate('/agronomist')} />
+            <ReportProblemForm variant="agronomist" onCancel={goHub} />
           </div>
         ) : (
           <>
-        <div ref={threadRef} className="min-h-0 flex-1 space-y-3 overflow-auto px-4 py-4 lg:px-5">
-          {conversationId && conversationQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Učitavanje razgovora…</p>
-          ) : conversationId && conversationQuery.isError ? (
-            <p className="text-sm text-danger">Razgovor nije pronađen.</p>
-          ) : messages.length === 0 && !pendingText ? (
-            <p className="text-sm text-muted-foreground">
-              Napišite pitanje. Agronom odgovara na osnovu evidencije voćnjaka. Problem sadnice, više sadnica ili reda možete prijaviti dugmetom u listi razgovora.
-            </p>
-          ) : (
-            <>
-              {messages.map((message) => (
-                <ChatBubble key={message.id} message={message} />
-              ))}
-              {pendingText ? (
+            <div ref={threadRef} className="min-h-0 flex-1 space-y-3 overflow-auto px-4 py-4 lg:px-5">
+              {conversationId && conversationQuery.isLoading ? (
+                <p className="text-sm text-muted-foreground">Učitavanje razgovora…</p>
+              ) : conversationId && conversationQuery.isError ? (
+                <p className="text-sm text-danger">Razgovor nije pronađen.</p>
+              ) : messages.length === 0 && !pendingText ? (
+                <p className="text-sm text-muted-foreground">
+                  Napišite pitanje. Agronom odgovara na osnovu evidencije voćnjaka.
+                </p>
+              ) : (
                 <>
-                  <ChatBubble message={{ id: 'pending-user', role: 'user', content: pendingText, created_at: '', sources: null }} />
-                  <p className="text-sm text-muted-foreground">Agronom piše…</p>
+                  {messages.map((message) => (
+                    <ChatBubble key={message.id} message={message} />
+                  ))}
+                  {pendingText ? (
+                    <>
+                      <ChatBubble
+                        message={{ id: 'pending-user', role: 'user', content: pendingText, created_at: '', sources: null }}
+                      />
+                      <p className="text-sm text-muted-foreground">Agronom piše…</p>
+                    </>
+                  ) : null}
                 </>
+              )}
+              {sendMutation.isError && !pendingText ? (
+                <p className="text-sm text-danger">
+                  {sendMutation.error instanceof Error ? sendMutation.error.message : 'Agronom nije mogao da odgovori.'}
+                </p>
               ) : null}
-            </>
-          )}
-          {sendMutation.isError && !pendingText ? (
-            <p className="text-sm text-danger">
-              {sendMutation.error instanceof Error ? sendMutation.error.message : 'Agronom nije mogao da odgovori.'}
-            </p>
-          ) : null}
-        </div>
+            </div>
 
-        <form onSubmit={onSubmit} className="border-t border-border p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <div className="flex min-w-0 items-end gap-2 rounded-xl border border-border bg-background px-3 py-2">
-            <textarea
-              ref={inputRef}
-              rows={1}
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              onKeyDown={onKeyDown}
-              disabled={waiting}
-              placeholder="Napišite poruku agronomu…"
-              className="max-h-32 min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2 text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none disabled:opacity-60 lg:min-h-10 lg:text-sm"
-            />
-            <Button type="submit" size="sm" className="h-11 shrink-0 lg:h-8" disabled={waiting || !draft.trim()} aria-label="Pošalji">
-              <Send className="h-4 w-4" />
-              <span className="hidden sm:inline">Pošalji</span>
-            </Button>
-          </div>
-        </form>
+            <form onSubmit={onSubmit} className="border-t border-border p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+              <div className="flex min-w-0 items-end gap-2 rounded-xl border border-border bg-background px-3 py-2">
+                <textarea
+                  ref={inputRef}
+                  rows={1}
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  onKeyDown={onKeyDown}
+                  disabled={waiting}
+                  placeholder="Napišite poruku agronomu…"
+                  className="max-h-32 min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2 text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none disabled:opacity-60 lg:min-h-10 lg:text-sm"
+                />
+                <Button
+                  type="submit"
+                  size="sm"
+                  className="h-11 shrink-0 lg:h-8"
+                  disabled={waiting || !draft.trim()}
+                  aria-label="Pošalji"
+                >
+                  <Send className="h-4 w-4" />
+                  <span className="hidden sm:inline">Pošalji</span>
+                </Button>
+              </div>
+            </form>
           </>
         )}
       </section>
+    </div>
+  )
+}
+
+function HubScreen({
+  conversations,
+  loading,
+  onNew,
+  onReport,
+  onOpen,
+}: {
+  conversations: ConversationSummary[]
+  loading: boolean
+  onNew: () => void
+  onReport: () => void
+  onOpen: (id: string) => void
+}) {
+  return (
+    <div className="min-h-0 flex-1 overflow-auto px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] lg:px-6 lg:py-6">
+      <div className="mb-5">
+        <p className="kicker">Agronom</p>
+        <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Kako možemo da pomognemo?</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Izaberite novi razgovor ili prijavu problema, ili nastavite jedno od ranijih dopisivanja.
+        </p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <button
+          type="button"
+          onClick={onNew}
+          className="flex items-start gap-3 rounded-xl border border-border bg-background px-4 py-4 text-left transition-colors hover:bg-muted/60"
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <Plus className="h-5 w-5" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-base font-semibold">Novi razgovor</span>
+            <span className="mt-1 block text-sm text-muted-foreground">Pitanje o voćnjaku, radovima ili zaštiti.</span>
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={onReport}
+          className="flex items-start gap-3 rounded-xl border border-border bg-background px-4 py-4 text-left transition-colors hover:bg-muted/60"
+        >
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-danger/10 text-danger">
+            <ShieldAlert className="h-5 w-5" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-base font-semibold">Prijavi problem</span>
+            <span className="mt-1 block text-sm text-muted-foreground">Fotografija i opis simptoma sadnice ili reda.</span>
+          </span>
+        </button>
+      </div>
+
+      <div className="mt-7">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold">Prethodna dopisivanja</h2>
+          {conversations.length > 0 ? (
+            <span className="text-xs text-muted-foreground">{conversations.length}</span>
+          ) : null}
+        </div>
+
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Učitavanje…</p>
+        ) : conversations.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center">
+            <p className="text-sm text-muted-foreground">Još nema prethodnih dopisivanja.</p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-background">
+            {conversations.map((item) => (
+              <li key={item.id}>
+                <button
+                  type="button"
+                  onClick={() => onOpen(item.id)}
+                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-muted/60"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                    <MessagesSquare className="h-4 w-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{item.title}</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      {formatDate((item.last_message_at || item.updated_at).slice(0, 10))}
+                    </span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   )
 }
@@ -222,7 +377,10 @@ function ConversationList({
   conversations,
   conversationId,
   reporting = false,
+  composing = false,
+  hub = false,
   loading,
+  onHub,
   onNew,
   onReport,
   onOpen,
@@ -230,7 +388,10 @@ function ConversationList({
   conversations: ConversationSummary[]
   conversationId?: string
   reporting?: boolean
+  composing?: boolean
+  hub?: boolean
   loading: boolean
+  onHub: () => void
   onNew: () => void
   onReport: () => void
   onOpen: (id: string) => void
@@ -238,11 +399,11 @@ function ConversationList({
   return (
     <>
       <div className="space-y-3 border-b border-border p-4">
-        <div>
+        <button type="button" onClick={onHub} className="block w-full text-left">
           <p className="kicker">Agronom</p>
           <h1 className="mt-1 text-lg font-semibold">Razgovori</h1>
-        </div>
-        <Button size="sm" className="w-full" variant={conversationId || reporting ? 'outline' : 'default'} onClick={onNew}>
+        </button>
+        <Button size="sm" className="w-full" variant={composing && !conversationId ? 'default' : 'outline'} onClick={onNew}>
           <Plus className="h-4 w-4" />
           Novi razgovor
         </Button>
@@ -268,6 +429,7 @@ function ConversationList({
                   className={cn(
                     'block w-full rounded-lg px-3 py-3 text-left transition-colors lg:py-2',
                     active ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/70',
+                    hub && !active ? 'opacity-90' : null,
                   )}
                 >
                   <p className="truncate text-sm font-medium">{item.title}</p>

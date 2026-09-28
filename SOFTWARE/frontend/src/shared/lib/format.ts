@@ -86,6 +86,19 @@ export function formatChartMoney(amount: string | number | null | undefined, cur
   }).format(compact ? Math.round(numeric) : numeric)
 }
 
+/** Short amount for tight chart labels (no currency symbol). */
+export function formatChartAmountShort(amount: string | number | null | undefined) {
+  const numeric = amount === null || amount === undefined || amount === '' ? 0 : Number(amount)
+  if (Number.isNaN(numeric)) return '—'
+  const abs = Math.abs(numeric)
+  if (abs >= 1000) {
+    const value = numeric / 1000
+    const digits = abs >= 10000 ? 0 : 1
+    return `${new Intl.NumberFormat(LOCALE, { maximumFractionDigits: digits }).format(value)}k`
+  }
+  return new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 }).format(Math.round(numeric))
+}
+
 export function formatDate(value: string) {
   const date = new Date(`${value}T00:00:00`)
   if (Number.isNaN(date.getTime())) return value

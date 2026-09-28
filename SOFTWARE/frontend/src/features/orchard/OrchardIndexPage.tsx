@@ -76,28 +76,46 @@ export function OrchardIndexPage() {
                     </dd>
                   </div>
                 </dl>
-                <div className="flex flex-wrap gap-2">
-                  <Link to={`/orchard/${parcel.id}`}>
-                    <Button size="sm">Otvori mapu</Button>
+                <div className="grid grid-cols-5 gap-1.5">
+                  <Link to={`/orchard/${parcel.id}`} className="min-w-0">
+                    <Button
+                      size="sm"
+                      className="h-auto min-h-9 w-full whitespace-normal px-1 py-1.5 text-center text-[10px] leading-tight sm:h-10 sm:min-h-0 sm:whitespace-nowrap sm:px-3 sm:py-2 sm:text-xs"
+                    >
+                      Otvori mapu
+                    </Button>
                   </Link>
-                  <Link to={`/orchard/${parcel.id}/production`}>
-                    <Button size="sm" variant="outline">
+                  <Link to={`/orchard/${parcel.id}/production`} className="min-w-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-auto min-h-9 w-full whitespace-normal px-1 py-1.5 text-center text-[10px] leading-tight sm:h-10 sm:min-h-0 sm:whitespace-nowrap sm:px-3 sm:py-2 sm:text-xs"
+                    >
                       Proizvodnja
                     </Button>
                   </Link>
-                  <Link to={`/orchard/${parcel.id}/report`}>
-                    <Button size="sm" variant="outline">
+                  <Link to={`/orchard/${parcel.id}/report`} className="min-w-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-auto min-h-9 w-full whitespace-normal px-1 py-1.5 text-center text-[10px] leading-tight sm:h-10 sm:min-h-0 sm:whitespace-nowrap sm:px-3 sm:py-2 sm:text-xs"
+                    >
                       Izveštaj
                     </Button>
                   </Link>
-                  <Link to={`/orchard/${parcel.id}/edit`}>
-                    <Button size="sm" variant="outline">
+                  <Link to={`/orchard/${parcel.id}/edit`} className="min-w-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-auto min-h-9 w-full whitespace-normal px-1 py-1.5 text-center text-[10px] leading-tight sm:h-10 sm:min-h-0 sm:whitespace-nowrap sm:px-3 sm:py-2 sm:text-xs"
+                    >
                       Izmeni
                     </Button>
                   </Link>
                   <Button
                     size="sm"
                     variant="outline"
+                    className="h-auto min-h-9 w-full whitespace-normal px-1 py-1.5 text-center text-[10px] leading-tight sm:h-10 sm:min-h-0 sm:whitespace-nowrap sm:px-3 sm:py-2 sm:text-xs"
                     disabled={deleteMutation.isPending}
                     onClick={() => {
                       if (!window.confirm(`Obrisati ${parcel.name}? Zasad i svi zapisi na parceli biće uklonjeni.`)) {

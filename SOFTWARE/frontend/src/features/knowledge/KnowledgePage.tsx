@@ -7,7 +7,6 @@ import {
   downloadKnowledgeDocument,
   listKnowledgeDocuments,
   openKnowledgeDocument,
-  queryAgronomy,
   searchKnowledge,
   uploadKnowledgeDocument,
 } from '@/features/knowledge/api'
@@ -44,16 +43,10 @@ export function KnowledgePage() {
   const [adding, setAdding] = useState(false)
   const [query, setQuery] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
-  const [agronomyTerm, setAgronomyTerm] = useState('')
   const searchQuery = useQuery({
     queryKey: ['knowledge-search', searchTerm],
     queryFn: () => searchKnowledge(searchTerm),
     enabled: searchTerm.length > 0,
-  })
-  const agronomyQuery = useQuery({
-    queryKey: ['agronomy-query', agronomyTerm],
-    queryFn: () => queryAgronomy(agronomyTerm),
-    enabled: agronomyTerm.length > 0,
   })
 
   function runSearch(event: FormEvent) {
@@ -110,23 +103,10 @@ export function KnowledgePage() {
               placeholder="npr. magnezijum, rezidba, suša"
               aria-label="Pojam za pretragu"
             />
-            <div className="flex gap-2">
-              <Button type="submit" variant="outline" disabled={!query.trim() || searchQuery.isFetching}>
-                <Search className="h-4 w-4" />
-                {searchQuery.isFetching ? 'Pretraga…' : 'Pretraži'}
-              </Button>
-              <Button
-                type="button"
-                disabled={!query.trim() || agronomyQuery.isFetching}
-                onClick={() => {
-                  const next = query.trim()
-                  if (!next) return
-                  setAgronomyTerm(next)
-                }}
-              >
-                Agronomska pretraga
-              </Button>
-            </div>
+            <Button type="submit" variant="outline" disabled={!query.trim() || searchQuery.isFetching}>
+              <Search className="h-4 w-4" />
+              {searchQuery.isFetching ? 'Pretraga…' : 'Pretraži'}
+            </Button>
           </form>
 
           {searchQuery.isError ? (
@@ -148,52 +128,6 @@ export function KnowledgePage() {
                   />
                 ))
               )}
-            </div>
-          ) : null}
-
-          {agronomyQuery.isFetching ? <p className="text-sm text-muted-foreground">Agronomska pretraga…</p> : null}
-          {agronomyQuery.isError ? (
-            <p className="text-sm text-danger">
-              {agronomyQuery.error instanceof Error ? agronomyQuery.error.message : 'Agronomska pretraga nije uspela'}
-            </p>
-          ) : null}
-          {agronomyQuery.data ? (
-            <div className="space-y-3 rounded-xl border border-border p-4">
-              <p className="text-sm font-medium">
-                {agronomyQuery.data.out_of_scope
-                  ? 'Pitanje je van obima priručnika'
-                  : agronomyQuery.data.sufficient_evidence
-                    ? 'Odgovor iz priručnika'
-                    : 'Nedovoljno dokaza u priručnicima'}
-              </p>
-              {cleanKnowledgeExcerpt(agronomyQuery.data.answer, agronomyTerm).map((paragraph) => (
-                <p key={paragraph} className="text-sm leading-6 text-foreground">
-                  <HighlightedText text={paragraph} query={agronomyTerm} />
-                </p>
-              ))}
-              {agronomyQuery.data.citations.length > 0 ? (
-                <ul className="space-y-1 text-xs text-muted-foreground">
-                  {agronomyQuery.data.citations.map((citation) => (
-                    <li key={citation}>{citation}</li>
-                  ))}
-                </ul>
-              ) : null}
-              {(agronomyQuery.data.evidence?.sources ?? []).map((source, index) => (
-                <SearchHitCard
-                  key={`${source.document_id}-${index}`}
-                  hit={{
-                    chunk_id: `${source.document_id}-${index}`,
-                    document_id: source.document_id,
-                    document_title: source.document_title,
-                    category: 'other',
-                    page_number: source.pages[0] ?? null,
-                    section_title: source.section,
-                    content: source.content,
-                    score: 0,
-                  }}
-                  query={agronomyTerm}
-                />
-              ))}
             </div>
           ) : null}
         </CardContent>

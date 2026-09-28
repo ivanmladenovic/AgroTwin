@@ -4,27 +4,29 @@ const PARTICLES = new Set([
   'ne', 'pa', 'li', 'uz', 'to', 'tu', 'mu', 'ga', 'ih', 'im', 'će', 'bi', 'ni',
 ])
 
+/** Return at most one readable sentence that contains the search query. */
 export function cleanKnowledgeExcerpt(raw: string, query = ''): string[] {
   const needle = query.trim()
-  let text = raw.replace(/\r/g, ' ').replace(/[|]+/g, ' ').replace(/\s+/g, ' ').trim()
+  let text = raw.replace(/\r/g, '\n').replace(/[|]+/g, ' ').replace(/[ \t]+/g, ' ').trim()
+  if (!text) return []
+
   if (needle.length >= 4) {
     text = text.replace(new RegExp(`(${escapeRegExp(needle)})\\s+([a-zčćžšđ])(?=\\s|$)`, 'gi'), '$1$2')
   }
-  text = dropLeadingJunk(text, needle)
+
   text = dropGibberishWords(text)
-  if (needle) {
-    text = windowAroundQuery(text, needle)
+  text = text.replace(/\s+/g, ' ').trim()
+  if (!text) return []
+
+  if (!needle) {
+    const first = splitSentences(text).find((item) => looksReadable(item))
+    return first ? [first] : []
   }
-  const sentences = text
-    .split(/(?<=[.!?])\s+/)
-    .map((item) => item.replace(/^…\s*/, '').replace(/\s*…$/, '').trim())
-    .filter((item) => item.replace(/[.…\s]/g, '').length > 12)
-  if (sentences.length === 0) return text ? [text] : []
-  if (!needle) return sentences.slice(0, 3)
-  const lowered = needle.toLowerCase()
-  const matchIndex = sentences.findIndex((item) => item.toLowerCase().includes(lowered))
-  if (matchIndex < 0) return sentences.slice(0, 3)
-  return sentences.slice(matchIndex, matchIndex + 3)
+
+  const match = pickSentenceWithQuery(text, needle)
+  if (!match) return []
+  const cleaned = polishSentence(match, needle)
+  return cleaned ? [cleaned] : []
 }
 
 export function highlightParts(text: string, query: string): Array<{ text: string; match: boolean }> {
@@ -37,11 +39,97 @@ export function highlightParts(text: string, query: string): Array<{ text: strin
     .map((part) => ({ text: part, match: part.toLowerCase() === needle.toLowerCase() }))
 }
 
+function pickSentenceWithQuery(text: string, query: string): string | null {
+  const lowered = query.toLowerCase()
+  const sentences = splitSentences(text)
+  const containing = sentences.filter((item) => item.toLowerCase().includes(lowered) && looksReadable(item))
+  if (containing.length > 0) {
+    // Prefer the shortest readable sentence that still includes the query.
+    containing.sort((a, b) => a.length - b.length)
+    return containing[0] ?? null
+  }
+
+  // PDF chunks often lack punctuation — carve one clause around the match.
+  const index = text.toLowerCase().indexOf(lowered)
+  if (index < 0) return null
+  return carveAroundQuery(text, index, query.length)
+}
+
+function splitSentences(text: string): string[] {
+  return text
+    .split(/(?<=[.!?…])\s+|\n+/)
+    .map((item) => item.replace(/^[\s•\-–—*]+/, '').replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+}
+
+function carveAroundQuery(text: string, index: number, queryLength: number): string | null {
+  const before = text.slice(0, index)
+  const after = text.slice(index + queryLength)
+
+  let start = 0
+  const softStart = Math.max(
+    before.lastIndexOf('. '),
+    before.lastIndexOf('! '),
+    before.lastIndexOf('? '),
+    before.lastIndexOf('\n'),
+    before.lastIndexOf('; '),
+  )
+  if (softStart >= 0 && softStart >= index - 220) {
+    start = softStart + (before[softStart] === '\n' ? 1 : 2)
+  } else {
+    // Keep a short lead-in of whole words before the match.
+    const lead = before.trimEnd().split(/\s+/).filter(Boolean).slice(-8).join(' ')
+    start = index - (lead ? lead.length + 1 : 0)
+    if (start < 0) start = 0
+  }
+
+  let end = Math.min(text.length, index + queryLength + 160)
+  const softEndCandidates = ['.', '!', '?', ';', '\n']
+    .map((mark) => {
+      const at = after.search(new RegExp(`[${escapeRegExp(mark)}]\\s`))
+      return at >= 0 ? index + queryLength + at + 1 : -1
+    })
+    .filter((at) => at > index && at <= index + queryLength + 220)
+  if (softEndCandidates.length > 0) {
+    end = Math.min(...softEndCandidates)
+  } else {
+    const trail = after.trimStart().split(/\s+/).filter(Boolean).slice(0, 14).join(' ')
+    end = index + queryLength + (trail ? trail.length + 1 : 0)
+    if (end > text.length) end = text.length
+  }
+
+  const slice = text.slice(start, end).replace(/\s+/g, ' ').trim()
+  if (!looksReadable(slice)) return null
+  return slice
+}
+
+function polishSentence(sentence: string, query: string): string {
+  let text = dropLeadingJunk(sentence, query).replace(/\s+/g, ' ').trim()
+  text = text.replace(/^…\s*/, '').replace(/\s*…$/, '').trim()
+  if (!text.toLowerCase().includes(query.toLowerCase())) return ''
+  if (!looksReadable(text)) return ''
+  // Capitalize first letter if the carve started mid-sentence.
+  if (/^[a-zčćžšđ]/.test(text)) {
+    text = text.charAt(0).toUpperCase() + text.slice(1)
+  }
+  return text
+}
+
+function looksReadable(text: string): boolean {
+  const letters = (text.match(/\p{L}/gu) ?? []).length
+  const words = text.split(/\s+/).filter(Boolean)
+  if (words.length < 4 || letters < 18) return false
+  const gibberishWords = words.filter((word) => isGibberish(word.replace(/[()[\]"'“”.,;:!?]/g, ''))).length
+  if (gibberishWords > Math.max(1, Math.floor(words.length / 4))) return false
+  return true
+}
+
 function dropLeadingJunk(text: string, query: string): string {
   const needle = query.trim()
   if (needle) {
     const index = text.toLowerCase().indexOf(needle.toLowerCase())
-    if (index > 0 && index <= 28) {
+    // Keep a little context before the query when it is near the start.
+    if (index > 0 && index <= 18) {
       return text.slice(index)
     }
   }
@@ -78,24 +166,6 @@ function isGibberish(word: string): boolean {
   if (/^[aeioučćžšđ]*(.)\1/i.test(clean) && !/^(pre|naj|ne)/i.test(clean)) return true
   if (/[bcdfghjklmnpqrstvwxyzčćžšđ]{6,}/i.test(clean)) return true
   return false
-}
-
-function windowAroundQuery(text: string, query: string): string {
-  const index = text.toLowerCase().indexOf(query.toLowerCase())
-  if (index < 0) return text
-  const radius = 220
-  let start = Math.max(0, index - 60)
-  let end = Math.min(text.length, index + query.length + radius)
-  if (start > 0) {
-    const space = text.lastIndexOf(' ', start)
-    if (space > 0) start = space + 1
-  }
-  if (end < text.length) {
-    const space = text.indexOf(' ', end)
-    if (space > 0) end = space
-  }
-  const slice = text.slice(start, end).trim()
-  return `${start > 0 ? '… ' : ''}${slice}${end < text.length ? ' …' : ''}`
 }
 
 function isNoiseToken(word: string): boolean {

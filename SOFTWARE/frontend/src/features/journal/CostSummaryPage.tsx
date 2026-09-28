@@ -69,7 +69,7 @@ export function CostSummaryPage() {
         <p className="text-sm text-muted-foreground">Učitavanje troškova…</p>
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3">
             <Metric label="Ukupni troškovi" value={formatMoney(summary.total_costs, summary.currency)} />
             <Metric label="Tekuća godina" value={formatMoney(summary.current_year_costs, summary.currency)} />
             <Metric label="Tekući mesec" value={formatMoney(summary.current_month_costs, summary.currency)} />
@@ -167,12 +167,16 @@ export function CostSummaryPage() {
 function Metric({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <Card className="min-w-0">
-      <CardHeader className="px-3 py-3 sm:px-4">
-        <CardTitle className="leading-tight">{label}</CardTitle>
+      <CardHeader className="px-2.5 py-2.5 sm:px-4 sm:py-3">
+        <CardTitle className="text-[11px] leading-tight sm:text-sm">{label}</CardTitle>
       </CardHeader>
-      <CardContent className="px-3 py-3 sm:px-4">
-        <p className="break-words text-lg font-semibold sm:text-xl lg:text-2xl">{value}</p>
-        {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
+      <CardContent className="px-2.5 py-2.5 sm:px-4 sm:py-3">
+        <p className="break-words text-base font-semibold tabular-nums sm:text-xl lg:text-2xl">{value}</p>
+        {hint ? (
+          <p className="mt-1 truncate whitespace-nowrap text-[10px] text-muted-foreground sm:text-xs" title={hint}>
+            {hint}
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   )

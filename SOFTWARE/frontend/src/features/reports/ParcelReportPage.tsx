@@ -79,7 +79,7 @@ export function ParcelReportPage() {
   }
 
   return (
-    <div className="w-full space-y-6 print:space-y-5">
+    <div className="w-full min-w-0 space-y-6 print:space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4 print:hidden">
         <div>
           <p className="kicker">Izveštaj</p>
@@ -150,18 +150,20 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
       : null
 
   return (
-    <article className="report-sheet space-y-8 rounded-none bg-white print:space-y-6 sm:rounded-xl sm:border sm:border-border sm:px-8 sm:py-8 print:border-0 print:px-0 print:py-0">
-      <header className="print-avoid border-b border-border pb-6">
+    <article className="report-sheet min-w-0 space-y-6 rounded-xl border border-border bg-card px-4 py-5 sm:space-y-8 sm:px-8 sm:py-8 print:space-y-6 print:rounded-none print:border-0 print:bg-white print:px-0 print:py-0">
+      <header className="print-avoid border-b border-border pb-5 sm:pb-6">
         <p className="text-sm font-semibold tracking-[0.22em] text-primary uppercase">AgroTwin</p>
-        <p className="mt-3 text-[11px] font-bold tracking-[0.22em] text-accent uppercase">Godišnji izveštaj parcele</p>
-        <h2 className="mt-2 text-3xl font-semibold tracking-tight">
+        <p className="mt-2 text-[11px] font-bold tracking-[0.18em] text-accent uppercase sm:mt-3 sm:tracking-[0.22em]">
+          Godišnji izveštaj parcele
+        </p>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
           {header.farm_name ? `${header.farm_name} — ${header.parcel_name}` : header.parcel_name}
         </h2>
-        <p className="mt-2 text-lg text-muted-foreground">
+        <p className="mt-2 text-base text-muted-foreground sm:text-lg">
           {header.year}.
           {header.comparison_available ? ` · upoređeno sa ${header.previous_year}.` : ' · nema podataka za poređenje'}
         </p>
-        <p className="mt-3 text-sm text-muted-foreground">Generisano: {generated}</p>
+        <p className="mt-2 text-sm text-muted-foreground sm:mt-3">Generisano: {generated}</p>
       </header>
 
       <section className="print-avoid">
@@ -187,7 +189,7 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
           <MiniStat label="Zamenjeno" value={formatNumber(health.replaced)} />
         </div>
         <div className="mt-6">
-          <div className="flex items-end justify-between gap-3">
+          <div className="flex flex-wrap items-end justify-between gap-2">
             <h3 className="text-sm font-semibold">Stabla koja zahtevaju pažnju</h3>
             <Link to={orchardAttentionHref} className="print-hidden text-sm font-medium text-primary hover:underline">
               Prikaži sva
@@ -202,7 +204,7 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
       </section>
 
       <section className="print-avoid">
-        <div className="flex items-end justify-between gap-3">
+        <div className="flex flex-wrap items-end justify-between gap-2">
           <SectionTitle>Aktivnosti tokom godine</SectionTitle>
           <Link to={journalHref} className="print-hidden text-sm font-medium text-primary hover:underline">
             Otvori dnevnik
@@ -216,11 +218,14 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
         {report.activities_summary.timeline.length > 0 ? (
           <ol className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {report.activities_summary.timeline.map((item) => (
-              <li key={`${item.month}-${item.title}`} className="border-l-2 border-primary/30 pl-3">
+              <li
+                key={`${item.month}-${item.title}`}
+                className="rounded-lg border border-border bg-background px-3 py-2.5 sm:rounded-none sm:border-0 sm:border-l-2 sm:border-primary/30 sm:bg-transparent sm:px-0 sm:py-0 sm:pl-3"
+              >
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   {monthName(item.month)}
                 </p>
-                <p className="text-sm font-medium">{item.activity_type_name}</p>
+                <p className="mt-0.5 text-sm font-medium">{item.activity_type_name}</p>
               </li>
             ))}
           </ol>
@@ -419,23 +424,23 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
         {!header.comparison_available || report.previous_year_comparison.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">Nema podataka za poređenje.</p>
         ) : (
-          <div className="mt-3 overflow-x-auto">
-            <table className="w-full min-w-[32rem] text-left text-sm">
+          <div className="mt-3 overflow-x-auto rounded-xl border border-border sm:overflow-visible sm:rounded-none sm:border-0">
+            <table className="w-full min-w-[28rem] text-left text-sm sm:min-w-[32rem]">
               <thead className="text-xs uppercase tracking-wide text-muted-foreground">
                 <tr className="border-b border-border">
-                  <th className="py-2 font-semibold">Pokazatelj</th>
-                  <th className="py-2 font-semibold">{header.previous_year}.</th>
-                  <th className="py-2 font-semibold">{header.year}.</th>
-                  <th className="py-2 font-semibold">Promena</th>
+                  <th className="px-3 py-2.5 font-semibold sm:px-0 sm:py-2">Pokazatelj</th>
+                  <th className="px-3 py-2.5 font-semibold sm:px-0 sm:py-2">{header.previous_year}.</th>
+                  <th className="px-3 py-2.5 font-semibold sm:px-0 sm:py-2">{header.year}.</th>
+                  <th className="px-3 py-2.5 font-semibold sm:px-0 sm:py-2">Promena</th>
                 </tr>
               </thead>
               <tbody>
                 {report.previous_year_comparison.map((row) => (
-                  <tr key={row.key} className="border-b border-border/70">
-                    <td className="py-2.5">{row.label}</td>
-                    <td className="py-2.5 tabular-nums">{formatKpiValue(row.kind, row.previous, header.currency)}</td>
-                    <td className="py-2.5 tabular-nums">{formatKpiValue(row.kind, row.current, header.currency)}</td>
-                    <td className="py-2.5">{formatChangeText(row.change, header.previous_year)}</td>
+                  <tr key={row.key} className="border-b border-border/70 last:border-0">
+                    <td className="px-3 py-2.5 sm:px-0">{row.label}</td>
+                    <td className="px-3 py-2.5 tabular-nums sm:px-0">{formatKpiValue(row.kind, row.previous, header.currency)}</td>
+                    <td className="px-3 py-2.5 tabular-nums sm:px-0">{formatKpiValue(row.kind, row.current, header.currency)}</td>
+                    <td className="px-3 py-2.5 sm:px-0">{formatChangeText(row.change, header.previous_year)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -471,30 +476,36 @@ function KpiCard({
   currency: string
 }) {
   return (
-    <article className="print-avoid border border-border bg-card px-4 py-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{kpi.label}</p>
-      <p className="mt-2 text-2xl font-semibold tracking-tight tabular-nums">
+    <article className="print-avoid rounded-xl border border-border bg-background px-3 py-3 sm:px-4 sm:py-4">
+      <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-[11px]">
+        {kpi.label}
+      </p>
+      <p className="mt-1.5 text-xl font-semibold tracking-tight tabular-nums sm:mt-2 sm:text-2xl">
         {kpi.available ? formatKpiValue(kpi.kind, kpi.value, currency) : UNAVAILABLE}
       </p>
-      {kpi.change.available ? <p className="mt-2 text-xs">{formatChangeText(kpi.change, previousYear)}</p> : null}
+      {kpi.change.available ? <p className="mt-1.5 text-xs sm:mt-2">{formatChangeText(kpi.change, previousYear)}</p> : null}
     </article>
   )
 }
 
 function MiniStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border border-border px-3 py-3">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-1 text-sm font-semibold tabular-nums">{value}</p>
+    <div className="rounded-xl border border-border bg-background px-3 py-2.5 sm:py-3">
+      <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-[11px]">
+        {label}
+      </p>
+      <p className="mt-1 truncate text-sm font-semibold tabular-nums" title={value}>
+        {value}
+      </p>
     </div>
   )
 }
 
 function FinanceStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border border-border px-4 py-4">
+    <div className="rounded-xl border border-border bg-background px-4 py-3.5 sm:py-4">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className="mt-2 text-xl font-semibold tabular-nums">{value}</p>
+      <p className="mt-2 text-lg font-semibold tabular-nums sm:text-xl">{value}</p>
     </div>
   )
 }
@@ -508,7 +519,7 @@ function HealthBar({ health }: { health: ParcelAnnualReport['health_summary'] })
     { key: 'unknown', value: health.unknown, className: 'bg-health-unknown' },
   ]
   return (
-    <div className="mt-4 flex h-3 overflow-hidden bg-muted">
+    <div className="mt-4 flex h-2.5 overflow-hidden rounded-full bg-muted sm:h-3">
       {parts.map((part) =>
         part.value > 0 ? (
           <div key={part.key} className={part.className} style={{ width: `${(part.value / total) * 100}%` }} />
@@ -528,40 +539,82 @@ function AttentionTable({
   showReason?: boolean
 }) {
   return (
-    <div className="mt-3 overflow-x-auto">
-      <table className="w-full text-left text-sm">
-        <thead className="text-xs uppercase tracking-wide text-muted-foreground">
-          <tr className="border-b border-border">
-            <th className="py-2 font-semibold">Stablo</th>
-            <th className="py-2 font-semibold">Red</th>
-            <th className="py-2 font-semibold">{showReason ? 'Razlog' : 'Status'}</th>
-            <th className="py-2 font-semibold">Poslednji pregled</th>
-          </tr>
-        </thead>
-        <tbody>
-          {trees.map((tree) => (
-            <tr key={tree.tree_id} className="border-b border-border/70">
-              <td className="py-2.5">
-                <Link to={`/orchard/${parcelId}/trees/${tree.tree_id}`} className="font-medium text-primary hover:underline">
+    <>
+      <ul className="mt-3 space-y-2 sm:hidden">
+        {trees.map((tree) => {
+          const status = showReason ? tree.reason : healthLabel(tree.health_status)
+          const lastCheck = tree.last_check_on
+            ? `${formatDate(tree.last_check_on)}${tree.days_since_check != null ? ` · pre ${tree.days_since_check}d` : ''}`
+            : 'Bez pregleda'
+          return (
+            <li key={tree.tree_id} className="rounded-xl border border-border bg-background px-3 py-2.5">
+              <div className="flex items-start justify-between gap-2">
+                <Link
+                  to={`/orchard/${parcelId}/trees/${tree.tree_id}`}
+                  className="font-mono text-sm font-semibold text-primary hover:underline"
+                >
                   {tree.public_id}
                 </Link>
-              </td>
-              <td className="py-2.5">
+                <span
+                  className={cn(
+                    'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+                    tree.health_status === 'issue'
+                      ? 'bg-danger/10 text-danger'
+                      : tree.health_status === 'monitoring'
+                        ? 'bg-accent/15 text-accent'
+                        : 'bg-muted text-muted-foreground',
+                  )}
+                >
+                  {status}
+                </span>
+              </div>
+              <p className="mt-1.5 truncate text-xs text-muted-foreground">
                 <Link to={`/orchard/${parcelId}?row=${tree.row_number}`} className="hover:underline">
                   {rowLabel(tree.row_number)}
                 </Link>
-              </td>
-              <td className="py-2.5">{showReason ? tree.reason : healthLabel(tree.health_status)}</td>
-              <td className="py-2.5 text-muted-foreground">
-                {tree.last_check_on
-                  ? `${formatDate(tree.last_check_on)}${tree.days_since_check != null ? ` · pre ${tree.days_since_check} dana` : ''}`
-                  : UNAVAILABLE}
-              </td>
+                <span aria-hidden> · </span>
+                <span>{lastCheck}</span>
+              </p>
+            </li>
+          )
+        })}
+      </ul>
+
+      <div className="mt-3 hidden overflow-x-auto sm:block">
+        <table className="w-full text-left text-sm">
+          <thead className="text-xs uppercase tracking-wide text-muted-foreground">
+            <tr className="border-b border-border">
+              <th className="py-2 font-semibold">Stablo</th>
+              <th className="py-2 font-semibold">Red</th>
+              <th className="py-2 font-semibold">{showReason ? 'Razlog' : 'Status'}</th>
+              <th className="py-2 font-semibold">Poslednji pregled</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody>
+            {trees.map((tree) => (
+              <tr key={tree.tree_id} className="border-b border-border/70">
+                <td className="py-2.5">
+                  <Link to={`/orchard/${parcelId}/trees/${tree.tree_id}`} className="font-medium text-primary hover:underline">
+                    {tree.public_id}
+                  </Link>
+                </td>
+                <td className="py-2.5">
+                  <Link to={`/orchard/${parcelId}?row=${tree.row_number}`} className="hover:underline">
+                    {rowLabel(tree.row_number)}
+                  </Link>
+                </td>
+                <td className="py-2.5">{showReason ? tree.reason : healthLabel(tree.health_status)}</td>
+                <td className="py-2.5 text-muted-foreground">
+                  {tree.last_check_on
+                    ? `${formatDate(tree.last_check_on)}${tree.days_since_check != null ? ` · pre ${tree.days_since_check} dana` : ''}`
+                    : UNAVAILABLE}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   )
 }
 
@@ -574,28 +627,24 @@ function CountBars({
 }) {
   const max = Math.max(...rows.map((row) => row.count), 0)
   return (
-    <div className="mt-4 space-y-2.5">
+    <div className="mt-4 space-y-3">
       {rows.map((row) => {
-        const label = (
-          <span className="truncate">
-            {row.name}
-          </span>
-        )
+        const label = <span className="truncate">{row.name}</span>
         return (
-          <div key={row.id ?? row.slug ?? row.name}>
-            <div className="mb-1 flex items-center justify-between gap-3 text-sm">
+          <div key={row.id ?? row.slug ?? row.name} className="min-w-0">
+            <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
               {hrefFor ? (
-                <Link to={hrefFor(row)} className="truncate font-medium text-primary hover:underline">
+                <Link to={hrefFor(row)} className="min-w-0 truncate font-medium text-primary hover:underline">
                   {label}
                 </Link>
               ) : (
-                label
+                <span className="min-w-0 truncate">{row.name}</span>
               )}
-              <span className="shrink-0 tabular-nums">{formatNumber(row.count)}</span>
+              <span className="shrink-0 tabular-nums text-muted-foreground">{formatNumber(row.count)}</span>
             </div>
-            <div className="h-1.5 bg-muted">
+            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
               <div
-                className="h-full bg-primary"
+                className="h-full max-w-full rounded-full bg-primary"
                 style={{ width: `${max > 0 ? Math.max((row.count / max) * 100, 4) : 0}%` }}
               />
             </div>
@@ -609,16 +658,16 @@ function CountBars({
 function AmountBars({ rows, currency }: { rows: ReportNamedAmount[]; currency: string }) {
   const max = Math.max(...rows.map((row) => Number(row.amount)), 0)
   return (
-    <div className="mt-4 space-y-2.5">
+    <div className="mt-4 space-y-3">
       {rows.map((row) => (
-        <div key={row.id ?? row.slug ?? row.name}>
-          <div className="mb-1 flex items-center justify-between gap-3 text-sm">
-            <span className="truncate">{row.name}</span>
-            <span className="shrink-0 tabular-nums">{formatMoney(row.amount, currency)}</span>
+        <div key={row.id ?? row.slug ?? row.name} className="min-w-0">
+          <div className="mb-1.5 flex items-center justify-between gap-3 text-sm">
+            <span className="min-w-0 truncate">{row.name}</span>
+            <span className="shrink-0 tabular-nums text-muted-foreground">{formatMoney(row.amount, currency)}</span>
           </div>
-          <div className="h-1.5 bg-muted">
+          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full bg-primary"
+              className="h-full max-w-full rounded-full bg-primary"
               style={{ width: `${max > 0 ? Math.max((Number(row.amount) / max) * 100, 4) : 0}%` }}
             />
           </div>
@@ -642,23 +691,25 @@ function MonthBars({
   }
   const max = Math.max(...months.map((row) => Number(row.amount)), 0)
   return (
-    <div className="mt-4 flex items-end gap-1.5">
-      {months.map((row) => {
-        const amount = Number(row.amount)
-        const height = max > 0 ? Math.max((amount / max) * 100, amount > 0 ? 8 : 2) : 2
-        return (
-          <div key={row.month} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
-            <div className="flex h-24 w-full items-end">
-              <div
-                className={cn('w-full', amount > 0 ? 'bg-primary/80' : 'bg-muted')}
-                style={{ height: `${height}%` }}
-                title={`${monthName(row.month)}: ${formatMoney(row.amount, currency)}`}
-              />
+    <div className="mt-4 -mx-1 overflow-x-auto overscroll-x-contain px-1 pb-1">
+      <div className="flex min-w-[28rem] items-end gap-1.5 sm:min-w-0 sm:w-full">
+        {months.map((row) => {
+          const amount = Number(row.amount)
+          const height = max > 0 ? Math.max((amount / max) * 100, amount > 0 ? 8 : 2) : 2
+          return (
+            <div key={row.month} className="flex w-9 shrink-0 flex-col items-center gap-1.5 sm:w-auto sm:min-w-0 sm:flex-1">
+              <div className="flex h-24 w-full items-end">
+                <div
+                  className={cn('w-full rounded-t-md', amount > 0 ? 'bg-primary/80' : 'bg-muted')}
+                  style={{ height: `${height}%` }}
+                  title={`${monthName(row.month)}: ${formatMoney(row.amount, currency)}`}
+                />
+              </div>
+              <span className="text-[10px] uppercase text-muted-foreground">{monthName(row.month).slice(0, 3)}</span>
             </div>
-            <span className="text-[10px] uppercase text-muted-foreground">{monthName(row.month).slice(0, 3)}</span>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }

@@ -535,7 +535,11 @@ function Kpi({ label, value, hint }: { label: string; value: string; hint?: stri
       </CardHeader>
       <CardContent className="px-3 py-3 sm:px-4">
         <p className="break-words text-lg font-semibold sm:text-xl">{value}</p>
-        {hint ? <p className="mt-1 text-xs text-muted-foreground">{hint}</p> : null}
+        {hint ? (
+          <p className="mt-1 truncate whitespace-nowrap text-xs text-muted-foreground" title={hint}>
+            {hint}
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   )

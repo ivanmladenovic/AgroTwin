@@ -15,7 +15,14 @@ import {
 } from 'lucide-react'
 
 import { getDashboard } from '@/features/dashboard/api'
-import { activityTarget, formatChartMoney, formatDate, formatMoney, formatNumber } from '@/shared/lib/format'
+import {
+  activityTarget,
+  formatChartAmountShort,
+  formatChartMoney,
+  formatDate,
+  formatMoney,
+  formatNumber,
+} from '@/shared/lib/format'
 import { parcelCoordinates } from '@/shared/lib/maps'
 import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
@@ -52,7 +59,7 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full min-w-0 space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <h1 className="text-xl font-semibold sm:text-2xl">Početna</h1>
         <div className="flex flex-wrap items-center gap-2">
@@ -156,17 +163,19 @@ function StatCard({
         : 'bg-ok/10 text-ok'
 
   return (
-    <article className="rounded-xl border border-border bg-card p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
+    <article className="rounded-xl border border-border bg-card p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-muted-foreground">{label}</p>
           <p className="mt-2 break-words text-xl font-semibold tracking-tight sm:text-2xl">{value}</p>
-          <p className="mt-2 text-xs font-medium text-muted-foreground">{detail}</p>
         </div>
-        <div className={cn('rounded-xl p-3', accentClass)}>
+        <div className={cn('shrink-0 rounded-xl p-2.5 sm:p-3', accentClass)}>
           <Icon className="h-5 w-5" />
         </div>
       </div>
+      <p className="mt-2 truncate whitespace-nowrap text-xs font-medium text-muted-foreground" title={detail}>
+        {detail}
+      </p>
     </article>
   )
 }
@@ -310,7 +319,11 @@ function CostKpi({ label, value, hint }: { label: string; value: string; hint?: 
     <div className="rounded-lg border border-border bg-background px-3 py-3 sm:px-4">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-1 text-lg font-semibold tabular-nums sm:text-xl">{value}</p>
-      {hint ? <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p> : null}
+      {hint ? (
+        <p className="mt-0.5 truncate whitespace-nowrap text-xs text-muted-foreground" title={hint}>
+          {hint}
+        </p>
+      ) : null}
     </div>
   )
 }
@@ -327,7 +340,7 @@ function YearAnalytics({ data }: { data: DashboardOverview }) {
   const plantingYear = lifetime[0]?.year
 
   return (
-    <section className="rounded-xl border border-border bg-card p-5">
+    <section className="min-w-0 overflow-hidden rounded-xl border border-border bg-card p-4 sm:p-5">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold">Troškovi</h2>
@@ -351,95 +364,104 @@ function YearAnalytics({ data }: { data: DashboardOverview }) {
       </div>
 
       {lifetime.length > 1 ? (
-        <div className="mt-6">
+        <div className="mt-6 min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Po godini</p>
-          <div className="mt-3 flex items-end gap-3">
-            {lifetime.map((row) => {
-              const amount = Number(row.amount)
-              const height = maxYear > 0 ? Math.max((amount / maxYear) * 100, amount > 0 ? 8 : 2) : 2
-              const isCurrent = row.year === year
-              return (
-                <div key={row.year} className="flex min-w-0 flex-1 flex-col items-center">
-                  <div className="flex h-28 w-full items-end">
-                    <div
+          <div className="mt-3 -mx-1 overflow-x-auto overscroll-x-contain px-1 pb-1">
+            <div
+              className="flex items-end gap-3"
+              style={{ minWidth: `max(100%, ${lifetime.length * 4.25}rem)` }}
+            >
+              {lifetime.map((row) => {
+                const amount = Number(row.amount)
+                const height = maxYear > 0 ? Math.max((amount / maxYear) * 100, amount > 0 ? 8 : 2) : 2
+                const isCurrent = row.year === year
+                return (
+                  <div key={row.year} className="flex w-14 shrink-0 flex-col items-center sm:w-auto sm:min-w-0 sm:flex-1">
+                    <span
                       className={cn(
-                        'w-full rounded-t-md',
-                        isCurrent ? 'bg-accent' : amount > 0 ? 'bg-primary/80' : 'bg-muted',
+                        'mb-1 w-full truncate text-center text-[10px] font-medium tabular-nums',
+                        isCurrent ? 'text-accent' : 'text-foreground',
                       )}
-                      style={{ height: `${height}%` }}
-                      title={`${row.year}: ${formatMoney(row.amount, currency)}`}
-                    />
+                      title={formatMoney(row.amount, currency)}
+                    >
+                      {formatChartAmountShort(row.amount)}
+                    </span>
+                    <div className="flex h-24 w-full items-end sm:h-28">
+                      <div
+                        className={cn(
+                          'w-full rounded-t-md',
+                          isCurrent ? 'bg-accent' : amount > 0 ? 'bg-primary/80' : 'bg-muted',
+                        )}
+                        style={{ height: `${height}%` }}
+                        title={`${row.year}: ${formatMoney(row.amount, currency)}`}
+                      />
+                    </div>
+                    <span className={cn('mt-2 text-xs tabular-nums', isCurrent ? 'font-semibold text-accent' : 'text-muted-foreground')}>
+                      {row.year}
+                    </span>
                   </div>
-                  <span className={cn('mt-2 text-xs tabular-nums', isCurrent ? 'font-semibold text-accent' : 'text-muted-foreground')}>
-                    {row.year}
-                  </span>
-                  <span
-                    className={cn(
-                      'mt-0.5 w-full text-center text-[11px] font-medium tabular-nums sm:text-xs',
-                      isCurrent ? 'text-accent' : 'text-foreground',
-                    )}
-                  >
-                    {formatChartMoney(row.amount, currency)}
-                  </span>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
         </div>
       ) : null}
 
-      <div className="mt-6 grid gap-6 border-t border-border pt-5 lg:grid-cols-[1.4fr_0.8fr]">
-        <div>
+      <div className="mt-6 grid min-w-0 gap-6 border-t border-border pt-5 lg:grid-cols-[1.4fr_0.8fr]">
+        <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Po mesecu · {year}</p>
-          <div className="mt-3 flex items-end gap-1.5 sm:gap-2">
-            {data.year_by_month.map((row) => {
-              const amount = Number(row.amount)
-              const height = maxMonth > 0 ? Math.max((amount / maxMonth) * 100, amount > 0 ? 6 : 2) : 2
-              const isCurrent = row.month === currentMonth
-              return (
-                <div key={row.month} className="flex min-w-0 flex-1 flex-col items-center">
-                  <div className="flex h-28 w-full items-end sm:h-32">
-                    <div
+          <div className="mt-3 -mx-1 overflow-x-auto overscroll-x-contain px-1 pb-1">
+            <div className="flex min-w-[36rem] items-end gap-1.5 sm:min-w-0 sm:w-full sm:gap-2">
+              {data.year_by_month.map((row) => {
+                const amount = Number(row.amount)
+                const height = maxMonth > 0 ? Math.max((amount / maxMonth) * 100, amount > 0 ? 6 : 2) : 2
+                const isCurrent = row.month === currentMonth
+                return (
+                  <div key={row.month} className="flex w-10 shrink-0 flex-col items-center sm:w-auto sm:min-w-0 sm:flex-1">
+                    <span
                       className={cn(
-                        'w-full rounded-t-md',
-                        isCurrent ? 'bg-accent' : amount > 0 ? 'bg-primary/80' : 'bg-muted',
+                        'mb-1 h-3 w-full truncate text-center text-[9px] font-medium tabular-nums sm:text-[10px]',
+                        isCurrent ? 'text-accent' : 'text-foreground',
                       )}
-                      style={{ height: `${height}%` }}
-                      title={`${monthLabel(row.month)}: ${formatMoney(row.amount, currency)}`}
-                    />
+                      title={amount > 0 ? formatMoney(row.amount, currency) : undefined}
+                    >
+                      {amount > 0 ? formatChartAmountShort(row.amount) : ''}
+                    </span>
+                    <div className="flex h-24 w-full items-end sm:h-32">
+                      <div
+                        className={cn(
+                          'w-full rounded-t-md',
+                          isCurrent ? 'bg-accent' : amount > 0 ? 'bg-primary/80' : 'bg-muted',
+                        )}
+                        style={{ height: `${height}%` }}
+                        title={`${monthLabel(row.month)}: ${formatMoney(row.amount, currency)}`}
+                      />
+                    </div>
+                    <span className={cn('mt-2 text-[10px] uppercase', isCurrent ? 'font-semibold text-accent' : 'text-muted-foreground')}>
+                      {monthLabel(row.month).replace('.', '')}
+                    </span>
                   </div>
-                  <span className={cn('mt-2 text-[10px] uppercase', isCurrent ? 'font-semibold text-accent' : 'text-muted-foreground')}>
-                    {monthLabel(row.month).replace('.', '')}
-                  </span>
-                  <span
-                    className={cn(
-                      'mt-0.5 min-h-[1rem] w-full text-center text-[10px] font-medium tabular-nums',
-                      isCurrent ? 'text-accent' : 'text-foreground',
-                    )}
-                  >
-                    {amount > 0 ? formatChartMoney(row.amount, currency) : ''}
-                  </span>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
         </div>
 
-        <div>
+        <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Po kategoriji · {year}</p>
           <div className="mt-3 space-y-3">
             {data.year_by_category.length === 0 ? (
               <p className="text-sm text-muted-foreground">Nema evidentiranih troškova ove godine.</p>
             ) : (
               data.year_by_category.map((row) => (
-                <div key={row.id}>
+                <div key={row.id} className="min-w-0">
                   <div className="mb-1 flex items-center justify-between gap-3 text-sm">
-                    <span className="truncate">{row.name}</span>
+                    <span className="min-w-0 truncate">{row.name}</span>
                     <span className="shrink-0 font-medium tabular-nums">{formatChartMoney(row.amount, currency)}</span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full rounded-full bg-primary"
+                      className="h-full max-w-full rounded-full bg-primary"
                       style={{ width: `${maxCategory > 0 ? Math.max((Number(row.amount) / maxCategory) * 100, 4) : 0}%` }}
                     />
                   </div>

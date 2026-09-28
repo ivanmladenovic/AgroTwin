@@ -10,6 +10,8 @@ import { ParcelSummary } from '@/features/orchard/ParcelSummary'
 import { ParcelWeatherForecast } from '@/features/orchard/ParcelWeatherForecast'
 import { ParcelSoilCard } from '@/features/orchard/ParcelSoilCard'
 import { TreeDrawer } from '@/features/orchard/TreeDrawer'
+import { TreeNavPad } from '@/features/orchard/TreeNavPad'
+import { canNavigate, neighborTreeId, type TreeNavDirection } from '@/features/orchard/treeNavigation'
 import { formatNumber } from '@/shared/lib/format'
 import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
@@ -50,6 +52,19 @@ export function OrchardMapPage() {
     if (healthFilter === 'all') return plantedTrees.length
     return plantedTrees.filter((tree) => tree.health_status === healthFilter).length
   }, [healthFilter, twin])
+
+  const navEnabled = useMemo(() => {
+    if (!twin || !selectedTreeId) {
+      return { up: false, down: false, left: false, right: false }
+    }
+    return canNavigate(twin.trees, selectedTreeId)
+  }, [selectedTreeId, twin])
+
+  function handleNavigate(direction: TreeNavDirection) {
+    if (!twin || !selectedTreeId) return
+    const nextId = neighborTreeId(twin.trees, selectedTreeId, direction)
+    if (nextId) setSelectedTreeId(nextId)
+  }
 
   if (!parcelId) return null
   if (twinQuery.isLoading) {
@@ -112,16 +127,24 @@ export function OrchardMapPage() {
         </div>
       </div>
 
-      <div className="relative min-h-[min(52dvh,28rem)] overflow-hidden rounded-2xl border border-border lg:min-h-[min(70vh,40rem)]">
+      <div className="relative min-h-[min(58dvh,32rem)] overflow-hidden rounded-2xl border border-border lg:min-h-[min(70vh,40rem)]">
         <OrchardCanvas
           twin={twin}
           selectedTreeId={selectedTreeId}
           healthFilter={healthFilter}
           selectedRowIds={selectedRowIds}
           onSelectTree={setSelectedTreeId}
+          focusTreeId={selectedTreeId}
         />
+
+        {selectedTreeId ? (
+          <div className="absolute bottom-14 left-2 z-30 lg:hidden">
+            <TreeNavPad enabled={navEnabled} onNavigate={handleNavigate} />
+          </div>
+        ) : null}
+
         {selectedTreeId && treeQuery.data ? (
-          <div className="absolute inset-x-0 bottom-0 z-20 max-h-[75%] overflow-hidden rounded-t-2xl border-t border-border shadow-lg lg:inset-y-0 lg:right-0 lg:left-auto lg:max-h-none lg:w-96 lg:rounded-none lg:border-t-0">
+          <div className="absolute inset-y-2 right-2 z-20 w-[min(12.5rem,46%)] overflow-hidden rounded-xl border border-border shadow-lg lg:inset-y-0 lg:right-0 lg:left-auto lg:w-96 lg:rounded-none lg:border-y-0 lg:border-r-0">
             <TreeDrawer
               tree={treeQuery.data}
               parcelId={parcelId}

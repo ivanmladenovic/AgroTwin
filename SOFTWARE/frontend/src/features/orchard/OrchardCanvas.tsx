@@ -16,6 +16,8 @@ type OrchardCanvasProps = {
   selectedRowIds?: string[]
   selectedTreeIds?: string[]
   onToggleRow?: (rowId: string) => void
+  /** When set, pan the map so this tree stays visible (used after arrow navigation). */
+  focusTreeId?: string | null
 }
 
 function fitView(twin: OrchardTwin): ViewBox {
@@ -35,15 +37,36 @@ export function OrchardCanvas({
   selectedRowIds = [],
   selectedTreeIds = [],
   onToggleRow,
+  focusTreeId = null,
 }: OrchardCanvasProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const drag = useRef<{ x: number; y: number; view: ViewBox } | null>(null)
   const fitted = useMemo(() => fitView(twin), [twin])
   const [view, setView] = useState<ViewBox>(fitted)
+  const lastFocusedTreeId = useRef<string | null>(null)
 
   useEffect(() => {
     setView(fitted)
   }, [fitted])
+
+  useEffect(() => {
+    if (!focusTreeId) {
+      lastFocusedTreeId.current = null
+      return
+    }
+    if (focusTreeId === lastFocusedTreeId.current) return
+    const tree = twin.trees.find((item) => item.id === focusTreeId)
+    if (!tree) return
+    lastFocusedTreeId.current = focusTreeId
+    const tx = Number(tree.normalized_x)
+    const ty = Number(tree.normalized_y)
+    setView((current) => ({
+      ...current,
+      // Keep selection left of the mobile side panel / desktop drawer.
+      x: tx - current.w * 0.38,
+      y: ty - current.h * 0.5,
+    }))
+  }, [focusTreeId, twin.trees])
 
   const rowSpacing = Number(twin.parcel.row_spacing_m ?? 5)
   const treeSpacing = Number(twin.parcel.tree_spacing_m ?? 3.5)
@@ -100,10 +123,10 @@ export function OrchardCanvas({
   }
 
   return (
-    <div className="relative h-full min-h-[min(52dvh,28rem)] overflow-hidden bg-[var(--color-map-soil)] lg:min-h-[min(70vh,40rem)]">
+    <div className="relative h-full min-h-[min(58dvh,32rem)] overflow-hidden bg-[var(--color-map-soil)] lg:min-h-[min(70vh,40rem)]">
       <svg
         ref={svgRef}
-        className="h-full w-full cursor-grab active:cursor-grabbing"
+        className="h-full w-full touch-none cursor-grab active:cursor-grabbing"
         viewBox={`${view.x} ${view.y} ${view.w} ${view.h}`}
         onWheel={(event) => {
           event.preventDefault()
@@ -212,7 +235,12 @@ export function OrchardCanvas({
         <MapButton label="Početni prikaz" onClick={() => setView(fitted)} />
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 p-3">
+      <div
+        className={cn(
+          'pointer-events-none absolute inset-x-0 bottom-0 z-10 p-3',
+          selectedTreeId && 'max-lg:hidden',
+        )}
+      >
         <div className="pointer-events-auto inline-flex max-w-full flex-wrap gap-2 rounded-xl border border-border/70 bg-card/95 px-3 py-2 text-xs shadow-md">
           {varieties.map((item) => (
             <span key={item.name} className="inline-flex items-center gap-1.5 text-muted-foreground">
@@ -252,6 +280,7 @@ function TreeDot({
   const missing = tree.status === 'removed'
   const healthClass = treeMarkerClass(tree.status, tree.health_status, Boolean(tree.has_severe_case))
   const useVarietyColor = Boolean(color) && tree.status === 'active'
+  const hitRadius = radius * 2.6
   return (
     <g
       role="button"
@@ -262,7 +291,13 @@ function TreeDot({
         event.stopPropagation()
         onSelect()
       }}
+      onPointerDown={(event) => {
+        // Keep map pan from stealing the first tap on a tree.
+        event.stopPropagation()
+      }}
     >
+      {/* Larger invisible hit target for touch. */}
+      <circle cx={x} cy={y} r={hitRadius} className="fill-transparent" />
       {selected ? (
         <circle cx={x} cy={y} r={radius * 1.85} className="fill-none stroke-foreground" strokeWidth={radius * 0.28} />
       ) : null}

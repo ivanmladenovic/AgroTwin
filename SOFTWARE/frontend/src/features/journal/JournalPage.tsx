@@ -110,13 +110,13 @@ export function JournalPage() {
 
   return (
     <div className="w-full space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-4">
         <div>
           <p className="kicker">Dnevnik voćnjaka</p>
           <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Aktivnosti</h1>
         </div>
-        <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-          <div className="inline-flex rounded-lg border border-border p-0.5">
+        <div className="flex w-full min-w-0 flex-nowrap items-center gap-1.5 sm:w-auto sm:gap-2">
+          <div className="inline-flex shrink-0 rounded-md border border-border p-0.5">
             <ViewButton active={view === 'calendar'} onClick={() => setJournalView('calendar')}>
               Kalendar
             </ViewButton>
@@ -124,11 +124,15 @@ export function JournalPage() {
               Lista
             </ViewButton>
           </div>
-          <Link to="/journal/schedule">
-            <Button variant="outline">Planiranje</Button>
+          <Link to="/journal/schedule" className="shrink-0">
+            <Button variant="outline" size="sm" className="h-9 px-2.5 text-xs sm:h-10 sm:px-3 sm:text-sm">
+              Planiranje
+            </Button>
           </Link>
-          <Link to={createActivityTo}>
-            <Button>+ Dodaj aktivnost</Button>
+          <Link to={createActivityTo} className="min-w-0 shrink">
+            <Button size="sm" className="h-9 px-2.5 text-xs sm:h-10 sm:px-3 sm:text-sm">
+              + Dodaj aktivnost
+            </Button>
           </Link>
         </div>
       </div>
@@ -288,7 +292,7 @@ function ViewButton({
       type="button"
       onClick={onClick}
       className={cn(
-        'min-h-11 rounded-md px-3 py-2 text-sm font-medium',
+        'h-8 rounded-md px-2 text-[11px] font-medium sm:h-9 sm:px-2.5 sm:text-xs',
         active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
       )}
     >

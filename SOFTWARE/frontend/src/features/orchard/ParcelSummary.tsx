@@ -54,17 +54,19 @@ function StatCard({
   accent?: 'ok' | 'warn'
 }) {
   return (
-    <article className="rounded-xl border border-border bg-card p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div>
+    <article className="rounded-xl border border-border bg-card p-4 sm:p-5">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-muted-foreground">{label}</p>
           <p className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">{value}</p>
-          <p className="mt-2 text-xs font-medium text-muted-foreground">{detail}</p>
         </div>
-        <div className={cn('rounded-xl p-3', accent === 'warn' ? 'bg-danger/10 text-danger' : 'bg-ok/10 text-ok')}>
+        <div className={cn('shrink-0 rounded-xl p-2.5 sm:p-3', accent === 'warn' ? 'bg-danger/10 text-danger' : 'bg-ok/10 text-ok')}>
           <Icon className="h-5 w-5" />
         </div>
       </div>
+      <p className="mt-2 truncate whitespace-nowrap text-xs font-medium text-muted-foreground" title={detail}>
+        {detail}
+      </p>
     </article>
   )
 }
