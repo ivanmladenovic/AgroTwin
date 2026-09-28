@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState, type FormEvent } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 
 import { createSubsidy, deleteSubsidy, downloadCostsCsv, getCostSummary, listCosts, listSubsidies } from '@/features/journal/api'
 import { todayKey } from '@/features/journal/calendar'
@@ -16,7 +16,8 @@ import { Select } from '@/shared/ui/select'
 import { Textarea } from '@/shared/ui/textarea'
 
 export function CostSummaryPage() {
-  const [parcelId, setParcelId] = useState('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [parcelId, setParcelId] = useState(() => searchParams.get('parcelId') || '')
   const parcelsQuery = useQuery({ queryKey: ['parcels'], queryFn: listParcels })
   const summaryQuery = useQuery({
     queryKey: ['cost-summary', parcelId],
@@ -34,6 +35,13 @@ export function CostSummaryPage() {
   const costs = costsQuery.data ?? []
   const subsidies = subsidiesQuery.data ?? []
 
+  useEffect(() => {
+    const next = new URLSearchParams()
+    if (parcelId) next.set('parcelId', parcelId)
+    if (next.toString() === searchParams.toString()) return
+    setSearchParams(next, { replace: true })
+  }, [parcelId, searchParams, setSearchParams])
+
   return (
     <div className="w-full space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -48,7 +56,7 @@ export function CostSummaryPage() {
           <Button variant="outline" onClick={() => void downloadCostsCsv({ parcel_id: parcelId })}>
             Izvezi CSV
           </Button>
-          <Link to="/journal">
+          <Link to={parcelId ? `/journal?parcelId=${parcelId}&view=list` : '/journal?view=list'}>
             <Button variant="outline">Otvori dnevnik</Button>
           </Link>
         </div>
@@ -133,7 +141,7 @@ export function CostSummaryPage() {
                 costs.map((cost) => (
                   <Link
                     key={cost.id}
-                    to={`/activities/${cost.activity_id}?returnTo=/costs`}
+                    to={`/activities/${cost.activity_id}?returnTo=${encodeURIComponent(parcelId ? `/costs?parcelId=${parcelId}` : '/costs')}`}
                     className="flex items-baseline justify-between gap-3 rounded-lg px-1 py-2 text-sm hover:bg-muted/60"
                   >
                     <div className="min-w-0">

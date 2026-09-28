@@ -18,9 +18,17 @@ import { Button } from '@/shared/ui/button'
 
 export function OrchardMapPage() {
   const { parcelId } = useParams()
-  const [searchParams] = useSearchParams()
-  const [selectedTreeId, setSelectedTreeId] = useState<string | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const selectedTreeId = searchParams.get('tree')
   const [healthFilter, setHealthFilter] = useState<OrchardTreeFilter>(() => parseHealthFilter(searchParams.get('health')))
+
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams)
+    if (healthFilter === 'all') next.delete('health')
+    else next.set('health', healthFilter)
+    if (next.toString() === searchParams.toString()) return
+    setSearchParams(next, { replace: true })
+  }, [healthFilter, searchParams, setSearchParams])
 
   const twinQuery = useQuery({
     queryKey: ['orchard-twin', parcelId],
@@ -60,11 +68,28 @@ export function OrchardMapPage() {
     return canNavigate(twin.trees, selectedTreeId)
   }, [selectedTreeId, twin])
 
+  function selectTree(treeId: string | null) {
+    const next = new URLSearchParams(searchParams)
+    if (treeId) next.set('tree', treeId)
+    else next.delete('tree')
+    setSearchParams(next, { replace: true })
+  }
+
   function handleNavigate(direction: TreeNavDirection) {
     if (!twin || !selectedTreeId) return
     const nextId = neighborTreeId(twin.trees, selectedTreeId, direction)
-    if (nextId) setSelectedTreeId(nextId)
+    if (nextId) selectTree(nextId)
   }
+
+  // Drop stale tree id that is not on this parcel.
+  useEffect(() => {
+    if (!twin || !selectedTreeId) return
+    const exists = twin.trees.some((tree) => tree.id === selectedTreeId && tree.status !== 'removed')
+    if (exists) return
+    const next = new URLSearchParams(searchParams)
+    next.delete('tree')
+    setSearchParams(next, { replace: true })
+  }, [twin, selectedTreeId, searchParams, setSearchParams])
 
   if (!parcelId) return null
   if (twinQuery.isLoading) {
@@ -121,7 +146,11 @@ export function OrchardMapPage() {
               Izmeni parcelu
             </Button>
           </Link>
-          <Link to={`/activities/new?scope=parcel&parcelId=${parcelId}&returnTo=/orchard/${parcelId}`}>
+          <Link
+            to={`/activities/new?scope=parcel&parcelId=${parcelId}&returnTo=${encodeURIComponent(
+              `/orchard/${parcelId}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`,
+            )}`}
+          >
             <Button size="sm">+ Dodaj aktivnost</Button>
           </Link>
         </div>
@@ -133,7 +162,7 @@ export function OrchardMapPage() {
           selectedTreeId={selectedTreeId}
           healthFilter={healthFilter}
           selectedRowIds={selectedRowIds}
-          onSelectTree={setSelectedTreeId}
+          onSelectTree={selectTree}
           focusTreeId={selectedTreeId}
         />
 
@@ -148,7 +177,7 @@ export function OrchardMapPage() {
             <TreeDrawer
               tree={treeQuery.data}
               parcelId={parcelId}
-              onClose={() => setSelectedTreeId(null)}
+              onClose={() => selectTree(null)}
             />
           </div>
         ) : null}

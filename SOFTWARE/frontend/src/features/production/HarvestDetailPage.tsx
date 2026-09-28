@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
 import { PhotoGallery } from '@/features/health/PhotoGallery'
 import { deleteHarvest, getHarvest } from '@/features/production/api'
 import { HarvestForm } from '@/features/production/HarvestForm'
 import { qualityLabel } from '@/features/production/labels'
 import { formatDate, formatKg, scopeLabel } from '@/shared/lib/format'
+import { BackLink } from '@/shared/ui/back-button'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 
@@ -107,9 +108,7 @@ export function HarvestDetailPage() {
         </p>
       ) : null}
 
-      <Link to={backHref} className="text-sm text-muted-foreground hover:text-foreground">
-        Nazad na proizvodnju
-      </Link>
+      <BackLink fallback={backHref}>Nazad na proizvodnju</BackLink>
     </div>
   )
 }

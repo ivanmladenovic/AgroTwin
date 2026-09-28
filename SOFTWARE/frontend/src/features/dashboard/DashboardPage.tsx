@@ -485,7 +485,7 @@ function YearAnalytics({ data }: { data: DashboardOverview }) {
             {data.recent_activities.map((activity) => (
               <li key={activity.id}>
                 <Link
-                  to={`/activities/${activity.id}`}
+                  to={`/activities/${activity.id}?returnTo=${encodeURIComponent('/')}`}
                   className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5 text-sm hover:bg-muted/70"
                 >
                   <span className="min-w-0">

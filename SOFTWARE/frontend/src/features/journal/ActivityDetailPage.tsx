@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 
 import { addActivityCost, downloadSoilAnalysis, getActivity, listCostCategories, updateActivity } from '@/features/journal/api'
 import { activityCalendarKind, activityStatusLabel } from '@/features/journal/labels'
 import { todayKey } from '@/features/journal/calendar'
 import { costFormSchema, type CostFormValues } from '@/features/journal/schemas'
 import { activityTarget, formatDate, formatLineItem, formatMoney, formatWorkQuantities, rowLabel, scopeLabel } from '@/shared/lib/format'
+import { BackButton } from '@/shared/ui/back-button'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
@@ -117,11 +118,7 @@ export function ActivityDetailPage() {
               Vrati u plan
             </Button>
           ) : null}
-          <Link to={returnTo}>
-            <Button variant="outline" size="sm">
-              Nazad
-            </Button>
-          </Link>
+          <BackButton fallback={returnTo} />
         </div>
       </div>
 

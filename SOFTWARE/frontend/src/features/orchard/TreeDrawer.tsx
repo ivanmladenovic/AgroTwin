@@ -52,13 +52,13 @@ export function TreeDrawer({
 
       <div className="shrink-0 space-y-1.5 border-t border-border px-2.5 py-2 lg:space-y-2 lg:px-4 lg:py-3 lg:pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <Link
-          to={`/health/new?parcelId=${parcelId}&rowId=${tree.row_id}&treeId=${tree.id}&returnTo=/orchard/${parcelId}`}
+          to={`/health/new?parcelId=${parcelId}&rowId=${tree.row_id}&treeId=${tree.id}&returnTo=${encodeURIComponent(`/orchard/${parcelId}?tree=${tree.id}`)}`}
           className="inline-flex h-8 w-full items-center justify-center rounded-md bg-primary px-1 text-center text-[11px] font-semibold leading-tight text-primary-foreground hover:bg-primary/90 lg:h-10 lg:rounded-lg lg:text-sm"
         >
           + Prijavi problem
         </Link>
         <Link
-          to={`/activities/new?scope=tree&parcelId=${parcelId}&rowId=${tree.row_id}&treeId=${tree.id}&returnTo=/orchard/${parcelId}`}
+          to={`/activities/new?scope=tree&parcelId=${parcelId}&rowId=${tree.row_id}&treeId=${tree.id}&returnTo=${encodeURIComponent(`/orchard/${parcelId}?tree=${tree.id}`)}`}
           className="inline-flex h-8 w-full items-center justify-center rounded-md border border-border px-1 text-center text-[11px] font-semibold leading-tight hover:bg-muted lg:h-10 lg:rounded-lg lg:text-sm"
         >
           + Dodaj aktivnost

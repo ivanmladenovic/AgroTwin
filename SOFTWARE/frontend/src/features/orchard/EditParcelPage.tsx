@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 
 import { deleteParcel, getOrchardTwin, updateParcel } from '@/features/orchard/api'
 import { PlantingLayoutEditor, gapKey, type PlantingPlan } from '@/features/orchard/PlantingLayoutEditor'
@@ -10,6 +10,7 @@ import { editParcelSchema, type EditParcelValues, type VarietyValues } from '@/f
 import { mainVarietyName, nextVarietyColor, roleLabel, varietiesFromTwin } from '@/features/orchard/varieties'
 import type { OrchardTwin } from '@/shared/api/types'
 import { formatNumber } from '@/shared/lib/format'
+import { BackLink } from '@/shared/ui/back-button'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
@@ -142,9 +143,7 @@ export function EditParcelPage() {
             Izmenite naziv, sorte, boje redova i prazna mesta. Veličina mreže ostaje ista.
           </p>
         </div>
-        <Link to={`/orchard/${parcelId}`} className="text-sm text-muted-foreground hover:text-foreground">
-          Nazad na mapu
-        </Link>
+        <BackLink fallback={`/orchard/${parcelId}`}>Nazad na mapu</BackLink>
       </div>
 
       <form

@@ -48,18 +48,25 @@ export function OrchardIndexPage() {
                 {parcel.code === parcel.name ? null : (
                   <p className="text-sm text-muted-foreground">{parcel.name}</p>
                 )}
-                {parcel.maps_url ? (
-                  <a
-                    href={parcel.maps_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex text-sm font-medium text-primary hover:underline"
-                  >
-                    Otvori na Google Maps
-                  </a>
-                ) : (
-                  <p className="text-sm text-muted-foreground">Google Maps link nije unet.</p>
-                )}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  {parcel.maps_url ? (
+                    <a
+                      href={parcel.maps_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex text-sm font-medium text-primary hover:underline"
+                    >
+                      Otvori na Google Maps
+                    </a>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Google Maps link nije unet.</p>
+                  )}
+                  <Link to={`/orchard/${parcel.id}`} className="shrink-0">
+                    <Button size="sm" className="h-9 px-3 text-xs sm:h-10">
+                      Otvori zasad
+                    </Button>
+                  </Link>
+                </div>
                 <dl className="grid grid-cols-3 gap-2 text-sm sm:gap-3">
                   <div>
                     <dt className="text-muted-foreground">Redovi</dt>
@@ -76,20 +83,12 @@ export function OrchardIndexPage() {
                     </dd>
                   </div>
                 </dl>
-                <div className="grid grid-cols-5 gap-1.5">
-                  <Link to={`/orchard/${parcel.id}`} className="min-w-0">
-                    <Button
-                      size="sm"
-                      className="h-auto min-h-9 w-full whitespace-normal px-1 py-1.5 text-center text-[10px] leading-tight sm:h-10 sm:min-h-0 sm:whitespace-nowrap sm:px-3 sm:py-2 sm:text-xs"
-                    >
-                      Otvori mapu
-                    </Button>
-                  </Link>
+                <div className="grid grid-cols-4 gap-1.5">
                   <Link to={`/orchard/${parcel.id}/production`} className="min-w-0">
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-auto min-h-9 w-full whitespace-normal px-1 py-1.5 text-center text-[10px] leading-tight sm:h-10 sm:min-h-0 sm:whitespace-nowrap sm:px-3 sm:py-2 sm:text-xs"
+                      className="h-9 w-full px-1 text-[11px] sm:h-10 sm:px-3 sm:text-xs"
                     >
                       Proizvodnja
                     </Button>
@@ -98,7 +97,7 @@ export function OrchardIndexPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-auto min-h-9 w-full whitespace-normal px-1 py-1.5 text-center text-[10px] leading-tight sm:h-10 sm:min-h-0 sm:whitespace-nowrap sm:px-3 sm:py-2 sm:text-xs"
+                      className="h-9 w-full px-1 text-[11px] sm:h-10 sm:px-3 sm:text-xs"
                     >
                       Izveštaj
                     </Button>
@@ -107,7 +106,7 @@ export function OrchardIndexPage() {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="h-auto min-h-9 w-full whitespace-normal px-1 py-1.5 text-center text-[10px] leading-tight sm:h-10 sm:min-h-0 sm:whitespace-nowrap sm:px-3 sm:py-2 sm:text-xs"
+                      className="h-9 w-full px-1 text-[11px] sm:h-10 sm:px-3 sm:text-xs"
                     >
                       Izmeni
                     </Button>
@@ -115,7 +114,7 @@ export function OrchardIndexPage() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="h-auto min-h-9 w-full whitespace-normal px-1 py-1.5 text-center text-[10px] leading-tight sm:h-10 sm:min-h-0 sm:whitespace-nowrap sm:px-3 sm:py-2 sm:text-xs"
+                    className="h-9 min-w-0 w-full px-1 text-[11px] sm:h-10 sm:px-3 sm:text-xs"
                     disabled={deleteMutation.isPending}
                     onClick={() => {
                       if (!window.confirm(`Obrisati ${parcel.name}? Zasad i svi zapisi na parceli biće uklonjeni.`)) {

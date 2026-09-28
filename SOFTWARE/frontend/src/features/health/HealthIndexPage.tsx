@@ -1,5 +1,5 @@
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 
 import { listDiseaseCases } from '@/features/health/cases'
@@ -13,18 +13,27 @@ import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 
 export function HealthIndexPage() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [parcelId, setParcelId] = useState(() => searchParams.get('parcelId') || searchParams.get('parcel') || '')
   const [status, setStatus] = useState<DiseaseStatus | ''>(
     () => (searchParams.get('status') as DiseaseStatus | '') || '',
   )
-  const [category, setCategory] = useState<DiseaseCategory | ''>('')
+  const [category, setCategory] = useState<DiseaseCategory | ''>(
+    () => (searchParams.get('category') as DiseaseCategory | '') || '',
+  )
+  const listReturnTo = useMemo(() => healthListPath(parcelId, status, category), [parcelId, status, category])
   const parcelsQuery = useQuery({ queryKey: ['parcels'], queryFn: listParcels })
   const casesQuery = useQuery({
     queryKey: ['disease-cases', parcelId, status, category],
     queryFn: () => listDiseaseCases({ parcel_id: parcelId, status, category }),
   })
   const cases = casesQuery.data ?? []
+
+  useEffect(() => {
+    const next = healthSearchParams(parcelId, status, category)
+    if (next.toString() === searchParams.toString()) return
+    setSearchParams(next, { replace: true })
+  }, [parcelId, status, category, searchParams, setSearchParams])
 
   return (
     <div className="w-full space-y-6">
@@ -36,7 +45,7 @@ export function HealthIndexPage() {
             Ovo su terenska opažanja, a ne potvrđene agronomske dijagnoze.
           </p>
         </div>
-        <Link to="/health/new">
+        <Link to={`/health/new?returnTo=${encodeURIComponent(listReturnTo)}`}>
           <Button>+ Prijavi problem</Button>
         </Link>
       </div>
@@ -86,7 +95,11 @@ export function HealthIndexPage() {
       ) : (
         <div className="space-y-3">
           {cases.map((item) => (
-            <Link key={item.id} to={`/health/${item.id}`} className="block">
+            <Link
+              key={item.id}
+              to={`/health/${item.id}?returnTo=${encodeURIComponent(listReturnTo)}`}
+              className="block"
+            >
               <Card className="hover:bg-muted/40">
                 <CardContent className="flex items-start justify-between gap-4 py-4">
                   <div>
@@ -107,4 +120,18 @@ export function HealthIndexPage() {
       )}
     </div>
   )
+}
+
+function healthSearchParams(parcelId: string, status: string, category: string) {
+  const params = new URLSearchParams()
+  if (parcelId) params.set('parcelId', parcelId)
+  if (status) params.set('status', status)
+  if (category) params.set('category', category)
+  return params
+}
+
+function healthListPath(parcelId: string, status: string, category: string) {
+  const params = healthSearchParams(parcelId, status, category)
+  const query = params.toString()
+  return query ? `/health?${query}` : '/health'
 }

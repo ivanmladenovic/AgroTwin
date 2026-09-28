@@ -8,6 +8,7 @@ import { ReportProblemForm } from '@/features/health/ReportProblemForm'
 import type { ChatMessageRecord, ConversationSummary } from '@/shared/api/types'
 import { formatDate } from '@/shared/lib/format'
 import { cn } from '@/shared/lib/utils'
+import { BackButton } from '@/shared/ui/back-button'
 import { Button } from '@/shared/ui/button'
 
 export function AgronomistPage() {
@@ -195,9 +196,9 @@ export function AgronomistPage() {
               <h2 className="truncate text-lg font-semibold">{heading}</h2>
               <p className="mt-0.5 hidden text-sm text-muted-foreground sm:block">{subtitle}</p>
             </div>
-            <Button type="button" variant="ghost" size="sm" className="mt-0.5 shrink-0" onClick={goHub}>
+            <BackButton variant="ghost" fallback="/agronomist" className="mt-0.5 shrink-0">
               Nazad
-            </Button>
+            </BackButton>
           </div>
         ) : null}
 

@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 
@@ -19,7 +19,7 @@ import { Select } from '@/shared/ui/select'
 export function JournalPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [view, setView] = useState<'calendar' | 'list'>(() => (searchParams.get('view') === 'list' ? 'list' : 'calendar'))
-  const [selectedDay, setSelectedDay] = useState<string | null>(() => todayKey())
+  const [selectedDay, setSelectedDay] = useState<string | null>(() => searchParams.get('day') || todayKey())
   const [filters, setFilters] = useState<ActivityFilters>(() => ({
     parcel_id: searchParams.get('parcelId') || searchParams.get('parcel_id') || '',
     date_from: searchParams.get('date_from') || '',
@@ -30,11 +30,14 @@ export function JournalPage() {
     tree_id: searchParams.get('tree_id') || '',
     status: (searchParams.get('status') as ActivityStatus | '') || '',
   }))
-  const listReturnTo = useMemo(() => journalListPath(filters), [filters])
-  const createActivityTo =
-    view === 'list'
-      ? `/activities/new?returnTo=${encodeURIComponent(listReturnTo)}`
-      : '/activities/new'
+  const journalReturnTo = useMemo(() => journalPath(view, filters, selectedDay), [filters, selectedDay, view])
+  const createActivityTo = `/activities/new?returnTo=${encodeURIComponent(journalReturnTo)}`
+
+  useEffect(() => {
+    const next = journalSearchParams(view, filters, selectedDay)
+    if (next.toString() === searchParams.toString()) return
+    setSearchParams(next, { replace: true })
+  }, [filters, selectedDay, view, searchParams, setSearchParams])
   const typesQuery = useQuery({ queryKey: ['activity-types'], queryFn: listActivityTypes })
   const parcelsQuery = useQuery({ queryKey: ['parcels'], queryFn: listParcels })
   const calendarRange = useMemo(() => {
@@ -86,10 +89,6 @@ export function JournalPage() {
 
   function setJournalView(next: 'calendar' | 'list') {
     setView(next)
-    const params = new URLSearchParams(searchParams)
-    if (next === 'list') params.set('view', 'list')
-    else params.delete('view')
-    setSearchParams(params, { replace: true })
   }
 
   function update<K extends keyof ActivityFilters>(key: K, value: ActivityFilters[K]) {
@@ -231,6 +230,7 @@ export function JournalPage() {
             selectedDay={selectedDay}
             activities={calendarQuery.data ?? []}
             onSelectDay={setSelectedDay}
+            returnTo={journalReturnTo}
           />
         )
       ) : listQuery.isLoading ? (
@@ -247,7 +247,7 @@ export function JournalPage() {
                 return (
                   <Link
                     key={activity.id}
-                    to={`/activities/${activity.id}?returnTo=${encodeURIComponent(listReturnTo)}`}
+                    to={`/activities/${activity.id}?returnTo=${encodeURIComponent(journalReturnTo)}`}
                     className="block"
                   >
                     <Card className="hover:bg-muted/40">
@@ -310,10 +310,20 @@ function Filter({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-function journalListPath(filters: ActivityFilters) {
-  const params = new URLSearchParams({ view: 'list' })
+function journalSearchParams(view: 'calendar' | 'list', filters: ActivityFilters, selectedDay: string | null) {
+  const params = new URLSearchParams()
+  if (view === 'list') params.set('view', 'list')
+  if (view === 'calendar' && selectedDay) params.set('day', selectedDay)
   for (const [key, value] of Object.entries(filters)) {
-    if (value) params.set(key, String(value))
+    if (!value) continue
+    if (key === 'parcel_id') params.set('parcelId', String(value))
+    else params.set(key, String(value))
   }
-  return `/journal?${params.toString()}`
+  return params
+}
+
+function journalPath(view: 'calendar' | 'list', filters: ActivityFilters, selectedDay: string | null) {
+  const params = journalSearchParams(view, filters, selectedDay)
+  const query = params.toString()
+  return query ? `/journal?${query}` : '/journal'
 }

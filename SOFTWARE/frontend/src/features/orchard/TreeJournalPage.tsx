@@ -6,6 +6,7 @@ import { categoryLabel, severityLabel, statusLabel as caseStatusLabel } from '@/
 import { getTreeJournal } from '@/features/orchard/api'
 import { healthLabel, statusLabel } from '@/features/orchard/health'
 import { formatDate, formatMoney, rowLabel, scopeLabel } from '@/shared/lib/format'
+import { BackButton } from '@/shared/ui/back-button'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 
@@ -26,8 +27,11 @@ export function TreeJournalPage() {
     return <div className="p-6 text-sm text-danger">Stablo nije pronađeno.</div>
   }
 
-  const addActivityTo = `/activities/new?scope=tree&parcelId=${parcelId}&rowId=${tree.row_id}&treeId=${tree.id}&returnTo=/orchard/${parcelId}/trees/${tree.id}`
-  const reportProblemTo = `/health/new?parcelId=${parcelId}&rowId=${tree.row_id}&treeId=${tree.id}&returnTo=/orchard/${parcelId}/trees/${tree.id}`
+  const mapHref = `/orchard/${parcelId}?tree=${tree.id}`
+  const journalHref = `/orchard/${parcelId}/trees/${tree.id}`
+  const journalReturn = encodeURIComponent(journalHref)
+  const addActivityTo = `/activities/new?scope=tree&parcelId=${parcelId}&rowId=${tree.row_id}&treeId=${tree.id}&returnTo=${encodeURIComponent(mapHref)}`
+  const reportProblemTo = `/health/new?parcelId=${parcelId}&rowId=${tree.row_id}&treeId=${tree.id}&returnTo=${encodeURIComponent(mapHref)}`
   const latestObservations = journal.observations.slice(0, 5)
 
   return (
@@ -49,11 +53,7 @@ export function TreeJournalPage() {
               + Dodaj aktivnost
             </Button>
           </Link>
-          <Link to={`/orchard/${parcelId}`}>
-            <Button variant="outline" size="sm">
-              Nazad na mapu
-            </Button>
-          </Link>
+          <BackButton fallback={mapHref}>Nazad na mapu</BackButton>
         </div>
       </div>
 
@@ -90,7 +90,11 @@ export function TreeJournalPage() {
             <p className="text-sm text-muted-foreground">Nema otvorenih opažanja za ovo stablo.</p>
           ) : (
             journal.open_cases.map((item) => (
-              <Link key={item.id} to={`/health/${item.id}`} className="block text-sm hover:underline">
+              <Link
+                key={item.id}
+                to={`/health/${item.id}?returnTo=${journalReturn}`}
+                className="block text-sm hover:underline"
+              >
                 <p className="font-medium">{item.title}</p>
                 <p className="text-muted-foreground">
                   {formatDate(item.detected_on)} · {categoryLabel(item.category)} · {severityLabel(item.severity)} ·{' '}
@@ -113,9 +117,9 @@ export function TreeJournalPage() {
             journal.timeline.map((event) => {
               const href =
                 event.disease_id && (event.kind === 'disease' || event.kind === 'observation')
-                  ? `/health/${event.disease_id}`
+                  ? `/health/${event.disease_id}?returnTo=${journalReturn}`
                   : event.activity_id
-                    ? `/activities/${event.activity_id}`
+                    ? `/activities/${event.activity_id}?returnTo=${journalReturn}`
                     : null
               const inner = (
                 <div className="flex items-start justify-between gap-4">
@@ -157,7 +161,7 @@ export function TreeJournalPage() {
               latestObservations.map((observation) => (
                 <Link
                   key={observation.id}
-                  to={`/health/${observation.disease_case_id}`}
+                  to={`/health/${observation.disease_case_id}?returnTo=${journalReturn}`}
                   className="block text-sm hover:underline"
                 >
                   <p className="font-mono text-xs text-muted-foreground">{formatDate(observation.observed_on)}</p>
@@ -186,7 +190,7 @@ export function TreeJournalPage() {
               journal.activities.map((activity) => (
                 <Link
                   key={activity.id}
-                  to={`/activities/${activity.id}`}
+                  to={`/activities/${activity.id}?returnTo=${journalReturn}`}
                   className="flex items-center justify-between text-sm hover:underline"
                 >
                   <span>
@@ -207,7 +211,11 @@ export function TreeJournalPage() {
               <p className="text-sm text-muted-foreground">Nema zabeleženih slučajeva.</p>
             ) : (
               journal.diseases.map((item) => (
-                <Link key={item.id} to={`/health/${item.id}`} className="block text-sm hover:underline">
+                <Link
+                  key={item.id}
+                  to={`/health/${item.id}?returnTo=${journalReturn}`}
+                  className="block text-sm hover:underline"
+                >
                   <p className="font-medium">{item.title}</p>
                   <p className="text-muted-foreground">
                     {formatDate(item.detected_on)} · {severityLabel(item.severity)} · {caseStatusLabel(item.status)}

@@ -31,9 +31,15 @@ type JournalCalendarProps = {
   selectedDay: string | null
   activities: Activity[]
   onSelectDay: (day: string) => void
+  returnTo?: string
 }
 
-export function JournalCalendar({ selectedDay, activities, onSelectDay }: JournalCalendarProps) {
+export function JournalCalendar({
+  selectedDay,
+  activities,
+  onSelectDay,
+  returnTo = '/journal',
+}: JournalCalendarProps) {
   const today = todayKey()
   const now = useMemo(() => {
     const date = new Date()
@@ -255,7 +261,7 @@ export function JournalCalendar({ selectedDay, activities, onSelectDay }: Journa
                 <p className="kicker">Dan</p>
                 <h2 className="mt-1 text-lg font-semibold">{formatDate(selectedDay)}</h2>
               </div>
-              <Link to={createPath(selectedDay, today)}>
+              <Link to={createPath(selectedDay, today, returnTo)}>
                 <Button size="sm">{selectedDay > today ? 'Planiraj za ovaj dan' : 'Dodaj za ovaj dan'}</Button>
               </Link>
             </div>
@@ -266,7 +272,7 @@ export function JournalCalendar({ selectedDay, activities, onSelectDay }: Journa
             ) : (
               <div className="min-h-0 space-y-2 overflow-y-auto">
                 {selected.map((activity) => (
-                  <ActivityRow key={activity.id} activity={activity} today={today} />
+                  <ActivityRow key={activity.id} activity={activity} today={today} returnTo={returnTo} />
                 ))}
               </div>
             )}
@@ -353,10 +359,18 @@ function uniqueKinds(items: Activity[], today: string): CalendarKind[] {
   return (['overdue', 'planned', 'done'] as CalendarKind[]).filter((kind) => seen.has(kind))
 }
 
-function ActivityRow({ activity, today }: { activity: Activity; today: string }) {
+function ActivityRow({
+  activity,
+  today,
+  returnTo,
+}: {
+  activity: Activity
+  today: string
+  returnTo: string
+}) {
   const kind = activityCalendarKind(activity.status, activity.performed_on, today)
   return (
-    <Link to={`/activities/${activity.id}?returnTo=/journal`} className="block">
+    <Link to={`/activities/${activity.id}?returnTo=${encodeURIComponent(returnTo)}`} className="block">
       <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2.5 hover:bg-muted/70">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">{activity.title}</p>
@@ -394,9 +408,9 @@ function Legend({ color, label }: { color: string; label: string }) {
   )
 }
 
-function createPath(day: string, today: string) {
+function createPath(day: string, today: string, returnTo: string) {
   const status = day > today ? 'planned' : 'completed'
-  const params = new URLSearchParams({ date: day, status, returnTo: '/journal' })
+  const params = new URLSearchParams({ date: day, status, returnTo })
   return `/activities/new?${params.toString()}`
 }
 

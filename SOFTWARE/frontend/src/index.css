@@ -169,12 +169,25 @@
   body,
   #root {
     height: auto !important;
-    max-width: none;
+    max-height: none !important;
+    max-width: none !important;
     overflow: visible !important;
   }
 
   body {
     background: #fff !important;
+    color: #10241a !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* App shell must expand so multi-page report is not clipped to one viewport. */
+  #root > div,
+  #root [data-app-scroll="main"],
+  #root [data-app-scroll="main"] > * {
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
     overflow: visible !important;
   }
 
@@ -190,5 +203,51 @@
   .report-sheet {
     box-shadow: none !important;
     background: #fff !important;
+    color: #10241a !important;
   }
+
+  /* Horizontal scroll charts/tables: show full width in PDF, not the clipped viewport. */
+  .print-scroll-x {
+    overflow: visible !important;
+    max-width: none !important;
+  }
+
+  .print-scroll-x > * {
+    min-width: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .print-chart-col {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+}
+
+/* Expand layout before the print dialog captures pages (Safari / Chrome). */
+html.printing-report,
+html.printing-report body,
+html.printing-report #root,
+html.printing-report #root > div,
+html.printing-report [data-app-scroll="main"] {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+html.printing-report .print-scroll-x {
+  overflow: visible !important;
+}
+
+html.printing-report .print-scroll-x > * {
+  min-width: 0 !important;
+  width: 100% !important;
+}
+
+html.printing-report .print-chart-col {
+  flex: 1 1 0 !important;
+  width: auto !important;
+  min-width: 0 !important;
 }

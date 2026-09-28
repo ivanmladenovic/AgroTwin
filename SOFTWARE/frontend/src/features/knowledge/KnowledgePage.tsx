@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Download, Eye, Plus, Search, X } from 'lucide-react'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 
 import {
   deleteKnowledgeDocument,
@@ -10,7 +11,6 @@ import {
   searchKnowledge,
   uploadKnowledgeDocument,
 } from '@/features/knowledge/api'
-import { cleanKnowledgeExcerpt, highlightParts } from '@/features/knowledge/excerpt'
 import type { KnowledgeCategory, KnowledgeDocument, KnowledgeHit } from '@/shared/api/types'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
@@ -40,14 +40,22 @@ const documentStatusLabels: Record<string, string> = {
 
 export function KnowledgePage() {
   const docsQuery = useQuery({ queryKey: ['knowledge-docs'], queryFn: listKnowledgeDocuments })
+  const [searchParams, setSearchParams] = useSearchParams()
   const [adding, setAdding] = useState(false)
-  const [query, setQuery] = useState('')
-  const [searchTerm, setSearchTerm] = useState('')
+  const [query, setQuery] = useState(() => searchParams.get('q') || '')
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('q') || '')
   const searchQuery = useQuery({
     queryKey: ['knowledge-search', searchTerm],
     queryFn: () => searchKnowledge(searchTerm),
     enabled: searchTerm.length > 0,
   })
+
+  useEffect(() => {
+    const next = new URLSearchParams()
+    if (searchTerm) next.set('q', searchTerm)
+    if (next.toString() === searchParams.toString()) return
+    setSearchParams(next, { replace: true })
+  }, [searchParams, searchTerm, setSearchParams])
 
   function runSearch(event: FormEvent) {
     event.preventDefault()
@@ -118,14 +126,10 @@ export function KnowledgePage() {
           {searchQuery.data && searchTerm ? (
             <div className="space-y-3">
               {(searchQuery.data.hits ?? []).length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nema odlomaka za „{searchTerm}“.</p>
+                <p className="text-sm text-muted-foreground">Nema pogodaka za „{searchTerm}“.</p>
               ) : (
                 searchQuery.data.hits.map((hit) => (
-                  <SearchHitCard
-                    key={hit.chunk_id}
-                    hit={hit}
-                    query={searchTerm}
-                  />
+                  <SearchHitCard key={hit.chunk_id} hit={hit} />
                 ))
               )}
             </div>
@@ -192,60 +196,35 @@ function ManualRow({
   )
 }
 
-function SearchHitCard({
-  hit,
-  query,
-}: {
-  hit: KnowledgeHit
-  query: string
-}) {
-  const paragraphs = cleanKnowledgeExcerpt(hit.content, query)
+function SearchHitCard({ hit }: { hit: KnowledgeHit }) {
+  const location = [
+    hit.page_number ? `Strana ${hit.page_number}` : null,
+    hit.section_title?.trim() || null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
   return (
-    <article className="space-y-2 rounded-xl border border-border bg-background p-4">
+    <article className="rounded-xl border border-border bg-background p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-medium">{hit.document_title}</p>
-          <p className="text-xs text-muted-foreground">
-            {hit.page_number ? `Strana ${hit.page_number}` : 'Strana nije navedena'}
-            {hit.section_title ? ` · ${hit.section_title}` : ''}
+          <p className="mt-1 text-xs text-muted-foreground">
+            {location || 'Lokacija u priručniku nije navedena'}
           </p>
         </div>
         <Button
           type="button"
           size="sm"
           variant="outline"
+          className="shrink-0"
           onClick={() => void openKnowledgeDocument({ id: hit.document_id }, hit.page_number)}
         >
           <Eye className="h-4 w-4" />
           Otvori
         </Button>
       </div>
-      {paragraphs.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Odlomak nije mogao da se prikaže čitljivo. Otvorite priručnik.</p>
-      ) : (
-        paragraphs.map((paragraph) => (
-          <p key={paragraph} className="text-sm leading-6 text-foreground">
-            <HighlightedText text={paragraph} query={query} />
-          </p>
-        ))
-      )}
     </article>
-  )
-}
-
-function HighlightedText({ text, query }: { text: string; query: string }) {
-  return (
-    <>
-      {highlightParts(text, query).map((part, index) =>
-        part.match ? (
-          <mark key={`${part.text}-${index}`} className="rounded bg-accent/20 text-foreground">
-            {part.text}
-          </mark>
-        ) : (
-          <span key={`${part.text}-${index}`}>{part.text}</span>
-        ),
-      )}
-    </>
   )
 }
 

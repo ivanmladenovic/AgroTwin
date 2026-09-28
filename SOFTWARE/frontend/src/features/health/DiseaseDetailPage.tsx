@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 
 import { addObservation, getDiseaseCase, updateDiseaseCase, uploadPhoto } from '@/features/health/cases'
 import { DiseaseAnalysisPanel } from '@/features/health/DiseaseAnalysisPanel'
@@ -8,6 +8,7 @@ import { categoryLabel, diseaseStatuses, severityLabel, statusLabel } from '@/fe
 import { PhotoGallery } from '@/features/health/PhotoGallery'
 import { PhotoPicker } from '@/features/health/PhotoPicker'
 import { formatDate } from '@/shared/lib/format'
+import { BackButton } from '@/shared/ui/back-button'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
@@ -17,6 +18,8 @@ import { Textarea } from '@/shared/ui/textarea'
 
 export function DiseaseDetailPage() {
   const { caseId } = useParams()
+  const [params] = useSearchParams()
+  const returnTo = params.get('returnTo') || '/health'
   const queryClient = useQueryClient()
   const caseQuery = useQuery({
     queryKey: ['disease-case', caseId],
@@ -37,7 +40,9 @@ export function DiseaseDetailPage() {
   if (caseQuery.isLoading) return <p className="text-sm text-muted-foreground">Učitavanje opažanja…</p>
   if (!item) return <p className="text-sm text-danger">Opažanje nije pronađeno.</p>
 
-  const treeHref = item.tree_id ? `/orchard/${item.parcel_id}/trees/${item.tree_id}` : `/orchard/${item.parcel_id}`
+  const treeHref = item.tree_id
+    ? `/orchard/${item.parcel_id}/trees/${item.tree_id}`
+    : `/orchard/${item.parcel_id}`
 
   return (
     <div className="w-full space-y-6">
@@ -51,11 +56,14 @@ export function DiseaseDetailPage() {
             {item.tree_public_id ?? item.parcel_name} · {formatDate(item.detected_on)} · {severityLabel(item.severity)}
           </p>
         </div>
-        <Link to={treeHref}>
-          <Button variant="outline" size="sm">
-            {item.tree_public_id ? 'Otvori stablo' : 'Otvori parcelu'}
-          </Button>
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link to={treeHref}>
+            <Button variant="outline" size="sm">
+              {item.tree_public_id ? 'Otvori stablo' : 'Otvori parcelu'}
+            </Button>
+          </Link>
+          <BackButton fallback={returnTo} />
+        </div>
       </div>
 
       <p className="border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">

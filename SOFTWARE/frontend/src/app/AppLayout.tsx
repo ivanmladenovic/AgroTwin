@@ -5,6 +5,7 @@ import { Menu, X } from 'lucide-react'
 
 import { getCurrentUser } from '@/features/auth/api'
 import { clearAccessToken } from '@/shared/lib/auth'
+import { locationKey } from '@/shared/lib/navigation'
 import { Button } from '@/shared/ui/button'
 import { BrandLogo } from '@/shared/ui/brand-logo'
 import { Separator } from '@/shared/ui/separator'
@@ -58,7 +59,7 @@ export function AppLayout() {
   const userName = userQuery.data ? userQuery.data.full_name : 'Učitavanje korisnika…'
 
   return (
-    <div className="flex h-dvh min-h-0 flex-col overflow-hidden print:block print:h-auto print:overflow-visible lg:flex-row">
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden print:block print:h-auto print:max-h-none print:overflow-visible lg:flex-row">
       <header className="flex shrink-0 items-center justify-between gap-3 bg-sidebar px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] text-sidebar-foreground print:hidden lg:hidden">
         <NavLink to="/" aria-label="AgroTwin" className="block min-w-0">
           <BrandLogo className="h-[1.6875rem] w-auto max-w-[8.25rem]" />
@@ -115,13 +116,55 @@ export function AppLayout() {
         </div>
       ) : null}
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <main className="flex min-h-0 flex-1 flex-col overflow-auto overflow-x-clip p-4 pb-[max(1rem,env(safe-area-inset-bottom))] print:overflow-visible print:p-0 lg:p-6">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col print:block print:h-auto print:max-h-none print:min-h-0 print:overflow-visible">
+        <main
+          data-app-scroll="main"
+          className="flex min-h-0 flex-1 flex-col overflow-auto overflow-x-clip p-4 pb-[max(1rem,env(safe-area-inset-bottom))] print:block print:h-auto print:max-h-none print:overflow-visible print:p-0 lg:p-6"
+        >
+          <ScrollMemory />
           <Outlet />
         </main>
       </div>
     </div>
   )
+}
+
+function ScrollMemory() {
+  const location = useLocation()
+
+  useEffect(() => {
+    const main = document.querySelector<HTMLElement>('[data-app-scroll="main"]')
+    if (!main) return
+
+    const key = `agrotwin:scroll:${locationKey(location.pathname, location.search)}`
+    const saved = sessionStorage.getItem(key)
+    const target = saved != null ? Number(saved) : 0
+    let cancelled = false
+
+    function restore() {
+      if (cancelled || Number.isNaN(target)) return
+      main.scrollTop = target
+    }
+
+    restore()
+    const frame = requestAnimationFrame(restore)
+    const timers = [50, 150, 400, 800].map((ms) => window.setTimeout(restore, ms))
+
+    function persist() {
+      sessionStorage.setItem(key, String(main.scrollTop))
+    }
+
+    main.addEventListener('scroll', persist, { passive: true })
+    return () => {
+      cancelled = true
+      persist()
+      cancelAnimationFrame(frame)
+      timers.forEach((id) => window.clearTimeout(id))
+      main.removeEventListener('scroll', persist)
+    }
+  }, [location.pathname, location.search])
+
+  return null
 }
 
 function SidebarDecor() {

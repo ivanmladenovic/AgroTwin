@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { MapPinned, Plus, X } from 'lucide-react'
 import { useFieldArray, useForm, type UseFormRegister } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 import { createActivity, listActivityTypes, uploadSoilAnalysis } from '@/features/journal/api'
 import {
@@ -29,6 +29,7 @@ import { todayKey } from '@/features/journal/calendar'
 import { listParcelRows, listParcels, listParcelTrees } from '@/features/orchard/api'
 import type { ActivityScope, ActivityStatus } from '@/shared/api/types'
 import { rowLabel } from '@/shared/lib/format'
+import { BackLink } from '@/shared/ui/back-button'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
@@ -456,9 +457,7 @@ export function ActivityForm({ prefill }: { prefill: Prefill }) {
         <Button type="submit" disabled={mutation.isPending}>
           {mutation.isPending ? 'Čuvanje…' : 'Sačuvaj'}
         </Button>
-        <Link to={prefill.return_to || '/journal'} className="text-sm text-muted-foreground hover:text-foreground">
-          Otkaži
-        </Link>
+        <BackLink fallback={prefill.return_to || '/journal'}>Otkaži</BackLink>
       </div>
 
       {pickerOpen && parcelId ? (

@@ -70,6 +70,22 @@ export function ParcelReportPage() {
     setParams(next, { replace: true })
   }
 
+  function printReport() {
+    const root = document.documentElement
+    root.classList.add('printing-report')
+    const cleanup = () => {
+      root.classList.remove('printing-report')
+      window.removeEventListener('afterprint', cleanup)
+    }
+    window.addEventListener('afterprint', cleanup)
+    // Let layout expand before the browser captures pages.
+    requestAnimationFrame(() => {
+      window.print()
+      // Safari sometimes skips afterprint; clear soon after dialog closes.
+      window.setTimeout(cleanup, 1000)
+    })
+  }
+
   if (!selectedParcelId && !parcelsQuery.isLoading) {
     return (
       <div className="w-full">
@@ -85,7 +101,7 @@ export function ParcelReportPage() {
           <p className="kicker">Izveštaj</p>
           <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Godišnji izveštaj parcele</h1>
         </div>
-        <Button type="button" variant="outline" onClick={() => window.print()}>
+        <Button type="button" variant="outline" onClick={printReport}>
           <Printer className="h-4 w-4" />
           Štampaj / PDF
         </Button>
@@ -191,8 +207,8 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
         <div className="mt-6">
           <div className="flex flex-wrap items-end justify-between gap-2">
             <h3 className="text-sm font-semibold">Stabla koja zahtevaju pažnju</h3>
-            <Link to={orchardAttentionHref} className="print-hidden text-sm font-medium text-primary hover:underline">
-              Prikaži sva
+            <Link to={orchardAttentionHref} className="print-hidden shrink-0 text-sm font-medium text-primary hover:underline">
+              Na mapi
             </Link>
           </div>
           {report.trees_requiring_attention.length === 0 ? (
@@ -370,8 +386,8 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
       <section className="print-avoid">
         <div className="flex items-end justify-between gap-3">
           <SectionTitle>Stabla za kontrolu</SectionTitle>
-          <Link to={orchardAttentionHref} className="print-hidden text-sm font-medium text-primary hover:underline">
-            Prikaži sva stabla za kontrolu
+          <Link to={orchardAttentionHref} className="print-hidden shrink-0 text-sm font-medium text-primary hover:underline">
+            Na mapi
           </Link>
         </div>
         {report.trees_requiring_control.length === 0 ? (
@@ -424,8 +440,8 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
         {!header.comparison_available || report.previous_year_comparison.length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">Nema podataka za poređenje.</p>
         ) : (
-          <div className="mt-3 overflow-x-auto rounded-xl border border-border sm:overflow-visible sm:rounded-none sm:border-0">
-            <table className="w-full min-w-[28rem] text-left text-sm sm:min-w-[32rem]">
+          <div className="print-scroll-x mt-3 overflow-x-auto rounded-xl border border-border sm:overflow-visible sm:rounded-none sm:border-0">
+            <table className="w-full min-w-[28rem] text-left text-sm print:min-w-0 sm:min-w-[32rem]">
               <thead className="text-xs uppercase tracking-wide text-muted-foreground">
                 <tr className="border-b border-border">
                   <th className="px-3 py-2.5 font-semibold sm:px-0 sm:py-2">Pokazatelj</th>
@@ -540,7 +556,7 @@ function AttentionTable({
 }) {
   return (
     <>
-      <ul className="mt-3 space-y-2 sm:hidden">
+      <ul className="mt-3 space-y-2 print:hidden sm:hidden">
         {trees.map((tree) => {
           const status = showReason ? tree.reason : healthLabel(tree.health_status)
           const lastCheck = tree.last_check_on
@@ -580,8 +596,8 @@ function AttentionTable({
         })}
       </ul>
 
-      <div className="mt-3 hidden overflow-x-auto sm:block">
-        <table className="w-full text-left text-sm">
+      <div className="print-scroll-x mt-3 hidden overflow-x-auto print:block sm:block">
+        <table className="w-full min-w-0 text-left text-sm">
           <thead className="text-xs uppercase tracking-wide text-muted-foreground">
             <tr className="border-b border-border">
               <th className="py-2 font-semibold">Stablo</th>
@@ -691,13 +707,16 @@ function MonthBars({
   }
   const max = Math.max(...months.map((row) => Number(row.amount)), 0)
   return (
-    <div className="mt-4 -mx-1 overflow-x-auto overscroll-x-contain px-1 pb-1">
-      <div className="flex min-w-[28rem] items-end gap-1.5 sm:min-w-0 sm:w-full">
+    <div className="print-scroll-x mt-4 -mx-1 overflow-x-auto overscroll-x-contain px-1 pb-1 print:mx-0 print:overflow-visible print:px-0 print:pb-0">
+      <div className="flex min-w-[36rem] items-end gap-1.5 print:min-w-0 print:w-full sm:min-w-0 sm:w-full">
         {months.map((row) => {
           const amount = Number(row.amount)
           const height = max > 0 ? Math.max((amount / max) * 100, amount > 0 ? 8 : 2) : 2
           return (
-            <div key={row.month} className="flex w-9 shrink-0 flex-col items-center gap-1.5 sm:w-auto sm:min-w-0 sm:flex-1">
+            <div
+              key={row.month}
+              className="print-chart-col flex w-9 shrink-0 flex-col items-center gap-1.5 print:w-auto print:min-w-0 print:flex-1 print:shrink sm:w-auto sm:min-w-0 sm:flex-1"
+            >
               <div className="flex h-24 w-full items-end">
                 <div
                   className={cn('w-full rounded-t-md', amount > 0 ? 'bg-primary/80' : 'bg-muted')}
@@ -705,13 +724,24 @@ function MonthBars({
                   title={`${monthName(row.month)}: ${formatMoney(row.amount, currency)}`}
                 />
               </div>
-              <span className="text-[10px] uppercase text-muted-foreground">{monthName(row.month).slice(0, 3)}</span>
+              <span className="text-[9px] uppercase leading-none text-muted-foreground print:text-[8px] sm:text-[10px]">
+                {monthName(row.month).slice(0, 3)}
+              </span>
+              <span className="hidden text-[8px] tabular-nums text-muted-foreground print:block">
+                {amount > 0 ? formatChartAmount(amount) : '—'}
+              </span>
             </div>
           )
         })}
       </div>
     </div>
   )
+}
+
+function formatChartAmount(amount: number) {
+  if (amount >= 10000) return `${formatNumber(Math.round(amount / 1000))}k`
+  if (amount >= 1000) return `${formatNumber(Math.round(amount / 100) / 10)}k`
+  return formatNumber(Math.round(amount))
 }
 
 function formatKpiValue(kind: ReportKpi['kind'], value: string | number | null, currency: string) {

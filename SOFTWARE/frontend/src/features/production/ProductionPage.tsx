@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Plus } from 'lucide-react'
@@ -168,12 +168,27 @@ function EmptyState({ year, href }: { year: number; href: string }) {
 }
 
 function ProductionBody({ production }: { production: ParcelProduction }) {
-  const [rowSort, setRowSort] = useState<RowSort>('number')
-  const [treeSort, setTreeSort] = useState<TreeSort>('high')
-  const [treeRow, setTreeRow] = useState('')
-  const [treeStatus, setTreeStatus] = useState<TreeStatusFilter>('all')
+  const [params, setParams] = useSearchParams()
+  const [rowSort, setRowSort] = useState<RowSort>(() => parseRowSort(params.get('rowSort')))
+  const [treeSort, setTreeSort] = useState<TreeSort>(() => (params.get('treeSort') === 'low' ? 'low' : 'high'))
+  const [treeRow, setTreeRow] = useState(() => params.get('treeRow') || '')
+  const [treeStatus, setTreeStatus] = useState<TreeStatusFilter>(() => parseTreeStatus(params.get('treeStatus')))
   const parcelId = production.parcel_id
   const year = production.year
+
+  useEffect(() => {
+    const next = new URLSearchParams(params)
+    if (rowSort === 'number') next.delete('rowSort')
+    else next.set('rowSort', rowSort)
+    if (treeSort === 'high') next.delete('treeSort')
+    else next.set('treeSort', treeSort)
+    if (treeRow) next.set('treeRow', treeRow)
+    else next.delete('treeRow')
+    if (treeStatus === 'all') next.delete('treeStatus')
+    else next.set('treeStatus', treeStatus)
+    if (next.toString() === params.toString()) return
+    setParams(next, { replace: true })
+  }, [params, rowSort, setParams, treeRow, treeSort, treeStatus])
 
   const rows = useMemo(() => {
     const items = [...production.row_summary]
@@ -589,4 +604,14 @@ function amountOrDash(amount: ReportOptionalAmount, format: (value: string) => s
 function avgText(avg: ParcelProduction['quality_summary']['moisture']) {
   if (!avg.available || avg.value == null) return 'Nije izračunato'
   return `${Number(avg.value).toLocaleString('sr-Latn-RS', { maximumFractionDigits: 1 })}%`
+}
+
+function parseRowSort(value: string | null): RowSort {
+  if (value === 'high' || value === 'low') return value
+  return 'number'
+}
+
+function parseTreeStatus(value: string | null): TreeStatusFilter {
+  if (value === 'active' || value === 'removed' || value === 'replaced') return value
+  return 'all'
 }

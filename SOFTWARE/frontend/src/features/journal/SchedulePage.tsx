@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
 
 import { listActivityTypes } from '@/features/journal/api'
 import {
@@ -13,6 +12,7 @@ import {
 } from '@/features/journal/scheduleApi'
 import { listParcels } from '@/features/orchard/api'
 import { formatDate } from '@/shared/lib/format'
+import { BackButton } from '@/shared/ui/back-button'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
@@ -71,9 +71,7 @@ export function SchedulePage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link to="/journal">
-            <Button variant="outline">Nazad na dnevnik</Button>
-          </Link>
+          <BackButton fallback="/journal">Nazad na dnevnik</BackButton>
         </div>
       </div>
 

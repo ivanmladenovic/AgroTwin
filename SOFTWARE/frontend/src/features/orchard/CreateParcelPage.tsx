@@ -2,13 +2,14 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 import { createParcel } from '@/features/orchard/api'
 import { PlantingLayoutEditor, gapKey, type PlantingPlan } from '@/features/orchard/PlantingLayoutEditor'
 import { createParcelSchema, type CreateParcelValues, type VarietyValues } from '@/features/orchard/schemas'
 import { DEFAULT_VARIETIES, mainVarietyName, nextVarietyColor, roleLabel } from '@/features/orchard/varieties'
 import { formatNumber } from '@/shared/lib/format'
+import { BackLink } from '@/shared/ui/back-button'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
@@ -119,9 +120,7 @@ export function CreateParcelPage() {
               : 'Obojite svaki red sortom i kliknite na mesta bez sadnica. Samo ovaj plan postaje zasad.'}
           </p>
         </div>
-        <Link to="/orchard" className="text-sm text-muted-foreground hover:text-foreground">
-          Nazad na zasade
-        </Link>
+        <BackLink fallback="/orchard">Nazad na zasade</BackLink>
       </div>
 
       {step === 'details' ? (

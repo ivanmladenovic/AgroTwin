@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 
 import { uploadPhoto } from '@/features/health/cases'
 import { PhotoPicker } from '@/features/health/PhotoPicker'
@@ -13,6 +13,7 @@ import { harvestFormSchema, type HarvestFormValues } from '@/features/production
 import { todayKey } from '@/features/journal/calendar'
 import type { HarvestEvent, HarvestEventPayload, HarvestScope } from '@/shared/api/types'
 import { formatKg, rowLabel } from '@/shared/lib/format'
+import { BackButton } from '@/shared/ui/back-button'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
@@ -241,11 +242,12 @@ export function HarvestForm({
       ) : null}
 
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Link to={`/orchard/${parcelId}/production${year ? `?year=${year}` : ''}`} className="sm:min-w-28">
-          <Button type="button" variant="outline" className="w-full">
-            Otkaži
-          </Button>
-        </Link>
+        <BackButton
+          fallback={`/orchard/${parcelId}/production${year ? `?year=${year}` : ''}`}
+          className="w-full sm:min-w-28"
+        >
+          Otkaži
+        </BackButton>
         <Button type="submit" disabled={mutation.isPending} className="sm:min-w-40">
           {mutation.isPending ? 'Čuvanje…' : harvest ? 'Sačuvaj izmene' : 'Sačuvaj berbu'}
         </Button>

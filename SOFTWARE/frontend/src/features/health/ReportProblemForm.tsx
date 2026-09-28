@@ -3,7 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 import { createConversation } from '@/features/agronomist/api'
 import { saveReportedProblem } from '@/features/health/cases'
@@ -13,6 +13,7 @@ import { reportProblemSchema, type ReportProblemValues } from '@/features/health
 import { OrchardPickerDialog } from '@/features/journal/OrchardPickerDialog'
 import { listParcelRows, listParcels, listParcelTrees } from '@/features/orchard/api'
 import { rowLabel } from '@/shared/lib/format'
+import { BackLink } from '@/shared/ui/back-button'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
@@ -28,6 +29,7 @@ export function ReportProblemForm({
 }) {
   const navigate = useNavigate()
   const [params] = useSearchParams()
+  const returnTo = params.get('returnTo') || (variant === 'agronomist' ? '/agronomist' : '/health')
   const [files, setFiles] = useState<File[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
@@ -126,8 +128,8 @@ export function ReportProblemForm({
         })
         return
       }
-      const returnTo = params.get('returnTo')
-      void navigate(returnTo || `/health/${result.created.id}`)
+      const destination = params.get('returnTo')
+      void navigate(destination || `/health/${result.created.id}`)
     },
   })
 
@@ -313,9 +315,7 @@ export function ReportProblemForm({
             Otkaži
           </Button>
         ) : (
-          <Link to={variant === 'agronomist' ? '/agronomist' : '/health'} className="text-sm text-muted-foreground hover:text-foreground">
-            Otkaži
-          </Link>
+          <BackLink fallback={returnTo}>Otkaži</BackLink>
         )}
       </div>
       {pickerOpen && parcelId ? (

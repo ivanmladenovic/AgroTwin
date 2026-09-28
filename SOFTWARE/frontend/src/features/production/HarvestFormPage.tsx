@@ -1,11 +1,13 @@
-import { Link, useParams, useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 
 import { HarvestForm } from '@/features/production/HarvestForm'
+import { BackLink } from '@/shared/ui/back-button'
 
 export function HarvestFormPage() {
   const { parcelId } = useParams()
   const [params] = useSearchParams()
   const year = Number(params.get('year') || '') || new Date().getFullYear()
+  const backHref = `/orchard/${parcelId}/production?year=${year}`
 
   if (!parcelId) return null
 
@@ -19,9 +21,7 @@ export function HarvestFormPage() {
       <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
         <HarvestForm parcelId={parcelId} year={year} />
       </div>
-      <Link to={`/orchard/${parcelId}/production?year=${year}`} className="text-sm text-muted-foreground hover:text-foreground">
-        Nazad na proizvodnju
-      </Link>
+      <BackLink fallback={backHref}>Nazad na proizvodnju</BackLink>
     </div>
   )
 }
