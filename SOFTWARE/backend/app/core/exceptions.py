@@ -32,3 +32,20 @@ def register_exception_handlers(app: FastAPI) -> None:
             status_code=exc.status_code,
             content={"detail": exc.message, "code": exc.code},
         )
+
+    @app.exception_handler(FileNotFoundError)
+    async def missing_file_handler(_request: Request, exc: FileNotFoundError) -> JSONResponse:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "detail": "Datoteka nije pronađena na serveru. Otpremite je ponovo.",
+                "code": "storage_missing",
+            },
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_error_handler(_request: Request, exc: Exception) -> JSONResponse:
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Interna greška servera", "code": "server_error"},
+        )

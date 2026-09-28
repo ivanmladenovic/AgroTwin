@@ -33,7 +33,13 @@ class KnowledgeService:
         self.docs = KnowledgeRepository(db)
         self.farms = FarmRepository(db)
         self.storage = get_storage()
-        self.provider = get_ai_provider()
+        self._provider = None
+
+    @property
+    def provider(self):
+        if self._provider is None:
+            self._provider = get_ai_provider()
+        return self._provider
 
     def list_documents(self, owner_id: UUID) -> list[DocumentRead]:
         farm = self._farm(owner_id)
@@ -110,7 +116,12 @@ class KnowledgeService:
         return self.storage.local_path(document.storage_key)
 
     def file_bytes(self, document: Document) -> tuple[bytes, str]:
-        return self.storage.get(document.storage_key), document.content_type or "application/pdf"
+        try:
+            return self.storage.get(document.storage_key), document.content_type or "application/pdf"
+        except FileNotFoundError as exc:
+            raise NotFoundError(
+                "PDF priručnika nije dostupan na serveru. Otpremite ga ponovo iz Priručnika."
+            ) from exc
 
     def page_bytes(self, document: Document, page_number: int) -> tuple[bytes, str]:
         if page_number < 1:
@@ -119,13 +130,23 @@ class KnowledgeService:
             raise NotFoundError("Strana nije pronađena")
         page = self.docs.get_page(document.id, page_number)
         if page and page.image_storage_key:
-            return self.storage.get(page.image_storage_key), "image/jpeg"
-        return self._render_page(document, page_number), "image/jpeg"
+            try:
+                return self.storage.get(page.image_storage_key), "image/jpeg"
+            except FileNotFoundError:
+                pass
+        try:
+            return self._render_page(document, page_number), "image/jpeg"
+        except FileNotFoundError as exc:
+            raise NotFoundError(
+                "Strana priručnika nije dostupna na serveru. Otpremite PDF ponovo iz Priručnika."
+            ) from exc
 
     def page_local_path(self, document: Document, page_number: int):
         page = self.docs.get_page(document.id, page_number)
         if page and page.image_storage_key:
-            return self.storage.local_path(page.image_storage_key)
+            path = self.storage.local_path(page.image_storage_key)
+            if path is not None and path.exists():
+                return path
         return None
 
     def _render_page(self, document: Document, page_number: int) -> bytes:
@@ -143,22 +164,14 @@ class KnowledgeService:
         finally:
             pdf.close()
 
-    def list_chunks(self, document_id: UUID, owner_id: UUID) -> list[KnowledgeChunkRead]:
-        document = self.get_document(document_id, owner_id)
-        return [self.to_chunk_read(item, document) for item in self.docs.chunks_for_document(document.id)]
-
-    def search(self, owner_id: UUID, query: str, limit: int = 6) -> list[KnowledgeHit]:
-        farm = self._farm(owner_id)
-        return self.search_farm(farm.id, query, limit=limit)
-
-    def search_farm(self, farm_id: UUID, query: str, limit: int = 6) -> list[KnowledgeHit]:
-        if not query.strip():
-            return []
-        vector = self.provider.generate_embedding(query)
-        hits = self._search_pgvector(farm_id, vector, limit) if vector else []
-        if not hits:
-            hits = self._search_python(farm_id, vector, limit)
-        return hits
+    def _storage_missing(self, key: str) -> bool:
+        exists = getattr(self.storage, "exists", None)
+        if callable(exists):
+            return not bool(exists(key))
+        path = self.storage.local_path(key)
+        if path is None:
+            return False
+        return not path.exists()
 
     def ingest_or_skip(
         self,
@@ -176,9 +189,16 @@ class KnowledgeService:
         digest = sha256_bytes(content)
         existing = self.docs.get_by_hash(farm.id, digest)
         if existing is not None and existing.status == DocumentStatus.READY and not force:
+            if self._storage_missing(existing.storage_key):
+                # DB is ready but PDF vanished (Render ephemeral disk). Restore bytes only;
+                # pages can be re-rendered from the PDF on demand.
+                self.storage.put(existing.storage_key, content, "application/pdf")
             return existing
         if existing is not None:
-            self.storage.delete(existing.storage_key)
+            try:
+                self.storage.delete(existing.storage_key)
+            except Exception:  # noqa: BLE001
+                pass
             self.docs.delete(existing)
             self.db.flush()
         return self.create_and_ingest(

@@ -12,7 +12,18 @@ from app.models.user import User
 from app.services.knowledge import KnowledgeService
 from sqlalchemy import select
 
-DEFAULT_DIR = BACKEND_ROOT.parent / "Prirucnici"
+DEFAULT_DIR = next(
+    (
+        path
+        for path in (
+            BACKEND_ROOT / "Prirucnici",
+            Path("/app/Prirucnici"),
+            BACKEND_ROOT.parent / "Prirucnici",
+        )
+        if path.exists()
+    ),
+    BACKEND_ROOT.parent / "Prirucnici",
+)
 
 
 def main() -> None:

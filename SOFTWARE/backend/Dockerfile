@@ -8,10 +8,12 @@ ENV PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y --no-install-recommends libpq-dev gcc \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY backend/ .
+# Bundle Agriser manuals so Render can restore PDFs after ephemeral disk resets.
+COPY Prirucnici/ /app/Prirucnici/
 
 RUN chmod +x scripts/start.sh
 

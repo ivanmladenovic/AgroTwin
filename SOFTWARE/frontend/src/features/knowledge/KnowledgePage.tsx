@@ -420,6 +420,9 @@ function KnowledgePdfViewer({
         ) : error && !pageImageUrl && !pdfSrc ? (
           <div className="space-y-3 p-6">
             <p className="text-sm text-danger">{error}</p>
+            <p className="text-sm text-muted-foreground">
+              Posle redeploy-a server ponovo učitava priručnike. Ako greška ostane, otpremite PDF u odeljku Priručnici.
+            </p>
             <Button type="button" variant="outline" onClick={() => void handleDownload()}>
               Preuzmi PDF
             </Button>
