@@ -30,9 +30,20 @@ services:
           name: agrotwin-db
           property: connectionString
       - key: STORAGE_BACKEND
-        value: local
+        value: s3
       - key: STORAGE_LOCAL_PATH
         value: var/storage
+      # Cloudflare R2 / S3 — set in Dashboard (local disk on free Render is ephemeral)
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ENDPOINT_URL
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_REGION
+        value: auto
       # AI Agronom — Option A: Gemini 3.8 Flash via OpenAI-compatible endpoint
       - key: AI_PROVIDER
         value: openai_compatible

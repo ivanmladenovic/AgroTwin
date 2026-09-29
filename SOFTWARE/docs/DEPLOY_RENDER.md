@@ -94,6 +94,33 @@ https://agrotwin-web.onrender.com,https://agrotwin.srpskisafran.rs
 
 ---
 
+## Trajni fajlovi (PDF analize, fotografije) — Cloudflare R2
+
+Na **free** Render planu lokalni disk se briše na svaki restart/spin-down/deploy.
+Zato uploadovani PDF-ovi nestaju iako zapis ostaje u bazi.
+
+**Rešenje (besplatno):** Cloudflare R2 (S3-kompatibilno).
+
+1. [Cloudflare Dashboard](https://dash.cloudflare.com) → **R2** → Create bucket (npr. `agrotwin`)
+2. R2 → **Manage R2 API Tokens** → Create API token (Object Read & Write)
+3. Render → **agrotwin-api** → **Environment**:
+
+```text
+STORAGE_BACKEND=s3
+S3_BUCKET=agrotwin
+S3_ENDPOINT_URL=https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+S3_ACCESS_KEY=<R2 access key id>
+S3_SECRET_KEY=<R2 secret access key>
+S3_REGION=auto
+```
+
+4. Sačuvaj → sačekaj restart API-ja
+5. Obriši stare „prazne“ analize u UI i **ponovo uploaduj** PDF-ove
+
+*(Alternativa: Render Starter plan + persistent disk — plaćeno.)*
+
+---
+
 ## AI Agronom (Gemini first)
 
 On **agrotwin-api** set:

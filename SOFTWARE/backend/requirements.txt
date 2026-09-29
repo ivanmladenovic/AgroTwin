@@ -15,3 +15,4 @@ pypdf==6.4.2
 pymupdf==1.26.5
 pillow==11.3.0
 pytesseract==0.3.13
+boto3==1.40.30
