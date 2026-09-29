@@ -30,10 +30,10 @@ services:
           name: agrotwin-db
           property: connectionString
       - key: STORAGE_BACKEND
-        value: s3
+        value: local
       - key: STORAGE_LOCAL_PATH
         value: var/storage
-      # Cloudflare R2 / S3 — set in Dashboard (local disk on free Render is ephemeral)
+      # Optional later: Cloudflare R2 / S3 (set STORAGE_BACKEND=s3 + keys in Dashboard)
       - key: S3_BUCKET
         sync: false
       - key: S3_ENDPOINT_URL
