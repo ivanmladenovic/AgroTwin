@@ -107,6 +107,13 @@ class RoutingTests(TestCase):
             needs_soil_lab_context("ubacio sam pdf sa analizom zemljista, daj mi svoje misljenje")
         )
         self.assertTrue(needs_deep_farm_context("ubacio sam pdf sa analizom zemljista, daj mi svoje misljenje"))
+        # Locative "analizi" must also trigger lab text + tools (not only "analiza/analizom").
+        self.assertTrue(
+            needs_soil_lab_context("Daj mi svoje mišljenje o analizi zemljišta za našu parcelu?")
+        )
+        self.assertTrue(
+            needs_deep_farm_context("Daj mi svoje mišljenje o analizi zemljišta za našu parcelu?")
+        )
 
     def test_short_affirmative_and_pending_offer(self) -> None:
         self.assertTrue(is_short_affirmative("hajde"))

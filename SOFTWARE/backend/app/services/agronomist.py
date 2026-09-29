@@ -82,8 +82,21 @@ class AgronomistService:
 
     def delete_conversation(self, conversation_id: UUID, owner_id: UUID) -> None:
         conversation = self.get_conversation(conversation_id, owner_id)
+        image_keys: list[str] = []
+        for message in conversation.messages or []:
+            for ref in message.structured_refs or []:
+                if ref.get("kind") != "chat_image":
+                    continue
+                key = (ref.get("extra") or {}).get("storage_key")
+                if isinstance(key, str) and key:
+                    image_keys.append(key)
         self.conversations.delete(conversation)
         self.db.commit()
+        for key in image_keys:
+            try:
+                self.storage.delete(key)
+            except Exception:
+                pass
 
     def ask(
         self,

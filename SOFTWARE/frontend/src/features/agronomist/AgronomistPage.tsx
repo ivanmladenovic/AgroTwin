@@ -1,9 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronRight, ImagePlus, MessagesSquare, Plus, Send, ShieldAlert, X } from 'lucide-react'
+import { ChevronRight, ImagePlus, MessagesSquare, Plus, Send, ShieldAlert, Trash2, X } from 'lucide-react'
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 
-import { createConversation, getConversation, listConversations, loadChatMessageImage, sendChatMessage } from '@/features/agronomist/api'
+import {
+  createConversation,
+  deleteConversation,
+  getConversation,
+  listConversations,
+  loadChatMessageImage,
+  sendChatMessage,
+} from '@/features/agronomist/api'
 import { stripAgronomMarkdown } from '@/features/agronomist/format'
 import { ReportProblemForm } from '@/features/health/ReportProblemForm'
 import type { ChatMessageRecord, ConversationSummary, KnowledgeSource } from '@/shared/api/types'
@@ -49,6 +56,21 @@ export function AgronomistPage() {
       await queryClient.invalidateQueries({ queryKey: ['ai-conversations'] })
     },
   })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteConversation(id),
+    onSuccess: async (_data, id) => {
+      queryClient.removeQueries({ queryKey: ['ai-conversation', id] })
+      await queryClient.invalidateQueries({ queryKey: ['ai-conversations'] })
+      if (conversationId === id) navigate('/agronomist', { replace: true })
+    },
+  })
+
+  function confirmDelete(id: string, title?: string) {
+    const label = (title || 'ovaj razgovor').trim()
+    if (!window.confirm(`Obrisati razgovor „${label}”?`)) return
+    deleteMutation.mutate(id)
+  }
 
   const conversation = conversationId ? conversationQuery.data : undefined
   const conversations = listQuery.data ?? []
@@ -174,10 +196,12 @@ export function AgronomistPage() {
           composing={composing}
           hub={showHub}
           loading={listQuery.isLoading}
+          deletingId={deleteMutation.isPending ? deleteMutation.variables : null}
           onHub={goHub}
           onNew={goNew}
           onReport={goReport}
           onOpen={goConversation}
+          onDelete={confirmDelete}
         />
       </aside>
 
@@ -202,6 +226,7 @@ export function AgronomistPage() {
               composing={composing}
               hub={showHub}
               loading={listQuery.isLoading}
+              deletingId={deleteMutation.isPending ? deleteMutation.variables : null}
               onHub={() => {
                 setListOpen(false)
                 goHub()
@@ -218,6 +243,7 @@ export function AgronomistPage() {
                 setListOpen(false)
                 goConversation(id)
               }}
+              onDelete={confirmDelete}
             />
           </aside>
         </div>
@@ -234,6 +260,19 @@ export function AgronomistPage() {
               <h2 className="truncate text-lg font-semibold">{heading}</h2>
               <p className="mt-0.5 hidden text-sm text-muted-foreground sm:block">{subtitle}</p>
             </div>
+            {conversationId ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="mt-0.5 shrink-0 text-muted-foreground hover:text-danger"
+                disabled={deleteMutation.isPending}
+                aria-label="Obriši razgovor"
+                onClick={() => confirmDelete(conversationId, conversation?.title)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            ) : null}
             <BackButton variant="ghost" fallback="/agronomist" className="mt-0.5 shrink-0">
               Nazad
             </BackButton>
@@ -244,9 +283,11 @@ export function AgronomistPage() {
           <HubScreen
             conversations={conversations}
             loading={listQuery.isLoading}
+            deletingId={deleteMutation.isPending ? deleteMutation.variables : null}
             onNew={goNew}
             onReport={goReport}
             onOpen={goConversation}
+            onDelete={confirmDelete}
           />
         ) : reporting ? (
           <div className="min-h-0 flex-1 overflow-auto px-4 py-4 lg:px-5">
@@ -362,15 +403,19 @@ export function AgronomistPage() {
 function HubScreen({
   conversations,
   loading,
+  deletingId,
   onNew,
   onReport,
   onOpen,
+  onDelete,
 }: {
   conversations: ConversationSummary[]
   loading: boolean
+  deletingId?: string | null
   onNew: () => void
   onReport: () => void
   onOpen: (id: string) => void
+  onDelete: (id: string, title?: string) => void
 }) {
   return (
     <div className="min-h-0 flex-1 overflow-auto px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] lg:px-6 lg:py-6">
@@ -429,11 +474,11 @@ function HubScreen({
         ) : (
           <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-background">
             {conversations.map((item) => (
-              <li key={item.id}>
+              <li key={item.id} className="flex items-stretch">
                 <button
                   type="button"
                   onClick={() => onOpen(item.id)}
-                  className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-muted/60"
+                  className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-muted/60"
                 >
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
                     <MessagesSquare className="h-4 w-4" />
@@ -445,6 +490,15 @@ function HubScreen({
                     </span>
                   </span>
                   <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex shrink-0 items-center px-3 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-danger disabled:opacity-50"
+                  aria-label={`Obriši razgovor ${item.title}`}
+                  disabled={deletingId === item.id}
+                  onClick={() => onDelete(item.id, item.title)}
+                >
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </li>
             ))}
@@ -462,10 +516,12 @@ function ConversationList({
   composing = false,
   hub = false,
   loading,
+  deletingId,
   onHub,
   onNew,
   onReport,
   onOpen,
+  onDelete,
 }: {
   conversations: ConversationSummary[]
   conversationId?: string
@@ -473,10 +529,12 @@ function ConversationList({
   composing?: boolean
   hub?: boolean
   loading: boolean
+  deletingId?: string | null
   onHub: () => void
   onNew: () => void
   onReport: () => void
   onOpen: (id: string) => void
+  onDelete: (id: string, title?: string) => void
 }) {
   return (
     <>
@@ -504,21 +562,37 @@ function ConversationList({
             {conversations.map((item) => {
               const active = item.id === conversationId
               return (
-                <button
+                <div
                   key={item.id}
-                  type="button"
-                  onClick={() => onOpen(item.id)}
                   className={cn(
-                    'block w-full rounded-lg px-3 py-3 text-left transition-colors lg:py-2',
+                    'flex items-stretch rounded-lg',
                     active ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/70',
                     hub && !active ? 'opacity-90' : null,
                   )}
                 >
-                  <p className="truncate text-sm font-medium">{item.title}</p>
-                  <p className={cn('mt-0.5 text-[11px]', active ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
-                    {formatDate((item.last_message_at || item.updated_at).slice(0, 10))}
-                  </p>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => onOpen(item.id)}
+                    className="min-w-0 flex-1 rounded-lg px-3 py-3 text-left lg:py-2"
+                  >
+                    <p className="truncate text-sm font-medium">{item.title}</p>
+                    <p className={cn('mt-0.5 text-[11px]', active ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
+                      {formatDate((item.last_message_at || item.updated_at).slice(0, 10))}
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    className={cn(
+                      'inline-flex shrink-0 items-center px-2.5 transition-colors disabled:opacity-50',
+                      active ? 'text-primary-foreground/80 hover:text-primary-foreground' : 'text-muted-foreground hover:text-danger',
+                    )}
+                    aria-label={`Obriši razgovor ${item.title}`}
+                    disabled={deletingId === item.id}
+                    onClick={() => onDelete(item.id, item.title)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               )
             })}
           </div>

@@ -481,6 +481,7 @@ DEEP_FARM_HINTS: tuple[str, ...] = (
     "analize zemlj",
     "analizom zemlj",
     "analizu zemlj",
+    "analizi zemlj",
     "ubacio",
     "uploadov",
     "otpremio",
@@ -502,11 +503,12 @@ def needs_deep_farm_context(question: str) -> bool:
 def needs_soil_lab_context(question: str) -> bool:
     """True when the question is about uploaded lab soil analyses / PDFs."""
     folded = fold(question)
+    # Catch all Serbian cases: analiza / analize / analizi / analizu / analizom …
+    if "analiz" in folded and "zemlj" in folded:
+        return True
+    if "misljenj" in folded and "zemlj" in folded:
+        return True
     hints = (
-        "analiza zemlj",
-        "analize zemlj",
-        "analizom zemlj",
-        "analizu zemlj",
         "ubacio",
         "uploadov",
         "otpremio",
@@ -515,6 +517,8 @@ def needs_soil_lab_context(question: str) -> bool:
         "agrohem",
         "pdf sa analiz",
         "pdf analiz",
+        "lab izvest",
+        "lab rezult",
     )
     if any(hint in folded for hint in hints):
         return True

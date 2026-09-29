@@ -209,9 +209,16 @@ class SoilLabAnalysisService:
             if text:
                 lines.append("IZVOD IZ ANALIZE:")
                 lines.append(text)
+            elif include_text:
+                lines.append(
+                    "NAPOMENA: PDF/fajl ove analize nije čitljiv na serveru "
+                    "(nedostaje ili je prazan). Tražite od korisnika da ponovo otpremi analizu."
+                )
         if not include_text:
             lines.append(
-                "Za puni sadržaj PDF-a pozovi get_soil_lab_analyses(include_text=true)."
+                "Tekst PDF-a nije učitan u ovom briefu. "
+                "Ako treba detalj, sami pozovite alat get_soil_lab_analyses sa include_text=true "
+                "(nikad ne tražite od korisnika da poziva alate)."
             )
         return "\n".join(lines)
 

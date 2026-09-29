@@ -27,6 +27,10 @@ export function getConversation(conversationId: string) {
   return apiRequest<ConversationDetail>(`/ai/conversations/${conversationId}`)
 }
 
+export function deleteConversation(conversationId: string) {
+  return apiRequest<void>(`/ai/conversations/${conversationId}`, { method: 'DELETE' })
+}
+
 export function sendChatMessage(conversationId: string, content: string, file?: File | null) {
   const form = new FormData()
   form.append('content', content)
