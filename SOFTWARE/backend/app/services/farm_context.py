@@ -80,6 +80,21 @@ TOOL_SPECS = [
             },
         },
     ),
+    ToolSpec(
+        name="get_soil_lab_analyses",
+        description=(
+            "Laboratorijske analize zemljišta sa parcele (PDF/fotografije koje je korisnik otpremio). "
+            "Vraća spisak i izvučeni tekst. Koristite kad korisnik pita za analizu zemljišta ili mišljenje o lab rezultatu."
+        ),
+        parameters={
+            "type": "object",
+            "properties": {
+                "parcel_name": {"type": "string"},
+                "limit": {"type": "integer"},
+                "include_text": {"type": "boolean"},
+            },
+        },
+    ),
 ]
 
 
@@ -90,11 +105,15 @@ class FarmContextService:
         self.db = db
         self.farms = FarmRepository(db)
         self.parcels = ParcelRepository(db)
+        self.soil = SoilProfileRepository(db)
         self.orchard = OrchardService(db)
         self.activities = ActivityService(db)
         self.diseases = DiseaseService(db)
         self.journal = JournalService(db)
         self.knowledge = KnowledgeService(db)
+        from app.services.soil_lab import SoilLabAnalysisService
+
+        self.soil_lab = SoilLabAnalysisService(db)
 
     def farm_for(self, owner_id: UUID) -> Farm:
         farms = self.farms.list_by_owner(owner_id)
@@ -109,6 +128,7 @@ class FarmContextService:
             "get_recent_disease_cases": self.get_recent_disease_cases,
             "get_recent_activities": self.get_recent_activities,
             "get_cost_summary": self.get_cost_summary,
+            "get_soil_lab_analyses": self.get_soil_lab_analyses,
         }
         handler = handlers.get(name)
         if handler is None:
@@ -131,13 +151,100 @@ class FarmContextService:
             "monitoring_trees": stats.monitoring_trees,
             "issue_trees": stats.issue_trees,
             "unknown_trees": stats.unknown_trees,
-            "row_spacing_m": str(parcel.row_spacing_m) if parcel.row_spacing_m is not None else None,
-            "tree_spacing_m": str(parcel.tree_spacing_m) if parcel.tree_spacing_m is not None else None,
-            "maps_url": parcel.maps_url,
-            "latitude": str(parcel.latitude) if parcel.latitude is not None else None,
-            "longitude": str(parcel.longitude) if parcel.longitude is not None else None,
             "soil": self._soil_context(parcel),
         }
+
+    def format_parcel_brief(
+        self,
+        owner_id: UUID,
+        *,
+        parcel_id: UUID | None = None,
+        parcel_name: str | None = None,
+        include_soil_lab_text: bool = False,
+    ) -> str | None:
+        """Cheap one-shot parcel snapshot for advice prompts (no extra Gemini round)."""
+        if parcel_id is not None:
+            parcel = self.parcels.get_for_owner(parcel_id, owner_id)
+            if parcel is None:
+                return None
+            summary = self.get_parcel_summary(owner_id, parcel_name=parcel.name)
+            resolved_parcel_id = parcel.id
+        else:
+            summary = self.get_parcel_summary(owner_id, parcel_name=parcel_name)
+            if not summary or summary.get("error"):
+                return None
+            try:
+                resolved_parcel_id = UUID(str(summary["id"]))
+            except (KeyError, ValueError, TypeError):
+                resolved_parcel_id = None
+        if not summary or summary.get("error"):
+            return None
+        soil = summary.get("soil") or {}
+        soil_bits: list[str] = []
+        if isinstance(soil, dict) and soil.get("available"):
+            data = soil.get("data")
+            if isinstance(data, dict):
+                for key, label in (("ph", "pH"), ("pH", "pH"), ("organic_matter", "humus"), ("humus", "humus")):
+                    if key not in data:
+                        continue
+                    raw = data[key]
+                    value = raw
+                    if isinstance(raw, dict):
+                        first = next(iter(raw.values()), None)
+                        if isinstance(first, dict) and first.get("value") is not None:
+                            value = first["value"]
+                        else:
+                            value = first
+                    if value is not None and not isinstance(value, dict):
+                        soil_bits.append(f"{label} {value}")
+                    break
+            if soil.get("status"):
+                soil_bits.append(f"status {soil['status']}")
+        lines = [
+            "FARM BRIEF (već učitano — ne zovi get_parcel_summary samo zbog ovoga):",
+            (
+                f"Parcela {summary.get('name')}: "
+                f"{summary.get('area_hectares') or '?'} ha, "
+                f"{summary.get('row_count') or '?'} redova, "
+                f"{summary.get('tree_count') or '?'} stabala "
+                f"(zdrava {summary.get('healthy_trees') or 0}, "
+                f"praćenje {summary.get('monitoring_trees') or 0}, "
+                f"problem {summary.get('issue_trees') or 0})."
+            ),
+        ]
+        if soil_bits:
+            lines.append(
+                "Modelirano zemljište (SoilGrids, nije laboratorijski PDF): "
+                + ", ".join(str(item) for item in soil_bits[:4])
+                + "."
+            )
+        if resolved_parcel_id is not None:
+            lab_block = self.soil_lab.format_context_block(
+                resolved_parcel_id,
+                owner_id,
+                include_text=include_soil_lab_text,
+            )
+            if lab_block:
+                lines.append(lab_block)
+        return "\n".join(lines)
+
+    def get_soil_lab_analyses(
+        self,
+        owner_id: UUID,
+        parcel_name: str | None = None,
+        limit: int = 3,
+        include_text: bool = True,
+        **_: object,
+    ) -> dict:
+        parcel = self._parcel(owner_id, parcel_name)
+        if parcel is None:
+            return {"error": "Parcela nije pronađena", "analyses": []}
+        return self.soil_lab.context_payload(
+            parcel.id,
+            owner_id,
+            limit=limit,
+            include_text=include_text,
+        )
 
     def get_tree_history(
         self,
@@ -322,7 +429,7 @@ class FarmContextService:
             "available": True,
             "status": snapshot.status,
             "fetched_at": snapshot.fetched_at.isoformat() if snapshot.fetched_at else None,
-            "data": snapshot.values,
+            "data": _compact_soil_values(snapshot.values),
         }
 
     def _tree(
@@ -345,6 +452,28 @@ class FarmContextService:
         else:
             return None
         return self.db.scalars(stmt).first()
+
+
+def _compact_soil_values(values: object) -> object:
+    """Keep only a short surface summary for LLM tool results."""
+    if not isinstance(values, dict):
+        return values
+    compact: dict = {}
+    for key in ("ph", "cec", "clay", "sand", "silt", "organic_carbon", "total_nitrogen"):
+        item = values.get(key)
+        if item is None:
+            continue
+        if isinstance(item, dict):
+            # Prefer the shallowest depth band if nested.
+            depths = item.get("depths") if isinstance(item.get("depths"), dict) else item
+            if isinstance(depths, dict) and depths:
+                first_key = next(iter(depths))
+                compact[key] = {first_key: depths[first_key]}
+            else:
+                compact[key] = item
+        else:
+            compact[key] = item
+    return compact or values
 
 
 def _clean_args(arguments: dict) -> dict:

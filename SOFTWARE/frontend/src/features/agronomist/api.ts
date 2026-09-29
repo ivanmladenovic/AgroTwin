@@ -1,4 +1,4 @@
-import { apiRequest } from '@/shared/lib/api'
+import { apiRequest, apiUpload, fetchObjectUrl } from '@/shared/lib/api'
 import type { AIStatus, ConversationDetail, ConversationSummary, DiseaseAnalysis } from '@/shared/api/types'
 
 export function getAIStatus() {
@@ -27,11 +27,19 @@ export function getConversation(conversationId: string) {
   return apiRequest<ConversationDetail>(`/ai/conversations/${conversationId}`)
 }
 
-export function sendChatMessage(conversationId: string, content: string) {
-  return apiRequest<ConversationDetail>(`/ai/conversations/${conversationId}/messages`, {
-    method: 'POST',
-    body: JSON.stringify({ content }),
-  })
+export function sendChatMessage(conversationId: string, content: string, file?: File | null) {
+  const form = new FormData()
+  form.append('content', content)
+  if (file) form.append('file', file)
+  return apiUpload<ConversationDetail>(`/ai/conversations/${conversationId}/messages`, form)
+}
+
+export function chatMessageImagePath(conversationId: string, messageId: string) {
+  return `/ai/conversations/${conversationId}/messages/${messageId}/image`
+}
+
+export function loadChatMessageImage(conversationId: string, messageId: string) {
+  return fetchObjectUrl(chatMessageImagePath(conversationId, messageId))
 }
 
 export function listDiseaseAnalyses(caseId: string) {

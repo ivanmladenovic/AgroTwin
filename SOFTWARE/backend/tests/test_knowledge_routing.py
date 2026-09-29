@@ -2,7 +2,19 @@ from unittest import TestCase
 
 from app.knowledge.chunking import chunk_structured_pages
 from app.knowledge.structure import StructuredPage
-from app.knowledge.taxonomy import classify_query, expand_query_terms, fold, match_manual
+from app.ai.prompts import format_support_block
+from app.knowledge.taxonomy import (
+    build_retrieval_queries,
+    classify_query,
+    clip_chat_text,
+    expand_query_terms,
+    extract_pending_offer,
+    fold,
+    is_short_affirmative,
+    match_manual,
+    needs_deep_farm_context,
+    needs_soil_lab_context,
+)
 
 
 class RoutingTests(TestCase):
@@ -62,10 +74,82 @@ class RoutingTests(TestCase):
     def test_out_of_scope_capital(self) -> None:
         route = classify_query("Koji je glavni grad Francuske?")
         self.assertTrue(route.out_of_scope)
+        self.assertEqual(route.answer_mode, "manual_fact")
 
     def test_commercial_price(self) -> None:
         route = classify_query("Koja je cena proizvoda X?")
         self.assertTrue(route.commercial)
+        self.assertEqual(route.answer_mode, "manual_fact")
+
+    def test_seedling_catchup_uses_advice_mode(self) -> None:
+        route = classify_query(
+            "Da li će male sadnice prestići veće, ili kako da ih pomognem da se izjednače?"
+        )
+        self.assertEqual(route.answer_mode, "advice")
+        queries = build_retrieval_queries(route.question, route)
+        self.assertGreaterEqual(len(queries), 2)
+        self.assertTrue(any("rast" in fold(item) or "ishran" in fold(item) for item in queries[1:]))
+        self.assertFalse(
+            needs_deep_farm_context(
+                "Imam nekoliko redova gde su mi male sadnice, kada ce one prestici ostatak zasada?"
+            )
+        )
+
+    def test_irrigation_plan_needs_deep_farm_context(self) -> None:
+        self.assertTrue(
+            needs_deep_farm_context(
+                "Kako preporucujes da navodnjavam naredne godine? Pogledaj moju parcelu i daj mi savet."
+            )
+        )
+
+    def test_soil_lab_pdf_question_needs_soil_context(self) -> None:
+        self.assertTrue(
+            needs_soil_lab_context("ubacio sam pdf sa analizom zemljista, daj mi svoje misljenje")
+        )
+        self.assertTrue(needs_deep_farm_context("ubacio sam pdf sa analizom zemljista, daj mi svoje misljenje"))
+
+    def test_short_affirmative_and_pending_offer(self) -> None:
+        self.assertTrue(is_short_affirmative("hajde"))
+        self.assertTrue(is_short_affirmative("Da!"))
+        self.assertFalse(is_short_affirmative("hajde da izracunamo nesto drugo veoma dugo"))
+        offer = extract_pending_offer(
+            "Zemljište je dobro.\n\nDa li želite da vam pomognem da izračunamo okvirnu količinu đubriva?"
+        )
+        self.assertIsNotNone(offer)
+        assert offer is not None
+        self.assertIn("izracunamo", fold(offer))
+
+    def test_clip_keeps_closing_question(self) -> None:
+        body = ("A" * 1400) + "\n\nDa li želite da izračunamo količinu đubriva?"
+        clipped = clip_chat_text(body, limit=800)
+        self.assertIn("izračunamo", clipped)
+        self.assertIn("…", clipped)
+
+    def test_uhvacena_is_not_commercial(self) -> None:
+        route = classify_query("Simptomi: uhvacena buba na lešniku")
+        self.assertFalse(route.commercial)
+        self.assertEqual(route.answer_mode, "advice")
+        self.assertIn("protection", route.document_keys)
+
+    def test_field_report_stays_advice(self) -> None:
+        route = classify_query(
+            "Prijavljen je problem: Buba. Simptomi: uhvacena buba. Pregledajte opažanje."
+        )
+        self.assertFalse(route.commercial)
+        self.assertEqual(route.answer_mode, "advice")
+
+    def test_dose_question_uses_manual_fact(self) -> None:
+        route = classify_query("Koja je doza bora po hektaru?")
+        self.assertEqual(route.answer_mode, "manual_fact")
+
+    def test_fungicide_name_uses_manual_fact(self) -> None:
+        route = classify_query("Koji fungicid koristiti protiv monilioze?")
+        self.assertEqual(route.answer_mode, "manual_fact")
+
+    def test_support_block_allows_empty_sources(self) -> None:
+        block = format_support_block([])
+        self.assertIn("SUPPORTING MANUAL EXCERPTS", block)
+        self.assertIn("none", block)
 
     def test_synonyms_expand_fertilization(self) -> None:
         terms = expand_query_terms("gnojidba leske")

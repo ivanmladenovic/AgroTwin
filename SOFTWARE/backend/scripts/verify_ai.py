@@ -75,7 +75,7 @@ def verify_knowledge_and_ai() -> None:
     rain = client.post(
         f"/api/v1/ai/conversations/{conversation_id}/messages",
         headers=headers,
-        json={"content": "Šta da proverim posle nekoliko kišnih dana?"},
+        data={"content": "Šta da proverim posle nekoliko kišnih dana?"},
     )
     assert rain.status_code == 200, rain.text
     rain_payload = rain.json()
@@ -88,7 +88,7 @@ def verify_knowledge_and_ai() -> None:
     issues = client.post(
         f"/api/v1/ai/conversations/{conversation_id}/messages",
         headers=headers,
-        json={"content": "Koja stabla trenutno imaju nerešene probleme?"},
+        data={"content": "Koja stabla trenutno imaju nerešene probleme?"},
     )
     assert issues.status_code == 200, issues.text
     issues_text = issues.json()["messages"][-1]["content"].lower()
@@ -101,7 +101,7 @@ def verify_knowledge_and_ai() -> None:
     spraying = client.post(
         f"/api/v1/ai/conversations/{conversation_id}/messages",
         headers=headers,
-        json={"content": "Kada je Red 14 poslednji put prskan?"},
+        data={"content": "Kada je Red 14 poslednji put prskan?"},
     )
     assert spraying.status_code == 200, spraying.text
     spray_text = spraying.json()["messages"][-1]["content"].lower()
@@ -111,7 +111,7 @@ def verify_knowledge_and_ai() -> None:
     activities = client.post(
         f"/api/v1/ai/conversations/{conversation_id}/messages",
         headers=headers,
-        json={"content": "Koje aktivnosti su rađene na ovoj parceli ovog meseca?"},
+        data={"content": "Koje aktivnosti su rađene na ovoj parceli ovog meseca?"},
     )
     assert activities.status_code == 200, activities.text
     activity_text = activities.json()["messages"][-1]["content"].lower()

@@ -61,9 +61,36 @@ export function KnowledgePage() {
   useEffect(() => {
     const next = new URLSearchParams()
     if (searchTerm) next.set('q', searchTerm)
+    const doc = searchParams.get('doc')
+    const page = searchParams.get('page')
+    if (doc) next.set('doc', doc)
+    if (page) next.set('page', page)
     if (next.toString() === searchParams.toString()) return
     setSearchParams(next, { replace: true })
   }, [searchParams, searchTerm, setSearchParams])
+
+  useEffect(() => {
+    const docId = searchParams.get('doc')
+    if (!docId || !docsQuery.data?.length) return
+    const document = docsQuery.data.find((item) => item.id === docId)
+    if (!document) return
+    const pageRaw = searchParams.get('page')
+    const page = pageRaw ? Number(pageRaw) : null
+    setViewer((current) => {
+      if (
+        current?.documentId === document.id &&
+        (current.page ?? null) === (page && page > 0 ? page : null)
+      ) {
+        return current
+      }
+      return {
+        documentId: document.id,
+        title: document.title,
+        page: page && page > 0 ? page : null,
+        filename: document.original_filename,
+      }
+    })
+  }, [docsQuery.data, searchParams])
 
   function runSearch(event: FormEvent) {
     event.preventDefault()
@@ -89,7 +116,18 @@ export function KnowledgePage() {
       </div>
 
       {adding ? <UploadManualForm onClose={() => setAdding(false)} /> : null}
-      {viewer ? <KnowledgePdfViewer target={viewer} onClose={() => setViewer(null)} /> : null}
+      {viewer ? (
+        <KnowledgePdfViewer
+          target={viewer}
+          onClose={() => {
+            setViewer(null)
+            const next = new URLSearchParams(searchParams)
+            next.delete('doc')
+            next.delete('page')
+            setSearchParams(next, { replace: true })
+          }}
+        />
+      ) : null}
 
       <Card>
         <CardHeader>

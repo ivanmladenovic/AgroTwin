@@ -175,7 +175,7 @@ DOMAINS: tuple[DomainSpec, ...] = (
         "plant_protection",
         "protection",
         (
-            TopicSpec("insects", ("Insekti i grinje",), ("insekt", "žižak", "stetoc", "štetoč")),
+            TopicSpec("insects", ("Insekti i grinje",), ("insekt", "žižak", "stetoc", "štetoč", "buba", "stenic", "marbled", "halyomorpha")),
             TopicSpec("mites", ("Insekti i grinje",), ("grinj", "mite")),
             TopicSpec("fungal_diseases", ("Gljivična oboljenja",), ("gljiv", "monilia", "pepelnica", "antraknoz")),
             TopicSpec("bacterial_diseases", ("Bakterijska oboljenja",), ("bakter",)),
@@ -234,6 +234,10 @@ AGRONOMY_HINTS = (
     "mraz",
     "bolest",
     "insekt",
+    "buba",
+    "stenic",
+    "stetoc",
+    "štetoč",
     "gljiv",
     "zemlji",
     "zaštit",
@@ -246,6 +250,9 @@ AGRONOMY_HINTS = (
     "mikro",
     "makro",
     "hraniv",
+    "opazanj",
+    "simptom",
+    "fotograf",
 )
 
 
@@ -259,9 +266,80 @@ class QueryRoute:
     topics: list[str] = field(default_factory=list)
     sections: list[str] = field(default_factory=list)
     keywords: list[str] = field(default_factory=list)
+    # "manual_fact" = strict Agriser citation; "advice" = orchard judgment with manuals as support
+    answer_mode: str = "advice"
+
+
+# Questions that need exact manual numbers / products stay in strict mode.
+MANUAL_FACT_HINTS: tuple[str, ...] = (
+    "doza",
+    "doze",
+    "doziran",
+    "koncentrac",
+    "kg/ha",
+    "l/ha",
+    "ml/l",
+    "ppm",
+    "norma",
+    "norme",
+    "količina đubr",
+    "kolicina dubr",
+    "aktivna materij",
+    "preparat",
+    "fungicid",
+    "insekticid",
+    "herbicid",
+    "registrac",
+    "etiket",
+    "ph vrednost",
+    "pH",
+    "koliko azot",
+    "koliko kalij",
+    "koliko fosfor",
+    "koliko bor",
+)
+
+# Broader orchard judgment / management questions.
+ADVICE_HINTS: tuple[str, ...] = (
+    "kada će",
+    "kada ce",
+    "kada da",
+    "da li treba",
+    "da li mogu",
+    "šta da",
+    "sta da",
+    "kako da",
+    "zašto",
+    "zasto",
+    "preporuk",
+    "savet",
+    "prestići",
+    "prestici",
+    "sustign",
+    "sustići",
+    "sustici",
+    "zaostaj",
+    "izjednač",
+    "izjednac",
+    "bujnost",
+    "razvoj",
+    "male sadnic",
+    "manje sadnic",
+    "šta misliš",
+    "sta mislis",
+    "kako postup",
+    "šta uraditi",
+    "sta uraditi",
+    "hoće li",
+    "hoce li",
+    "mogu li",
+)
 
 
 def fold(text: str) -> str:
+    import unicodedata
+
+    normalized = unicodedata.normalize("NFKC", text or "")
     table = str.maketrans(
         {
             "Č": "c",
@@ -276,7 +354,7 @@ def fold(text: str) -> str:
             "đ": "dj",
         }
     )
-    return (text or "").translate(table).lower()
+    return normalized.translate(table).lower()
 
 
 def expand_query_terms(question: str) -> list[str]:
@@ -295,9 +373,11 @@ def classify_query(question: str) -> QueryRoute:
     route = QueryRoute(question=text, keywords=expand_query_terms(text))
     if any(term in folded for term in OUT_OF_SCOPE_TERMS) and not any(hint in folded for hint in AGRONOMY_HINTS):
         route.out_of_scope = True
+        route.answer_mode = "manual_fact"
         return route
-    if any(term in folded for term in COMMERCIAL_TERMS) and not any(hint in folded for hint in AGRONOMY_HINTS):
+    if _term_hits(folded, COMMERCIAL_TERMS) and not any(hint in folded for hint in AGRONOMY_HINTS):
         route.commercial = True
+        route.answer_mode = "manual_fact"
         return route
 
     scored: list[tuple[int, DomainSpec, TopicSpec]] = []
@@ -322,7 +402,7 @@ def classify_query(question: str) -> QueryRoute:
         _ensure_document(route, "nutrition")
     if "uzgaj" in folded or "sadnj" in folded or "rezid" in folded or "navodn" in folded:
         _ensure_document(route, "cultivation")
-    if "zastit" in folded or "bolest" in folded or "insekt" in folded or "mraz" in folded:
+    if "zastit" in folded or "bolest" in folded or "insekt" in folded or "mraz" in folded or "buba" in folded or "stenic" in folded or "stetoc" in folded:
         _ensure_document(route, "protection")
     if "otpornost" in folded or "zdravlj" in folded:
         _ensure_document(route, "nutrition")
@@ -333,7 +413,202 @@ def classify_query(question: str) -> QueryRoute:
             route.domains.append("plant_protection")
     if not route.document_keys and any(hint in folded for hint in AGRONOMY_HINTS):
         route.document_keys = [item.key for item in MANUALS]
+    route.answer_mode = classify_answer_mode(text, route)
     return route
+
+
+def classify_answer_mode(question: str, route: QueryRoute | None = None) -> str:
+    """Choose strict manual citation vs broader agronomic advice."""
+    folded = fold(question)
+    route = route or QueryRoute(question=question)
+    if route.out_of_scope or route.commercial:
+        return "manual_fact"
+    advice_hit = any(hint in folded for hint in ADVICE_HINTS)
+    fact_hit = any(hint in folded for hint in MANUAL_FACT_HINTS)
+    if advice_hit and not fact_hit:
+        return "advice"
+    if fact_hit and not advice_hit:
+        return "manual_fact"
+    if fact_hit and advice_hit:
+        # Prefer strict mode when doses/products are explicitly asked.
+        return "manual_fact"
+    # Default orchard Q&A to advice so the model can use farm tools + judgment.
+    return "advice"
+
+
+# When true, agronom keeps full farm tools (activities, cases, costs, tree history).
+DEEP_FARM_HINTS: tuple[str, ...] = (
+    "pogledaj",
+    "pogledajte",
+    "moju parcel",
+    "moja parcel",
+    "moje parcel",
+    "na parcel",
+    "za parcel",
+    "moj zasad",
+    "mojeg zasada",
+    "analiziraj",
+    "detaljn",
+    "planir",
+    "naredne god",
+    "narednu god",
+    "sledece god",
+    "sledecu god",
+    "troskov",
+    "budzet",
+    "aktivnost",
+    "istorij",
+    "dnevnik",
+    "otvorenih sluc",
+    "otvoreni sluc",
+    "otvorene sluc",
+    "prskanj",
+    "navodnjav",
+    "zalivanj",
+    "pump",
+    "bunar",
+    "kapacit",
+    "djubren",
+    "gnojid",
+    "koliko stabl",
+    "kompletn",
+    "sve podat",
+    "evidencij",
+    "proveri zapis",
+    "prema zapis",
+    "iz evidenc",
+    "analiza zemlj",
+    "analize zemlj",
+    "analizom zemlj",
+    "analizu zemlj",
+    "ubacio",
+    "uploadov",
+    "otpremio",
+    "laboratorij",
+    "lab analiza",
+    "agrohem",
+    "humus",
+    "pdf sa analiz",
+    "pdf analiz",
+)
+
+
+def needs_deep_farm_context(question: str) -> bool:
+    """True when advice should pull activities/cases/costs via tools, not only a brief."""
+    folded = fold(question)
+    return any(hint in folded for hint in DEEP_FARM_HINTS)
+
+
+def needs_soil_lab_context(question: str) -> bool:
+    """True when the question is about uploaded lab soil analyses / PDFs."""
+    folded = fold(question)
+    hints = (
+        "analiza zemlj",
+        "analize zemlj",
+        "analizom zemlj",
+        "analizu zemlj",
+        "ubacio",
+        "uploadov",
+        "otpremio",
+        "laboratorij",
+        "lab analiza",
+        "agrohem",
+        "pdf sa analiz",
+        "pdf analiz",
+    )
+    if any(hint in folded for hint in hints):
+        return True
+    return "pdf" in folded and ("analiz" in folded or "zemlj" in folded)
+
+
+_SHORT_AFFIRMATIVES: tuple[str, ...] = (
+    "hajde",
+    "hajdemo",
+    "da",
+    "da molim",
+    "molim",
+    "ok",
+    "okej",
+    "okey",
+    "uredu",
+    "u redu",
+    "moze",
+    "može",
+    "uradi",
+    "izracunaj",
+    "izračunaj",
+    "nastavi",
+    "super",
+    "ajde",
+    "ajmo",
+    "yes",
+    "yep",
+)
+
+
+def is_short_affirmative(question: str) -> bool:
+    """True for brief confirmations like 'hajde' / 'da' that refer to the previous offer."""
+    folded = fold((question or "").strip())
+    if not folded or len(folded) > 40:
+        return False
+    # Strip trailing punctuation.
+    cleaned = folded.rstrip(".!?,;: ")
+    return cleaned in {fold(item) for item in _SHORT_AFFIRMATIVES}
+
+
+def extract_pending_offer(assistant_text: str) -> str | None:
+    """Pull the last question/offer from the previous assistant turn."""
+    text = (assistant_text or "").strip()
+    if not text:
+        return None
+    # Prefer the final question if present.
+    parts = [part.strip() for part in text.replace("\r", "").split("\n") if part.strip()]
+    for part in reversed(parts):
+        compact = part.rstrip("*_# ").strip()
+        if "?" in compact:
+            return compact[-500:]
+    # Fallback: last paragraph often holds the CTA.
+    if parts:
+        return parts[-1][-500:]
+    return None
+
+
+def clip_chat_text(text: str, *, limit: int = 1600) -> str:
+    """Keep both the beginning and the end so closing questions survive truncation."""
+    cleaned = (text or "").strip()
+    if len(cleaned) <= limit:
+        return cleaned
+    head = max(200, limit // 2 - 20)
+    tail = max(200, limit - head - 5)
+    return f"{cleaned[:head].rstrip()}\n…\n{cleaned[-tail:].lstrip()}"
+
+
+def build_retrieval_queries(question: str, route: QueryRoute) -> list[str]:
+    """Primary question plus broader companions for advice retrieval."""
+    queries = [question.strip()]
+    if route.answer_mode != "advice":
+        return queries
+    folded = fold(question)
+    companions: list[str] = []
+    if any(token in folded for token in ("sadnic", "zasad", "prest", "sustig", "zaostaj", "mal")):
+        companions.extend(
+            [
+                "rast i razvoj sadnica leske bujnost",
+                "održavanje voćnjaka rast biljaka posle sadnje",
+                "ishrana i navodnjavanje mladog zasada leske",
+            ]
+        )
+    for section in route.sections[:2]:
+        companions.append(f"{section} leska")
+    for topic in route.topics[:2]:
+        companions.append(topic.replace("_", " "))
+    seen = {fold(question.strip())}
+    for item in companions:
+        key = fold(item)
+        if key and key not in seen:
+            seen.add(key)
+            queries.append(item)
+    return queries[:5]
 
 
 def _keyword_hit(needle: str, folded: str) -> bool:
@@ -342,6 +617,20 @@ def _keyword_hit(needle: str, folded: str) -> bool:
     if len(needle) <= 2:
         return re.search(rf"(?<![a-z0-9]){re.escape(needle)}(?![a-z0-9])", folded) is not None
     return needle in folded
+
+
+def _term_hits(folded: str, terms: tuple[str, ...]) -> bool:
+    """Substring match, but short tokens (e.g. cena) require word boundaries."""
+    for term in terms:
+        token = fold(term)
+        if not token:
+            continue
+        if len(token) <= 5:
+            if re.search(rf"(?<![a-z0-9]){re.escape(token)}(?![a-z0-9])", folded):
+                return True
+        elif token in folded:
+            return True
+    return False
 
 
 def _ensure_document(route: QueryRoute, key: str) -> None:

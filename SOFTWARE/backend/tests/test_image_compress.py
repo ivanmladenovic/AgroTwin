@@ -12,6 +12,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 from PIL import Image
 
 from app.storage.images import MAX_EDGE, compress_photo
+from app.storage.documents import compress_pdf
 
 
 class PhotoCompressionTests(TestCase):
@@ -37,8 +38,33 @@ class PhotoCompressionTests(TestCase):
         self.assertEqual(result.content, payload)
 
 
+class PdfCompressionTests(TestCase):
+    def test_image_heavy_pdf_shrinks(self) -> None:
+        original = _pdf_with_photo(2200, 1600)
+        compressed = compress_pdf(original)
+        self.assertTrue(compressed.lstrip().startswith(b"%PDF"))
+        self.assertLess(len(compressed), len(original))
+
+    def test_invalid_pdf_bytes_are_kept(self) -> None:
+        payload = b"not-a-pdf"
+        self.assertEqual(compress_pdf(payload), payload)
+
+
 def _noisy_jpeg(width: int, height: int, quality: int) -> bytes:
     image = Image.frombytes("RGB", (width, height), os.urandom(width * height * 3))
     buffer = BytesIO()
     image.save(buffer, format="JPEG", quality=quality)
     return buffer.getvalue()
+
+
+def _pdf_with_photo(width: int, height: int) -> bytes:
+    import fitz
+
+    document = fitz.open()
+    page = document.new_page(width=595, height=842)
+    photo = _noisy_jpeg(width, height, quality=95)
+    page.insert_image(page.rect, stream=photo)
+    output = BytesIO()
+    document.save(output)
+    document.close()
+    return output.getvalue()

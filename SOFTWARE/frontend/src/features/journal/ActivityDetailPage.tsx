@@ -243,7 +243,7 @@ export function ActivityDetailPage() {
                   </p>
                 </div>
                 <Button type="button" variant="outline" size="sm" onClick={() => void downloadSoilAnalysis(analysis)}>
-                  Preuzmi PDF
+                  Preuzmi
                 </Button>
               </div>
             ))}

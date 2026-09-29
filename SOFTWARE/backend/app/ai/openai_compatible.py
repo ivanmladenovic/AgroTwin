@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 from typing import Any
 from uuid import uuid4
 
@@ -10,6 +12,45 @@ from app.ai.base import ChatMessage, ChatResult, ImageAnalysisResult, ToolCall, 
 from app.ai.prompts import ANALYSIS_DISCLAIMER
 from app.core.config import Settings
 from app.core.exceptions import AppError
+
+logger = logging.getLogger(__name__)
+
+# When Google returns 503 high-demand on a primary Gemini chat model, try these next.
+_GEMINI_CHAT_FALLBACKS = (
+    "gemini-3.1-flash-lite",
+    "gemini-3.5-flash",
+    "gemini-3.8-flash",
+    "gemini-flash-latest",
+)
+
+# After a capacity fallback succeeds, keep using that model for a while (avoids 503 tax every tool round).
+_STICKY_TTL_SEC = 600.0
+_sticky_model: str | None = None
+_sticky_until: float = 0.0
+
+
+def _get_sticky_model() -> str | None:
+    global _sticky_model, _sticky_until
+    if _sticky_model and time.monotonic() < _sticky_until:
+        return _sticky_model
+    _sticky_model = None
+    _sticky_until = 0.0
+    return None
+
+
+def _set_sticky_model(model: str) -> None:
+    global _sticky_model, _sticky_until
+    _sticky_model = model
+    _sticky_until = time.monotonic() + _STICKY_TTL_SEC
+    logger.info("AI chat sticky model set to %s for %.0fs", model, _STICKY_TTL_SEC)
+
+
+def _clear_sticky_model() -> None:
+    global _sticky_model, _sticky_until
+    if _sticky_model:
+        logger.info("AI chat sticky model cleared (%s)", _sticky_model)
+    _sticky_model = None
+    _sticky_until = 0.0
 
 
 class OpenAICompatibleProvider:
@@ -44,13 +85,12 @@ class OpenAICompatibleProvider:
         json_mode: bool = False,
         temperature: float = 0.2,
     ) -> ChatResult:
-        payload: dict[str, Any] = {
-            "model": self.chat_model,
+        base_payload: dict[str, Any] = {
             "messages": [_dump_message(item) for item in messages],
             "temperature": temperature,
         }
         if tools:
-            payload["tools"] = [
+            base_payload["tools"] = [
                 {
                     "type": "function",
                     "function": {
@@ -61,10 +101,40 @@ class OpenAICompatibleProvider:
                 }
                 for item in tools
             ]
-            payload["tool_choice"] = "auto"
+            base_payload["tool_choice"] = "auto"
         if json_mode:
-            payload["response_format"] = {"type": "json_object"}
-        data = self._post("/chat/completions", payload)
+            base_payload["response_format"] = {"type": "json_object"}
+
+        last_error: AppError | None = None
+        data: dict[str, Any] | None = None
+        used_model = self.chat_model
+        for model in _chat_model_candidates(self.chat_model, self.base_url):
+            payload = {**base_payload, "model": model}
+            try:
+                data = self._post("/chat/completions", payload)
+                used_model = model
+                if model != self.chat_model:
+                    logger.warning(
+                        "AI chat fell back from %s to %s after provider overload",
+                        self.chat_model,
+                        model,
+                    )
+                    _set_sticky_model(model)
+                elif _get_sticky_model() == model:
+                    # Refresh sticky window while the preferred fallback keeps working.
+                    _set_sticky_model(model)
+                break
+            except AppError as exc:
+                if _is_capacity_error(exc):
+                    logger.warning("AI chat model %s unavailable (%s); trying fallback", model, exc.message[:120])
+                    if _get_sticky_model() == model:
+                        _clear_sticky_model()
+                    last_error = exc
+                    continue
+                raise
+        if data is None:
+            raise last_error or AppError("AI provajder nije dostupan", status_code=502, code="ai_unavailable")
+
         choice = (data.get("choices") or [{}])[0].get("message") or {}
         tool_calls = []
         for raw in choice.get("tool_calls") or []:
@@ -73,17 +143,19 @@ class OpenAICompatibleProvider:
                 arguments = json.loads(function.get("arguments") or "{}")
             except json.JSONDecodeError:
                 arguments = {}
+            extra = raw.get("extra_content")
             tool_calls.append(
                 ToolCall(
                     id=raw.get("id") or f"call-{uuid4().hex[:8]}",
                     name=function.get("name") or "",
                     arguments=arguments if isinstance(arguments, dict) else {},
+                    extra_content=extra if isinstance(extra, dict) else None,
                 )
             )
         return ChatResult(
             content=choice.get("content") or "",
             tool_calls=tool_calls,
-            model=data.get("model") or self.chat_model,
+            model=data.get("model") or used_model,
             raw=data,
         )
 
@@ -156,19 +228,52 @@ class OpenAICompatibleProvider:
         return response.json()
 
 
+def _chat_model_candidates(primary: str, base_url: str) -> list[str]:
+    models: list[str] = []
+    sticky = _get_sticky_model()
+    if sticky:
+        models.append(sticky)
+    if primary not in models:
+        models.append(primary)
+    if "generativelanguage.googleapis.com" in base_url or primary.startswith("gemini"):
+        for item in _GEMINI_CHAT_FALLBACKS:
+            if item not in models:
+                models.append(item)
+    return models
+
+
+def _is_capacity_error(exc: AppError) -> bool:
+    text = (exc.message or "").lower()
+    return (
+        "503" in text
+        or "unavailable" in text
+        or "high demand" in text
+        or "resource_exhausted" in text
+        or "429" in text
+    )
+
+
 def _dump_message(message: ChatMessage) -> dict[str, Any]:
-    payload: dict[str, Any] = {"role": message.role, "content": message.content}
+    payload: dict[str, Any] = {"role": message.role}
+    # Gemini rejects empty-string content on tool-call assistant turns; omit or null.
+    if message.tool_calls and (message.content is None or message.content == ""):
+        payload["content"] = None
+    else:
+        payload["content"] = message.content
     if message.tool_call_id:
         payload["tool_call_id"] = message.tool_call_id
     if message.tool_calls:
-        payload["tool_calls"] = [
-            {
+        serialized = []
+        for item in message.tool_calls:
+            entry: dict[str, Any] = {
                 "id": item.id,
                 "type": "function",
                 "function": {"name": item.name, "arguments": json.dumps(item.arguments)},
             }
-            for item in message.tool_calls
-        ]
+            if item.extra_content:
+                entry["extra_content"] = item.extra_content
+            serialized.append(entry)
+        payload["tool_calls"] = serialized
     return payload
 
 

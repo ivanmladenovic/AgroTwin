@@ -17,9 +17,19 @@ from app.repositories.soil_lab import SoilLabAnalysisRepository
 from app.repositories.tree import TreeRepository
 from app.schemas.soil_lab import SoilLabAnalysisRead
 from app.storage import get_storage
+from app.storage.documents import compress_pdf
+from app.storage.images import compress_photo
 
-MAX_FILE_BYTES = 15 * 1024 * 1024
-PDF_TYPES = {"application/pdf", "application/x-pdf"}
+MAX_FILE_BYTES = 400 * 1024 * 1024  # allow large phone/scanner dumps
+MAX_STORED_BYTES = 40 * 1024 * 1024  # after compression
+ALLOWED_TYPES = {
+    "application/pdf": "pdf",
+    "application/x-pdf": "pdf",
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+}
 
 
 class SoilLabAnalysisService:
@@ -96,14 +106,35 @@ class SoilLabAnalysisService:
         if not content:
             raise AppError("Datoteka je prazna", status_code=422, code="empty_file")
         if len(content) > MAX_FILE_BYTES:
-            raise AppError("Datoteka je veća od 15 MB", status_code=422, code="file_too_large")
-        if not _is_pdf(filename, content_type):
-            raise AppError("Prihvata se samo PDF analiza", status_code=422, code="invalid_file")
+            raise AppError(
+                "Datoteka je veća od 400 MB. Smanjite sken ili podelite analizu na manje fajlove.",
+                status_code=422,
+                code="file_too_large",
+            )
+        extension = _extension(filename, content_type)
+        if extension == "pdf":
+            content = compress_pdf(content, max_output_bytes=MAX_STORED_BYTES)
+            stored_type = "application/pdf"
+            if not filename.lower().endswith(".pdf"):
+                filename = f"{Path(filename).stem or 'analiza'}.pdf"
+        else:
+            compressed = compress_photo(content, filename)
+            content = compressed.content
+            stored_type = compressed.content_type
+            filename = compressed.filename
+            extension = compressed.extension.lstrip(".")
+        if len(content) > MAX_STORED_BYTES:
+            raise AppError(
+                "Datoteka je i posle kompresije prevelika (max 40 MB). "
+                "Probajte fotografiju stranica ili manji sken.",
+                status_code=422,
+                code="file_too_large_after_compress",
+            )
         tree_row = self.trees.get_for_parcel(activity.parcel_id, tree_id)
         if tree_row is None:
             raise AppError("Izabrana sadnica ne pripada parceli", status_code=422, code="invalid_tree")
-        key = f"soil-lab/{activity.farm_id}/{activity.id}/{uuid4().hex}.pdf"
-        self.storage.put(key, content, "application/pdf")
+        key = f"soil-lab/{activity.farm_id}/{activity.id}/{uuid4().hex}.{extension}"
+        self.storage.put(key, content, stored_type)
         analysis = SoilLabAnalysis(
             activity_id=activity.id,
             farm_id=activity.farm_id,
@@ -112,7 +143,7 @@ class SoilLabAnalysisService:
             sampled_on=sampled_on,
             storage_key=key,
             original_filename=filename,
-            content_type="application/pdf",
+            content_type=stored_type,
             size_bytes=len(content),
             created_by_id=created_by_id,
         )
@@ -126,6 +157,86 @@ class SoilLabAnalysisService:
 
     def file_bytes(self, analysis: SoilLabAnalysis) -> tuple[bytes, str]:
         return self.storage.get(analysis.storage_key), analysis.content_type
+
+    def format_context_block(
+        self,
+        parcel_id: UUID,
+        owner_id: UUID,
+        *,
+        include_text: bool = False,
+        limit: int = 3,
+    ) -> str | None:
+        payload = self.context_payload(parcel_id, owner_id, limit=limit, include_text=include_text)
+        analyses = payload.get("analyses") or []
+        if not analyses:
+            return None
+        lines = [
+            "LABORATORIJSKE ANALIZE ZEMLJIŠTA (otpremljene u AgroTwin, nisu chat attachment):",
+        ]
+        for item in analyses:
+            lines.append(
+                f"- {item.get('sampled_on')} · {item.get('original_filename')} · "
+                f"sadnica {item.get('tree_public_id') or item.get('tree_id')}"
+            )
+            text = (item.get("extracted_text") or "").strip()
+            if text:
+                lines.append("IZVOD IZ ANALIZE:")
+                lines.append(text)
+        if not include_text:
+            lines.append(
+                "Za puni sadržaj PDF-a pozovi get_soil_lab_analyses(include_text=true)."
+            )
+        return "\n".join(lines)
+
+    def context_payload(
+        self,
+        parcel_id: UUID,
+        owner_id: UUID,
+        *,
+        limit: int = 3,
+        include_text: bool = True,
+    ) -> dict:
+        self._parcel(parcel_id, owner_id)
+        rows = self.analyses.list_for_parcel(parcel_id)[: max(1, min(int(limit or 3), 5))]
+        analyses: list[dict] = []
+        for analysis in rows:
+            tree_row = self.trees.get_for_parcel(analysis.parcel_id, analysis.tree_id)
+            tree = tree_row[0] if tree_row else None
+            item = {
+                "id": str(analysis.id),
+                "sampled_on": str(analysis.sampled_on),
+                "original_filename": analysis.original_filename,
+                "content_type": analysis.content_type,
+                "size_bytes": analysis.size_bytes,
+                "tree_id": str(analysis.tree_id),
+                "tree_public_id": tree.public_id if tree else None,
+            }
+            if include_text:
+                item["extracted_text"] = self.extract_text(analysis, max_chars=7000, max_pages=6)
+            analyses.append(item)
+        return {"parcel_id": str(parcel_id), "count": len(analyses), "analyses": analyses}
+
+    def extract_text(
+        self,
+        analysis: SoilLabAnalysis,
+        *,
+        max_chars: int = 7000,
+        max_pages: int = 6,
+    ) -> str:
+        try:
+            content = self.storage.get(analysis.storage_key)
+        except Exception:
+            return ""
+        if not content:
+            return ""
+        content_type = (analysis.content_type or "").lower()
+        if content_type.startswith("image/"):
+            return _extract_image_text(content, max_chars=max_chars)
+        text = _extract_pdf_text(content, max_pages=max_pages, max_chars=max_chars)
+        if text.strip():
+            return text
+        # Scanned PDFs often have no text layer — OCR first pages when available.
+        return _extract_pdf_ocr_text(content, max_pages=min(max_pages, 4), max_chars=max_chars)
 
     def to_read(self, analysis: SoilLabAnalysis) -> SoilLabAnalysisRead:
         tree_row = self.trees.get_for_parcel(analysis.parcel_id, analysis.tree_id)
@@ -200,7 +311,79 @@ class SoilLabAnalysisService:
         return activity
 
 
-def _is_pdf(filename: str, content_type: str) -> bool:
-    if (content_type or "").lower() in PDF_TYPES:
-        return True
-    return Path(filename).suffix.lower() == ".pdf"
+def _extension(filename: str, content_type: str) -> str:
+    mapped = ALLOWED_TYPES.get((content_type or "").lower())
+    if mapped:
+        return mapped
+    suffix = Path(filename).suffix.lower().lstrip(".")
+    if suffix in {"pdf", "jpg", "jpeg", "png", "webp"}:
+        return "jpg" if suffix == "jpeg" else suffix
+    raise AppError(
+        "Prihvataju se PDF, JPG, PNG ili WEBP datoteke",
+        status_code=422,
+        code="invalid_file",
+    )
+
+
+def _extract_pdf_text(content: bytes, *, max_pages: int, max_chars: int) -> str:
+    try:
+        from app.knowledge.pdf import extract_pdf_pages
+
+        pages = extract_pdf_pages(content)[:max_pages]
+    except Exception:
+        return ""
+    chunks = [text.strip() for _, text in pages if (text or "").strip()]
+    joined = "\n\n".join(chunks).strip()
+    if len(joined) > max_chars:
+        return joined[:max_chars] + "…"
+    return joined
+
+
+def _extract_pdf_ocr_text(content: bytes, *, max_pages: int, max_chars: int) -> str:
+    """OCR only the first pages of a scanned PDF (avoids full-document parse)."""
+    try:
+        import fitz
+        from app.knowledge.ocr import ocr_png
+    except Exception:
+        return ""
+    try:
+        document = fitz.open(stream=content, filetype="pdf")
+    except Exception:
+        return ""
+    chunks: list[str] = []
+    try:
+        scale = 120 / 72
+        matrix = fitz.Matrix(scale, scale)
+        for index, page in enumerate(document):
+            if index >= max_pages:
+                break
+            try:
+                pixmap = page.get_pixmap(matrix=matrix, alpha=False)
+                text = (ocr_png(pixmap.tobytes("png")) or "").strip()
+            except Exception:
+                continue
+            if text:
+                chunks.append(text)
+    finally:
+        document.close()
+    joined = "\n\n".join(chunks).strip()
+    if len(joined) > max_chars:
+        return joined[:max_chars] + "…"
+    return joined
+
+
+def _extract_image_text(content: bytes, *, max_chars: int) -> str:
+    try:
+        from app.knowledge.ocr import ocr_png
+        from PIL import Image
+        from io import BytesIO
+
+        with Image.open(BytesIO(content)) as image:
+            buffer = BytesIO()
+            image.convert("RGB").save(buffer, format="PNG")
+            text = (ocr_png(buffer.getvalue()) or "").strip()
+    except Exception:
+        return ""
+    if len(text) > max_chars:
+        return text[:max_chars] + "…"
+    return text

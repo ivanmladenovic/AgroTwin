@@ -100,6 +100,31 @@ class SoilLabAnalysisApiTests(TestCase):
         )
         self.assertEqual(response.status_code, 422, response.text)
 
+    def test_upload_image_is_accepted_and_compressed(self) -> None:
+        from io import BytesIO
+        import os
+        from PIL import Image
+
+        image = Image.frombytes("RGB", (2000, 1500), os.urandom(2000 * 1500 * 3))
+        buffer = BytesIO()
+        image.save(buffer, format="JPEG", quality=95)
+        original = buffer.getvalue()
+        activity = self._create_activity()
+        response = self.client.post(
+            f"/api/v1/activities/{activity['id']}/soil-analyses",
+            headers=self.headers,
+            data={"tree_id": self.trees[0]["id"], "sampled_on": date.today().isoformat()},
+            files={"file": ("uzorak.jpg", original, "image/jpeg")},
+        )
+        self.assertEqual(response.status_code, 201, response.text)
+        payload = response.json()
+        self.assertEqual(payload["content_type"], "image/jpeg")
+        self.assertTrue(payload["original_filename"].endswith(".jpg"))
+        self.assertLess(payload["size_bytes"], len(original))
+        downloaded = self.client.get(f"/api/v1/soil-analyses/{payload['id']}/file", headers=self.headers)
+        self.assertEqual(downloaded.status_code, 200, downloaded.text)
+        self.assertTrue(downloaded.content.startswith(b"\xff\xd8"))
+
     def test_parcel_soil_analyses_list_and_upload(self) -> None:
         listed = self.client.get(f"/api/v1/parcels/{self.parcel['id']}/soil-analyses", headers=self.headers)
         self.assertEqual(listed.status_code, 200, listed.text)

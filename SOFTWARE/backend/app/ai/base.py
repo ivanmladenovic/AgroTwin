@@ -24,6 +24,9 @@ class ToolCall:
     id: str
     name: str
     arguments: dict[str, Any]
+    # Gemini 3+ OpenAI-compat: must echo extra_content.google.thought_signature
+    # on the next request after a function call, or the API returns HTTP 400.
+    extra_content: dict[str, Any] | None = None
 
 
 @dataclass

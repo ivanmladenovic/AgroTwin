@@ -124,7 +124,7 @@ function AnalysisRow({ analysis, parcelId }: { analysis: SoilLabAnalysis; parcel
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" variant="outline" disabled={opening} onClick={() => void handleOpen()}>
           <Eye className="h-4 w-4" />
-          {opening ? 'Otvaranje…' : 'Otvori PDF'}
+          {opening ? 'Otvaranje…' : 'Otvori'}
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => void downloadSoilAnalysis(analysis)}>
           <Download className="h-4 w-4" />
@@ -166,7 +166,7 @@ function AddSoilAnalysisForm({
 
   const mutation = useMutation({
     mutationFn: () => {
-      if (!file || !treeId || !sampledOn) throw new Error('Unesite PDF, datum i sadnicu')
+      if (!file || !treeId || !sampledOn) throw new Error('Unesite PDF/fotografiju, datum i sadnicu')
       return uploadParcelSoilAnalysis(parcelId, { file, tree_id: treeId, sampled_on: sampledOn })
     },
     onSuccess: async () => {
@@ -181,7 +181,7 @@ function AddSoilAnalysisForm({
     event.preventDefault()
     setError(null)
     if (!file) {
-      setError('Izaberite PDF analize')
+      setError('Izaberite PDF ili fotografiju analize')
       return
     }
     if (!sampledOn) {
@@ -201,7 +201,8 @@ function AddSoilAnalysisForm({
         <div>
           <CardTitle>Nova analiza</CardTitle>
           <p className="mt-1 text-sm text-muted-foreground">
-            Otpremite PDF i označite najbližu sadnicu gde je uzet uzorak zemljišta.
+            Otpremite PDF ili fotografiju i označite najbližu sadnicu gde je uzet uzorak zemljišta.
+            Veliki skenovi se kompresuju automatski (do 400 MB ulaz).
           </p>
         </div>
         <Button type="button" variant="ghost" size="sm" onClick={onClose}>
@@ -212,13 +213,13 @@ function AddSoilAnalysisForm({
         <form className="space-y-4" onSubmit={onSubmit}>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>PDF analize</Label>
+              <Label>PDF ili fotografija</Label>
               <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-3 py-2 text-sm">
                 <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="truncate">{file ? file.name : 'Izaberite PDF'}</span>
+                <span className="truncate">{file ? file.name : 'Izaberite datoteku'}</span>
                 <input
                   type="file"
-                  accept="application/pdf,.pdf"
+                  accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
                   className="hidden"
                   onChange={(event) => {
                     setFile(event.target.files?.[0] ?? null)
@@ -233,7 +234,7 @@ function AddSoilAnalysisForm({
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label>Red</Label>
               <Select
@@ -253,31 +254,34 @@ function AddSoilAnalysisForm({
             </div>
             <div className="space-y-1.5">
               <Label>Najbliža sadnica</Label>
-              <Select
-                value={treeId}
-                onChange={(event) => {
-                  const tree = trees.find((item) => item.id === event.target.value)
-                  setTreeId(event.target.value)
-                  if (tree?.row_id) setRowId(tree.row_id)
-                }}
-              >
-                <option value="">{rowId ? 'Izaberite sadnicu' : 'Prvo izaberite red'}</option>
-                {rowTrees.map((tree) => (
-                  <option key={tree.id} value={tree.id}>
-                    {tree.public_id}
-                  </option>
-                ))}
-              </Select>
+              <div className="flex items-center gap-2">
+                <Select
+                  className="min-w-0 flex-1"
+                  value={treeId}
+                  onChange={(event) => {
+                    const tree = trees.find((item) => item.id === event.target.value)
+                    setTreeId(event.target.value)
+                    if (tree?.row_id) setRowId(tree.row_id)
+                  }}
+                >
+                  <option value="">{rowId ? 'Izaberite sadnicu' : 'Prvo izaberite red'}</option>
+                  {rowTrees.map((tree) => (
+                    <option key={tree.id} value={tree.id}>
+                      {tree.public_id}
+                    </option>
+                  ))}
+                </Select>
+                <Button type="button" variant="outline" className="shrink-0" onClick={() => setPickerOpen(true)}>
+                  <MapPinned className="h-4 w-4" />
+                  Mapa
+                </Button>
+              </div>
               {selectedTree ? (
                 <p className="text-[11px] text-muted-foreground">
                   {rowLabel(selectedTree.row_number)} · {selectedTree.public_id}
                 </p>
               ) : null}
             </div>
-            <Button type="button" variant="outline" onClick={() => setPickerOpen(true)}>
-              <MapPinned className="h-4 w-4" />
-              Mapa
-            </Button>
           </div>
 
           {error ? <p className="text-sm text-danger">{error}</p> : null}

@@ -31,7 +31,7 @@ export function emptySoilSample(sampledOn: string): SoilSampleDraft {
 export function soilSamplesError(samples: SoilSampleDraft[]) {
   if (samples.length === 0) return 'Dodajte bar jedan uzorak'
   if (samples.some((sample) => !sample.file || !sample.sampled_on || !sample.tree_id)) {
-    return 'Svaki uzorak treba PDF, datum i najbližu sadnicu'
+    return 'Svaki uzorak treba PDF/fotografiju, datum i najbližu sadnicu'
   }
   return null
 }
@@ -70,7 +70,8 @@ export function SoilAnalysisSamples({
         <div>
           <Label>Uzorci analize</Label>
           <p className="mt-1 text-xs text-muted-foreground">
-            Za svaki uzorak dodajte PDF, datum uzorkovanja i najbližu sadnicu.
+            Za svaki uzorak dodajte PDF ili fotografiju, datum uzorkovanja i najbližu sadnicu.
+            Veliki PDF (npr. sken) se automatski kompresuje pri otpremi.
           </p>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={() => onChange([...samples, emptySoilSample(samples[0]?.sampled_on || '')])}>
@@ -99,13 +100,13 @@ export function SoilAnalysisSamples({
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <p className="text-[11px] font-medium text-muted-foreground">PDF analize</p>
+                <p className="text-[11px] font-medium text-muted-foreground">PDF ili fotografija</p>
                 <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-3 py-2 text-sm">
                   <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="truncate">{sample.file ? sample.file.name : 'Izaberite PDF'}</span>
+                  <span className="truncate">{sample.file ? sample.file.name : 'Izaberite datoteku'}</span>
                   <input
                     type="file"
-                    accept="application/pdf,.pdf"
+                    accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
                     className="hidden"
                     onChange={(event) => {
                       update(sample.key, { file: event.target.files?.[0] ?? null })
@@ -119,7 +120,7 @@ export function SoilAnalysisSamples({
                 <Input type="date" value={sample.sampled_on} onChange={(event) => update(sample.key, { sampled_on: event.target.value })} />
               </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <p className="text-[11px] font-medium text-muted-foreground">Red</p>
                 <Select
@@ -136,30 +137,39 @@ export function SoilAnalysisSamples({
               </div>
               <div className="space-y-1.5">
                 <p className="text-[11px] font-medium text-muted-foreground">Najbliža sadnica</p>
-                <Select
-                  value={sample.tree_id}
-                  onChange={(event) => {
-                    const tree = trees.find((item) => item.id === event.target.value)
-                    update(sample.key, { tree_id: event.target.value, row_id: tree?.row_id || sample.row_id })
-                  }}
-                >
-                  <option value="">{sample.row_id ? 'Izaberite sadnicu' : 'Prvo izaberite red'}</option>
-                  {rowTrees.map((tree) => (
-                    <option key={tree.id} value={tree.id}>
-                      {tree.public_id}
-                    </option>
-                  ))}
-                </Select>
+                <div className="flex items-center gap-2">
+                  <Select
+                    className="min-w-0 flex-1"
+                    value={sample.tree_id}
+                    onChange={(event) => {
+                      const tree = trees.find((item) => item.id === event.target.value)
+                      update(sample.key, { tree_id: event.target.value, row_id: tree?.row_id || sample.row_id })
+                    }}
+                  >
+                    <option value="">{sample.row_id ? 'Izaberite sadnicu' : 'Prvo izaberite red'}</option>
+                    {rowTrees.map((tree) => (
+                      <option key={tree.id} value={tree.id}>
+                        {tree.public_id}
+                      </option>
+                    ))}
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="shrink-0"
+                    disabled={!parcelId}
+                    onClick={() => setPickingKey(sample.key)}
+                  >
+                    <MapPinned className="h-4 w-4" />
+                    Mapa
+                  </Button>
+                </div>
                 {selectedTree ? (
                   <p className="text-[11px] text-muted-foreground">
                     {rowLabel(selectedTree.row_number)} · {selectedTree.public_id}
                   </p>
                 ) : null}
               </div>
-              <Button type="button" variant="outline" disabled={!parcelId} onClick={() => setPickingKey(sample.key)}>
-                <MapPinned className="h-4 w-4" />
-                Mapa
-              </Button>
             </div>
           </div>
         )

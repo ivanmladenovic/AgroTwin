@@ -621,7 +621,12 @@ export type ChatMessageRecord = {
   role: 'user' | 'assistant' | 'system'
   content: string
   sources: KnowledgeSource[] | null
-  structured_refs: Array<{ kind: string; id?: string; label: string }> | null
+  structured_refs: Array<{
+    kind: string
+    id?: string
+    label: string
+    extra?: Record<string, unknown> | null
+  }> | null
   provider: string | null
   model: string | null
 }
