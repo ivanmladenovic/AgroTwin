@@ -111,11 +111,17 @@ export async function openSoilAnalysis(analysis: SoilLabAnalysis) {
       popup.location.replace(url)
       return true
     }
+    // Popup blocked — fall back to download without leaving a dangling blank tab.
+    popup?.close()
     return false
   } catch (error) {
     popup?.close()
     throw error
   }
+}
+
+export function deleteSoilAnalysis(analysisId: string) {
+  return apiRequest<void>(`/soil-analyses/${analysisId}`, { method: 'DELETE' })
 }
 
 export function listSubsidies(parcelId?: string) {

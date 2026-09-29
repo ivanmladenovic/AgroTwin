@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, Eye, FileText, MapPinned, Plus } from 'lucide-react'
+import { Download, Eye, FileText, MapPinned, Plus, Trash2 } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
 
 import { todayKey } from '@/features/journal/calendar'
 import {
+  deleteSoilAnalysis,
   downloadSoilAnalysis,
   listParcelSoilAnalyses,
   openSoilAnalysis,
@@ -93,17 +94,53 @@ export function ParcelSoilAnalysesPage() {
 }
 
 function AnalysisRow({ analysis, parcelId }: { analysis: SoilLabAnalysis; parcelId: string }) {
+  const queryClient = useQueryClient()
   const [opening, setOpening] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
   const treeHref = `/orchard/${parcelId}?tree=${analysis.tree_id}`
 
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteSoilAnalysis(analysis.id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['parcel-soil-analyses', parcelId] })
+      await queryClient.invalidateQueries({ queryKey: ['activities'] })
+    },
+  })
+
   async function handleOpen() {
+    setActionError(null)
     setOpening(true)
     try {
       const opened = await openSoilAnalysis(analysis)
       if (!opened) await downloadSoilAnalysis(analysis)
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Otvaranje fajla nije uspelo')
     } finally {
       setOpening(false)
     }
+  }
+
+  async function handleDownload() {
+    setActionError(null)
+    setDownloading(true)
+    try {
+      await downloadSoilAnalysis(analysis)
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Preuzimanje nije uspelo')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  function handleDelete() {
+    if (!window.confirm(`Obrisati analizu „${analysis.original_filename}”?`)) return
+    setActionError(null)
+    deleteMutation.mutate(undefined, {
+      onError: (err) => {
+        setActionError(err instanceof Error ? err.message : 'Brisanje nije uspelo')
+      },
+    })
   }
 
   return (
@@ -120,15 +157,33 @@ function AnalysisRow({ analysis, parcelId }: { analysis: SoilLabAnalysis; parcel
             Prikaži sadnicu na mapi
           </Link>
         ) : null}
+        {actionError ? <p className="mt-2 text-xs text-danger">{actionError}</p> : null}
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button type="button" size="sm" variant="outline" disabled={opening} onClick={() => void handleOpen()}>
+        <Button type="button" size="sm" variant="outline" disabled={opening || deleteMutation.isPending} onClick={() => void handleOpen()}>
           <Eye className="h-4 w-4" />
           {opening ? 'Otvaranje…' : 'Otvori'}
         </Button>
-        <Button type="button" size="sm" variant="outline" onClick={() => void downloadSoilAnalysis(analysis)}>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={downloading || deleteMutation.isPending}
+          onClick={() => void handleDownload()}
+        >
           <Download className="h-4 w-4" />
-          Preuzmi
+          {downloading ? 'Preuzimanje…' : 'Preuzmi'}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={deleteMutation.isPending}
+          onClick={handleDelete}
+          aria-label="Obriši analizu"
+        >
+          <Trash2 className="h-4 w-4" />
+          {deleteMutation.isPending ? 'Brisanje…' : 'Obriši'}
         </Button>
       </div>
     </div>

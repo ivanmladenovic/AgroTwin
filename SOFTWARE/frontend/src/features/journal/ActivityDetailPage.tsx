@@ -4,10 +4,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { useParams, useSearchParams } from 'react-router-dom'
 
-import { addActivityCost, downloadSoilAnalysis, getActivity, listCostCategories, updateActivity } from '@/features/journal/api'
+import { addActivityCost, deleteSoilAnalysis, downloadSoilAnalysis, getActivity, listCostCategories, openSoilAnalysis, updateActivity } from '@/features/journal/api'
 import { activityCalendarKind, activityStatusLabel } from '@/features/journal/labels'
 import { todayKey } from '@/features/journal/calendar'
 import { costFormSchema, type CostFormValues } from '@/features/journal/schemas'
+import type { SoilLabAnalysis } from '@/shared/api/types'
 import { activityTarget, formatDate, formatLineItem, formatMoney, formatWorkQuantities, rowLabel, scopeLabel } from '@/shared/lib/format'
 import { BackButton } from '@/shared/ui/back-button'
 import { Button } from '@/shared/ui/button'
@@ -233,19 +234,11 @@ export function ActivityDetailPage() {
           </CardHeader>
           <CardContent className="space-y-2">
             {activity.soil_analyses.map((analysis) => (
-              <div key={analysis.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{analysis.original_filename}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(analysis.sampled_on)}
-                    {analysis.row_number != null ? ` · ${rowLabel(analysis.row_number)}` : ''}
-                    {analysis.tree_public_id ? ` · ${analysis.tree_public_id}` : ''}
-                  </p>
-                </div>
-                <Button type="button" variant="outline" size="sm" onClick={() => void downloadSoilAnalysis(analysis)}>
-                  Preuzmi
-                </Button>
-              </div>
+              <ActivitySoilAnalysisRow
+                key={analysis.id}
+                analysis={analysis}
+                activityId={activity.id}
+              />
             ))}
           </CardContent>
         </Card>
@@ -275,6 +268,83 @@ export function ActivityDetailPage() {
           </CardContent>
         </Card>
       ) : null}
+    </div>
+  )
+}
+
+function ActivitySoilAnalysisRow({ analysis, activityId }: { analysis: SoilLabAnalysis; activityId: string }) {
+  const queryClient = useQueryClient()
+  const [busy, setBusy] = useState<'open' | 'download' | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteSoilAnalysis(analysis.id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['activity', activityId] })
+      await queryClient.invalidateQueries({ queryKey: ['parcel-soil-analyses', analysis.parcel_id] })
+      await queryClient.invalidateQueries({ queryKey: ['activities'] })
+    },
+  })
+
+  async function handleOpen() {
+    setError(null)
+    setBusy('open')
+    try {
+      const opened = await openSoilAnalysis(analysis)
+      if (!opened) await downloadSoilAnalysis(analysis)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Otvaranje fajla nije uspelo')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function handleDownload() {
+    setError(null)
+    setBusy('download')
+    try {
+      await downloadSoilAnalysis(analysis)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Preuzimanje nije uspelo')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium">{analysis.original_filename}</p>
+        <p className="text-xs text-muted-foreground">
+          {formatDate(analysis.sampled_on)}
+          {analysis.row_number != null ? ` · ${rowLabel(analysis.row_number)}` : ''}
+          {analysis.tree_public_id ? ` · ${analysis.tree_public_id}` : ''}
+        </p>
+        {error ? <p className="mt-1 text-xs text-danger">{error}</p> : null}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" size="sm" disabled={busy !== null || deleteMutation.isPending} onClick={() => void handleOpen()}>
+          {busy === 'open' ? 'Otvaranje…' : 'Otvori'}
+        </Button>
+        <Button type="button" variant="outline" size="sm" disabled={busy !== null || deleteMutation.isPending} onClick={() => void handleDownload()}>
+          {busy === 'download' ? 'Preuzimanje…' : 'Preuzmi'}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={deleteMutation.isPending}
+          onClick={() => {
+            if (!window.confirm(`Obrisati analizu „${analysis.original_filename}”?`)) return
+            setError(null)
+            deleteMutation.mutate(undefined, {
+              onError: (err) => setError(err instanceof Error ? err.message : 'Brisanje nije uspelo'),
+            })
+          }}
+        >
+          {deleteMutation.isPending ? 'Brisanje…' : 'Obriši'}
+        </Button>
+      </div>
     </div>
   )
 }

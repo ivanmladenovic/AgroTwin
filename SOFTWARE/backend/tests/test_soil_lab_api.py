@@ -143,3 +143,17 @@ class SoilLabAnalysisApiTests(TestCase):
         after = self.client.get(f"/api/v1/parcels/{self.parcel['id']}/soil-analyses", headers=self.headers)
         self.assertEqual(after.status_code, 200, after.text)
         self.assertEqual(len(after.json()), before + 1)
+
+    def test_delete_soil_analysis_and_missing_file(self) -> None:
+        activity = self._create_activity()
+        uploaded = self._upload(activity["id"], self.trees[0]["id"], "za-brisanje.pdf")
+        analysis_id = uploaded["id"]
+        ok = self.client.get(f"/api/v1/soil-analyses/{analysis_id}/file", headers=self.headers)
+        self.assertEqual(ok.status_code, 200, ok.text)
+        deleted = self.client.delete(f"/api/v1/soil-analyses/{analysis_id}", headers=self.headers)
+        self.assertEqual(deleted.status_code, 204, deleted.text)
+        missing = self.client.get(f"/api/v1/soil-analyses/{analysis_id}/file", headers=self.headers)
+        self.assertEqual(missing.status_code, 404, missing.text)
+        listed = self.client.get(f"/api/v1/activities/{activity['id']}/soil-analyses", headers=self.headers)
+        self.assertEqual(listed.status_code, 200, listed.text)
+        self.assertFalse(any(item["id"] == analysis_id for item in listed.json()))

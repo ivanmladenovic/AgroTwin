@@ -34,3 +34,6 @@ class SoilLabAnalysisRepository:
     def add(self, analysis: SoilLabAnalysis) -> SoilLabAnalysis:
         self.db.add(analysis)
         return analysis
+
+    def delete(self, analysis: SoilLabAnalysis) -> None:
+        self.db.delete(analysis)

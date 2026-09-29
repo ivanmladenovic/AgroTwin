@@ -80,5 +80,10 @@ def get_soil_analysis_file(analysis_id: UUID, current_user: CurrentUser, db: DBS
     return Response(
         content=content,
         media_type=content_type,
-        headers={"Content-Disposition": f'attachment; filename="{analysis.original_filename}"'},
+        headers={"Content-Disposition": f'inline; filename="{analysis.original_filename}"'},
     )
+
+
+@router.delete("/soil-analyses/{analysis_id}", status_code=204)
+def delete_soil_analysis(analysis_id: UUID, current_user: CurrentUser, db: DBSession) -> None:
+    SoilLabAnalysisService(db).delete(analysis_id, current_user.id)

@@ -152,11 +152,38 @@ class SoilLabAnalysisService:
         self.db.refresh(analysis)
         return analysis
 
+    def delete(self, analysis_id: UUID, owner_id: UUID) -> None:
+        analysis = self.get_analysis(analysis_id, owner_id)
+        key = analysis.storage_key
+        self.analyses.delete(analysis)
+        self.db.commit()
+        try:
+            self.storage.delete(key)
+        except Exception:
+            # DB row is already gone; missing disk object is fine (ephemeral Render storage).
+            pass
+
     def file_local_path(self, analysis: SoilLabAnalysis) -> Path | None:
         return self.storage.local_path(analysis.storage_key)
 
     def file_bytes(self, analysis: SoilLabAnalysis) -> tuple[bytes, str]:
-        return self.storage.get(analysis.storage_key), analysis.content_type
+        try:
+            content = self.storage.get(analysis.storage_key)
+        except FileNotFoundError as exc:
+            raise NotFoundError(
+                "Fajl analize nije pronađen na serveru. Obrišite ovaj zapis i ponovo otpremite PDF."
+            ) from exc
+        except Exception as exc:
+            raise AppError(
+                "Fajl analize trenutno nije dostupan. Obrišite zapis i ponovo otpremite PDF.",
+                status_code=404,
+                code="soil_file_unavailable",
+            ) from exc
+        if not content:
+            raise NotFoundError(
+                "Fajl analize nije pronađen na serveru. Obrišite ovaj zapis i ponovo otpremite PDF."
+            )
+        return content, analysis.content_type
 
     def format_context_block(
         self,
