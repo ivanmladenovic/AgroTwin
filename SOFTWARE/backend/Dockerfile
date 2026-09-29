@@ -8,6 +8,10 @@ ENV PYTHONUNBUFFERED=1
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev gcc \
     libglib2.0-0 libsm6 libxext6 libxrender1 \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    tesseract-ocr-hrv \
+    tesseract-ocr-srp \
     && rm -rf /var/lib/apt/lists/*
 
 # IMPORTANT: dockerContext must be SOFTWARE/backend (Render Settings + render.yaml).

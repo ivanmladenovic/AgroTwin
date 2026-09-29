@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import date
 from pathlib import Path
 from uuid import UUID, uuid4
@@ -19,6 +20,8 @@ from app.schemas.soil_lab import SoilLabAnalysisRead
 from app.storage import get_storage
 from app.storage.documents import compress_pdf
 from app.storage.images import compress_photo
+
+logger = logging.getLogger(__name__)
 
 MAX_FILE_BYTES = 400 * 1024 * 1024  # allow large phone/scanner dumps
 MAX_STORED_BYTES = 40 * 1024 * 1024  # after compression
@@ -377,8 +380,11 @@ def _extract_pdf_ocr_text(content: bytes, *, max_pages: int, max_chars: int) -> 
     """OCR only the first pages of a scanned PDF (avoids full-document parse)."""
     try:
         import fitz
-        from app.knowledge.ocr import ocr_png
+        from app.knowledge.ocr import ocr_png, tesseract_available
     except Exception:
+        return ""
+    if not tesseract_available():
+        logger.warning("Soil-lab PDF has no text layer and Tesseract is not installed")
         return ""
     try:
         document = fitz.open(stream=content, filetype="pdf")

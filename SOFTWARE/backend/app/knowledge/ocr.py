@@ -50,6 +50,9 @@ def choose_ocr_lang() -> str:
         _OCR_LANG = "srp_latn+eng"
     elif "srp_latn" in langs:
         _OCR_LANG = "srp_latn"
+    elif "hrv" in langs and "eng" in langs:
+        # Closest Latin-script option on Debian slim images (srp_latn often absent).
+        _OCR_LANG = "hrv+eng"
     elif "srp" in langs and "eng" in langs:
         _OCR_LANG = "srp+eng"
     elif "eng" in langs:
