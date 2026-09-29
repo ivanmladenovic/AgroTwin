@@ -371,7 +371,25 @@ class AgronomistService:
                 result = self.provider.chat(history, tools=next_tools)
             result_content = (result.content or "").strip()
             result_model = result.model
-        answer = result_content or "I could not form an answer from the current records and manuals."
+            # Gemini sometimes ends a tool round with empty text — nudge one final answer.
+            if not result_content:
+                history.append(
+                    ChatMessage(
+                        role="system",
+                        content=(
+                            "Sada OBAVEZNO napišite konačan odgovor korisniku na srpskom, latinicom. "
+                            "Koristite FARM BRIEF i rezultate alata koje već imate. "
+                            "Ne zovite nove alate i ne ostavljajte prazan odgovor."
+                        ),
+                    )
+                )
+                retry = self.provider.chat(history, tools=None)
+                result_content = (retry.content or "").strip()
+                result_model = retry.model or result_model
+        answer = result_content or (
+            "Trenutno nisam uspeo da sastavim odgovor iz dostupnih zapisa i priručnika. "
+            "Probajte ponovo za trenutak, ili precizirajte pitanje (npr. parcela i šta tačno želite da ocenim)."
+        )
         assistant = AIMessage(
             conversation_id=conversation.id,
             role=AIMessageRole.ASSISTANT.value,

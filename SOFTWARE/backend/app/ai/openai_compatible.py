@@ -152,8 +152,14 @@ class OpenAICompatibleProvider:
                     extra_content=extra if isinstance(extra, dict) else None,
                 )
             )
+        content = _message_text(choice.get("content"))
+        if not content and not tool_calls:
+            # Some Gemini responses put text only in refusal / nested parts.
+            content = _message_text(choice.get("refusal")) or _message_text(
+                (data.get("choices") or [{}])[0].get("text")
+            )
         return ChatResult(
-            content=choice.get("content") or "",
+            content=content,
             tool_calls=tool_calls,
             model=data.get("model") or used_model,
             raw=data,
@@ -226,6 +232,26 @@ class OpenAICompatibleProvider:
                 code="ai_unavailable",
             )
         return response.json()
+
+
+def _message_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, list):
+        parts: list[str] = []
+        for item in value:
+            if isinstance(item, str) and item.strip():
+                parts.append(item.strip())
+            elif isinstance(item, dict):
+                text = item.get("text")
+                if isinstance(text, str) and text.strip():
+                    parts.append(text.strip())
+                elif isinstance(item.get("content"), str) and item["content"].strip():
+                    parts.append(item["content"].strip())
+        return "\n".join(parts).strip()
+    return str(value).strip()
 
 
 def _chat_model_candidates(primary: str, base_url: str) -> list[str]:
