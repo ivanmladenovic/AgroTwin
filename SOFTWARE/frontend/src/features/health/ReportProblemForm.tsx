@@ -9,7 +9,7 @@ import { createConversation } from '@/features/agronomist/api'
 import { saveReportedProblem } from '@/features/health/cases'
 import { categoryLabel, diseaseCategories, diseaseSeverities, diseaseStatuses, severityLabel } from '@/features/health/labels'
 import { PhotoPicker } from '@/features/health/PhotoPicker'
-import { reportProblemSchema, type ReportProblemValues } from '@/features/health/schemas'
+import { reportProblemSchema, type ReportProblemParsed, type ReportProblemValues } from '@/features/health/schemas'
 import { OrchardPickerDialog } from '@/features/journal/OrchardPickerDialog'
 import { listParcelRows, listParcels, listParcelTrees } from '@/features/orchard/api'
 import { rowLabel } from '@/shared/lib/format'
@@ -35,7 +35,7 @@ export function ReportProblemForm({
   const [photoError, setPhotoError] = useState<string | null>(null)
   const parcelsQuery = useQuery({ queryKey: ['parcels'], queryFn: listParcels })
   const defaultScope = params.get('treeId') ? 'tree' : params.get('rowId') ? 'row' : 'tree'
-  const form = useForm<ReportProblemValues>({
+  const form = useForm<ReportProblemValues, unknown, ReportProblemParsed>({
     resolver: zodResolver(reportProblemSchema),
     defaultValues: {
       title: '',
@@ -96,7 +96,7 @@ export function ReportProblemForm({
   }, [form, params, treesQuery.data])
 
   const mutation = useMutation({
-    mutationFn: async ({ values, sendToAgronomist }: { values: ReportProblemValues; sendToAgronomist: boolean }) => {
+    mutationFn: async ({ values, sendToAgronomist }: { values: ReportProblemParsed; sendToAgronomist: boolean }) => {
       if (sendToAgronomist && files.length === 0) {
         throw new Error('Dodajte bar jednu fotografiju pre slanja agronomu.')
       }
@@ -144,8 +144,8 @@ export function ReportProblemForm({
         mutation.mutate({ values, sendToAgronomist: false })
       })}
     >
-      <Field label="Naslov" error={form.formState.errors.title?.message}>
-        <Input {...form.register('title')} />
+      <Field label="Naslov (opciono)">
+        <Input {...form.register('title')} placeholder="Ako ostane prazno, koristi se opis simptoma" />
       </Field>
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Kategorija">
@@ -264,14 +264,12 @@ export function ReportProblemForm({
           </Field>
         </div>
       </div>
-      <Field label="Opis">
-        <Textarea rows={3} {...form.register('description')} />
-      </Field>
-      <Field label="Početni simptomi">
-        <Textarea rows={3} {...form.register('symptoms')} />
-      </Field>
-      <Field label="Beleške">
-        <Textarea rows={3} {...form.register('notes')} />
+      <Field label="Opišite simptome" error={form.formState.errors.symptoms?.message}>
+        <Textarea
+          rows={4}
+          placeholder="Šta ste primetili na biljci, listu, plodu ili stablu…"
+          {...form.register('symptoms')}
+        />
       </Field>
       <Field label="Fotografije">
         <PhotoPicker
@@ -356,7 +354,7 @@ export function ReportProblemForm({
 }
 
 function formatProblemChatMessage(
-  values: ReportProblemValues,
+  values: ReportProblemParsed,
   options: { parcelName?: string; rowName?: string; treeLabels: string[]; photoCount: number },
 ) {
   const scopeLine =
@@ -372,9 +370,7 @@ function formatProblemChatMessage(
     `Kategorija: ${categoryLabel(values.category)}`,
     `Ozbiljnost: ${severityLabel(values.severity)}`,
     `Datum: ${values.detected_on}`,
-    values.description ? `Opis: ${values.description}` : null,
     values.symptoms ? `Simptomi: ${values.symptoms}` : null,
-    values.notes ? `Beleške: ${values.notes}` : null,
     options.photoCount ? `Priloženo fotografija: ${options.photoCount}.` : 'Nema priloženih fotografija.',
     'Pregledajte opažanje i predložite sledeći korak. Ovo nije zahtev za potvrđenu dijagnozu.',
   ]

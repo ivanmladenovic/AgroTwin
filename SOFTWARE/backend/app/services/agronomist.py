@@ -21,7 +21,8 @@ from app.storage import get_storage
 from app.storage.images import compress_photo
 
 ALLOWED_CHAT_PHOTO_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"}
-MAX_CHAT_PHOTO_BYTES = 8 * 1024 * 1024
+# Client converts HEIC→PNG and downscales first; keep headroom for large phone photos.
+MAX_CHAT_PHOTO_BYTES = 25 * 1024 * 1024
 CHAT_PHOTO_PLACEHOLDER = "Pogledajte priloženu fotografiju."
 
 
@@ -420,7 +421,7 @@ class AgronomistService:
         if mime and mime not in ALLOWED_CHAT_PHOTO_TYPES and mime != "application/octet-stream":
             raise AppError("Prihvataju se samo JPEG, PNG, WebP i GIF slike", status_code=422, code="invalid_photo")
         if len(image) > MAX_CHAT_PHOTO_BYTES:
-            raise AppError("Fotografija je veća od 8 MB", status_code=422, code="photo_too_large")
+            raise AppError("Fotografija je veća od 25 MB", status_code=422, code="photo_too_large")
         compressed = compress_photo(image, filename)
         key = f"chat/{conversation.id}/{uuid4().hex}{compressed.extension}"
         self.storage.put(key, compressed.content, compressed.content_type)

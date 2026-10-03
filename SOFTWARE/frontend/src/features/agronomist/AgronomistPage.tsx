@@ -36,6 +36,10 @@ export function AgronomistPage() {
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const photoInputRef = useRef<HTMLInputElement>(null)
   const sentInitial = useRef<string | null>(null)
+  const sendingRef = useRef(false)
+  const pendingConversationId = useRef<string | null>(null)
+  const conversationIdRef = useRef<string | null>(conversationId || null)
+  conversationIdRef.current = conversationId || null
 
   const reporting = params.get('report') === '1' && !conversationId
   const composing = params.get('new') === '1' && !conversationId && !reporting
@@ -87,7 +91,18 @@ export function AgronomistPage() {
 
   useEffect(() => {
     setListOpen(false)
+    // Don't leak a failed/pending composer draft across conversations.
+    const keepPending = sendingRef.current && pendingConversationId.current === (conversationId || null)
+    if (!keepPending) {
+      setPendingText(null)
+      setPendingPhotoUrl(null)
+      setDraft('')
+      setAttachedPhoto(null)
+      sendMutation.reset()
+    }
     if (!reporting && !showHub) inputRef.current?.focus()
+    // Intentionally omit sendMutation from deps — only reset on conversation/route change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, reporting, showHub])
 
   useEffect(() => {
@@ -103,9 +118,17 @@ export function AgronomistPage() {
   async function onPickPhoto(fileList: FileList | null) {
     const file = fileList?.[0]
     if (!file) return
-    if (!file.type.startsWith('image/') && file.type) return
-    const compressed = await compressPhoto(file)
-    setAttachedPhoto(compressed)
+    const isImage =
+      file.type.startsWith('image/') ||
+      !file.type ||
+      /\.(jpe?g|png|gif|webp|heic|heif)$/i.test(file.name)
+    if (!isImage) return
+    try {
+      const compressed = await compressPhoto(file)
+      setAttachedPhoto(compressed)
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Fotografija nije mogla da se učita.')
+    }
     if (photoInputRef.current) photoInputRef.current.value = ''
   }
 
@@ -116,27 +139,35 @@ export function AgronomistPage() {
   async function ask(content: string, photo?: File | null) {
     const text = content.trim()
     const file = photo ?? attachedPhoto
-    if ((!text && !file) || sendMutation.isPending) return
+    if ((!text && !file) || sendingRef.current || sendMutation.isPending) return
     const preview = file ? URL.createObjectURL(file) : null
+    sendingRef.current = true
     setDraft('')
     setAttachedPhoto(null)
     setPendingText(text || (file ? 'Fotografija' : null))
     setPendingPhotoUrl(preview)
+    let activeId = conversationId || null
+    pendingConversationId.current = activeId
     try {
-      let activeId = conversationId
       if (!activeId) {
         const created = await createConversation((text || 'Fotografija').slice(0, 80))
         activeId = created.id
+        pendingConversationId.current = activeId
         queryClient.setQueryData(['ai-conversation', created.id], created)
         await queryClient.invalidateQueries({ queryKey: ['ai-conversations'] })
         navigate(`/agronomist/${created.id}`, { replace: true })
       }
       await sendMutation.mutateAsync({ id: activeId, content: text, file })
     } catch {
-      setDraft(text)
-      if (file) setAttachedPhoto(file)
+      // Restore draft only if user is still viewing the conversation that failed.
+      if (conversationIdRef.current === activeId) {
+        setDraft(text)
+        if (file) setAttachedPhoto(file)
+      }
     } finally {
       if (preview) URL.revokeObjectURL(preview)
+      sendingRef.current = false
+      pendingConversationId.current = null
       setPendingText(null)
       setPendingPhotoUrl(null)
       inputRef.current?.focus()
@@ -356,7 +387,7 @@ export function AgronomistPage() {
                 <input
                   ref={photoInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.heic,.heif,image/heic,image/heif"
                   className="hidden"
                   onChange={(event) => void onPickPhoto(event.target.files)}
                 />

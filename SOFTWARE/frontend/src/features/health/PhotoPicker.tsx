@@ -19,12 +19,19 @@ export function PhotoPicker({ files, onChange, description }: PhotoPickerProps) 
   filesRef.current = files
 
   async function addFiles(incoming: File[]) {
-    const images = incoming.filter((file) => file.type.startsWith('image/') || !file.type)
+    const images = incoming.filter(
+      (file) =>
+        file.type.startsWith('image/') ||
+        !file.type ||
+        /\.(jpe?g|png|gif|webp|heic|heif)$/i.test(file.name),
+    )
     if (images.length === 0) return
     setCompressing(true)
     try {
       const compressed = await Promise.all(images.map((file) => compressPhoto(file)))
       onChange([...filesRef.current, ...compressed])
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Fotografija nije mogla da se učita.')
     } finally {
       setCompressing(false)
     }
@@ -47,7 +54,7 @@ export function PhotoPicker({ files, onChange, description }: PhotoPickerProps) 
       <p className="text-xs text-muted-foreground">
         {description ?? 'U voćnjaku otvorite kameru i uslikajte simptom, ili izaberite fotografiju iz galerije.'}
         {' '}
-        Fotografije se odmah kompresuju da zauzmu manje prostora.
+        Fotografije se odmah kompresuju da zauzmu manje prostora. HEIC/HEIF se pretvara u PNG.
       </p>
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" onClick={openCamera}>
@@ -62,7 +69,7 @@ export function PhotoPicker({ files, onChange, description }: PhotoPickerProps) 
       <input
         ref={galleryInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif,image/heic,image/heif"
         multiple
         className="hidden"
         onChange={(event) => {
@@ -73,7 +80,7 @@ export function PhotoPicker({ files, onChange, description }: PhotoPickerProps) 
       <input
         ref={cameraInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif,image/heic,image/heif"
         capture="environment"
         className="hidden"
         onChange={(event) => {

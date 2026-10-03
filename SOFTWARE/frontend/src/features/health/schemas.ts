@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const reportProblemSchema = z
   .object({
-    title: z.string().min(1, 'Unesite naslov'),
+    title: z.string().optional(),
     category: z.enum([
       'disease',
       'pest',
@@ -21,7 +21,7 @@ export const reportProblemSchema = z
     tree_id: z.string().optional(),
     tree_ids: z.array(z.string()).optional(),
     description: z.string().optional(),
-    symptoms: z.string().optional(),
+    symptoms: z.string().min(1, 'Opišite simptome'),
     notes: z.string().optional(),
   })
   .superRefine((values, context) => {
@@ -35,5 +35,17 @@ export const reportProblemSchema = z
       context.addIssue({ code: z.ZodIssueCode.custom, message: 'Izaberite bar jednu sadnicu', path: ['tree_ids'] })
     }
   })
+  .transform((values) => {
+    const symptoms = values.symptoms.trim()
+    const title = (values.title || '').trim() || symptoms.slice(0, 80) || 'Prijavljen problem'
+    return {
+      ...values,
+      title,
+      symptoms,
+      description: values.description?.trim() || undefined,
+      notes: values.notes?.trim() || undefined,
+    }
+  })
 
-export type ReportProblemValues = z.infer<typeof reportProblemSchema>
+export type ReportProblemValues = z.input<typeof reportProblemSchema>
+export type ReportProblemParsed = z.output<typeof reportProblemSchema>

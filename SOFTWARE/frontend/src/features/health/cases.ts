@@ -10,7 +10,7 @@ import type {
   ObservationCreatePayload,
   PhotoRecord,
 } from '@/shared/api/types'
-import type { ReportProblemValues } from '@/features/health/schemas'
+import type { ReportProblemParsed } from '@/features/health/schemas'
 
 export function listDiseaseCases(filters: {
   parcel_id?: string
@@ -51,7 +51,7 @@ export function addObservation(caseId: string, payload: ObservationCreatePayload
   })
 }
 
-export async function saveReportedProblem(values: ReportProblemValues, files: File[]) {
+export async function saveReportedProblem(values: ReportProblemParsed, files: File[]) {
   const treeIds =
     values.scope === 'trees'
       ? values.tree_ids ?? []

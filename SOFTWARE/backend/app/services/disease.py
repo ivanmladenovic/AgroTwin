@@ -37,7 +37,7 @@ from app.storage import get_storage
 from app.storage.images import compress_photo
 
 ALLOWED_PHOTO_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"}
-MAX_PHOTO_BYTES = 8 * 1024 * 1024
+MAX_PHOTO_BYTES = 25 * 1024 * 1024
 
 
 class DiseaseService:
@@ -185,7 +185,7 @@ class DiseaseService:
         if content_type not in ALLOWED_PHOTO_TYPES:
             raise AppError("Prihvataju se samo JPEG, PNG, WebP i GIF slike", status_code=422, code="invalid_photo")
         if len(content) > MAX_PHOTO_BYTES:
-            raise AppError("Fotografija je veća od 8 MB", status_code=422, code="photo_too_large")
+            raise AppError("Fotografija je veća od 25 MB", status_code=422, code="photo_too_large")
         farm_id = self._farm_for_entity(owner_id, entity_type, entity_id)
         compressed = compress_photo(content, filename)
         content = compressed.content
