@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     ai_embedding_model: str = "text-embedding-3-small"
     ai_vision_model: str | None = None
     ai_embedding_dim: int = 1536
+    # Cross-provider chat/vision fallback when primary (usually Gemini) is overloaded.
+    ai_openai_base_url: str = "https://api.openai.com/v1"
+    ai_openai_fallback_models: str = "gpt-4.1-mini,gpt-4o"
 
     # Benchmark providers (developer tool). Keys stay on the server only.
     gemini_api_key: str | None = None

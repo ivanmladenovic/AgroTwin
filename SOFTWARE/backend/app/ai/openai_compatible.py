@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import time
+from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
 
@@ -15,49 +16,102 @@ from app.core.exceptions import AppError
 
 logger = logging.getLogger(__name__)
 
-# When Google returns 503 high-demand on a primary Gemini chat model, try these next.
+# Same-provider Gemini retries after the configured primary model.
 _GEMINI_CHAT_FALLBACKS = (
-    "gemini-3.1-flash-lite",
     "gemini-3.5-flash",
     "gemini-3.8-flash",
     "gemini-flash-latest",
 )
 
-# After a capacity fallback succeeds, keep using that model for a while (avoids 503 tax every tool round).
+_DEFAULT_OPENAI_FALLBACKS = ("gpt-4.1-mini", "gpt-4o")
+
+# After a capacity fallback succeeds, keep using that endpoint/model briefly.
 _STICKY_TTL_SEC = 600.0
+_sticky_endpoint: str | None = None
 _sticky_model: str | None = None
 _sticky_until: float = 0.0
 
+# If Gemini capacity fails repeatedly, skip Gemini for a while and go straight to OpenAI.
+_CIRCUIT_FAIL_THRESHOLD = 2
+_CIRCUIT_OPEN_SEC = 900.0
+_gemini_fail_streak = 0
+_gemini_circuit_until = 0.0
 
-def _get_sticky_model() -> str | None:
-    global _sticky_model, _sticky_until
-    if _sticky_model and time.monotonic() < _sticky_until:
-        return _sticky_model
+
+@dataclass(frozen=True)
+class _ChatTarget:
+    base_url: str
+    api_key: str
+    model: str
+    provider_label: str
+
+
+def _get_sticky() -> tuple[str, str] | None:
+    global _sticky_endpoint, _sticky_model, _sticky_until
+    if _sticky_endpoint and _sticky_model and time.monotonic() < _sticky_until:
+        return _sticky_endpoint, _sticky_model
+    _sticky_endpoint = None
     _sticky_model = None
     _sticky_until = 0.0
     return None
 
 
-def _set_sticky_model(model: str) -> None:
-    global _sticky_model, _sticky_until
+def _set_sticky(base_url: str, model: str) -> None:
+    global _sticky_endpoint, _sticky_model, _sticky_until
+    _sticky_endpoint = base_url.rstrip("/")
     _sticky_model = model
     _sticky_until = time.monotonic() + _STICKY_TTL_SEC
-    logger.info("AI chat sticky model set to %s for %.0fs", model, _STICKY_TTL_SEC)
+    logger.info("AI chat sticky set to %s @ %s for %.0fs", model, _sticky_endpoint, _STICKY_TTL_SEC)
 
 
-def _clear_sticky_model() -> None:
-    global _sticky_model, _sticky_until
+def _clear_sticky() -> None:
+    global _sticky_endpoint, _sticky_model, _sticky_until
     if _sticky_model:
-        logger.info("AI chat sticky model cleared (%s)", _sticky_model)
+        logger.info("AI chat sticky cleared (%s)", _sticky_model)
+    _sticky_endpoint = None
     _sticky_model = None
     _sticky_until = 0.0
+
+
+def _gemini_circuit_open() -> bool:
+    return time.monotonic() < _gemini_circuit_until
+
+
+def _record_gemini_success() -> None:
+    global _gemini_fail_streak, _gemini_circuit_until
+    _gemini_fail_streak = 0
+    _gemini_circuit_until = 0.0
+
+
+def _record_gemini_capacity_failure() -> None:
+    global _gemini_fail_streak, _gemini_circuit_until
+    _gemini_fail_streak += 1
+    if _gemini_fail_streak >= _CIRCUIT_FAIL_THRESHOLD:
+        _gemini_circuit_until = time.monotonic() + _CIRCUIT_OPEN_SEC
+        logger.warning(
+            "AI Gemini circuit open for %.0fs after %s capacity failures",
+            _CIRCUIT_OPEN_SEC,
+            _gemini_fail_streak,
+        )
+
+
+def _reset_runtime_state() -> None:
+    """Test helper — clear sticky + circuit breaker."""
+    global _gemini_fail_streak, _gemini_circuit_until
+    _clear_sticky()
+    _gemini_fail_streak = 0
+    _gemini_circuit_until = 0.0
+
+
+def _is_gemini_endpoint(base_url: str) -> bool:
+    return "generativelanguage.googleapis.com" in (base_url or "")
 
 
 class OpenAICompatibleProvider:
     """Chat, embeddings and vision via an OpenAI-compatible HTTP API.
 
-    Configure with AI_API_KEY, AI_BASE_URL and model names. The same class
-    can target OpenAI, Groq, Azure-compatible gateways or a local server.
+    Primary endpoint is usually Gemini. When Gemini is overloaded, the same
+    chat/vision path can fall through to OpenAI models (OPENAI_API_KEY).
     """
 
     name = "openai_compatible"
@@ -76,6 +130,12 @@ class OpenAICompatibleProvider:
         self.vision_model = settings.ai_vision_model or settings.ai_chat_model
         self.embedding_dim = settings.ai_embedding_dim
         self.timeout = 60.0
+        self.openai_api_key = (settings.openai_api_key or "").strip() or None
+        self.openai_base_url = (settings.ai_openai_base_url or "https://api.openai.com/v1").rstrip("/")
+        self.openai_fallback_models = _parse_model_list(
+            settings.ai_openai_fallback_models,
+            default=_DEFAULT_OPENAI_FALLBACKS,
+        )
 
     def chat(
         self,
@@ -86,7 +146,6 @@ class OpenAICompatibleProvider:
         temperature: float = 0.2,
     ) -> ChatResult:
         base_payload: dict[str, Any] = {
-            "messages": [_dump_message(item) for item in messages],
             "temperature": temperature,
         }
         if tools:
@@ -108,32 +167,52 @@ class OpenAICompatibleProvider:
         last_error: AppError | None = None
         data: dict[str, Any] | None = None
         used_model = self.chat_model
-        for model in _chat_model_candidates(self.chat_model, self.base_url):
-            payload = {**base_payload, "model": model}
+        used_label = "primary"
+        for target in self._chat_targets():
+            payload = {
+                **base_payload,
+                "model": target.model,
+                "messages": [
+                    _dump_message(item, include_extra=target.provider_label == "gemini")
+                    for item in messages
+                ],
+            }
             try:
-                data = self._post("/chat/completions", payload)
-                used_model = model
-                if model != self.chat_model:
+                data = self._post(target.base_url, target.api_key, "/chat/completions", payload)
+                used_model = target.model
+                used_label = target.provider_label
+                if target.model != self.chat_model or target.base_url != self.base_url:
                     logger.warning(
-                        "AI chat fell back from %s to %s after provider overload",
-                        self.chat_model,
-                        model,
+                        "AI chat fell back to %s/%s after provider overload",
+                        target.provider_label,
+                        target.model,
                     )
-                    _set_sticky_model(model)
-                elif _get_sticky_model() == model:
-                    # Refresh sticky window while the preferred fallback keeps working.
-                    _set_sticky_model(model)
+                _set_sticky(target.base_url, target.model)
+                if target.provider_label == "gemini":
+                    _record_gemini_success()
                 break
             except AppError as exc:
                 if _is_capacity_error(exc):
-                    logger.warning("AI chat model %s unavailable (%s); trying fallback", model, exc.message[:120])
-                    if _get_sticky_model() == model:
-                        _clear_sticky_model()
+                    logger.warning(
+                        "AI chat target %s/%s unavailable (%s); trying next",
+                        target.provider_label,
+                        target.model,
+                        exc.message[:120],
+                    )
+                    sticky = _get_sticky()
+                    if sticky and sticky[0] == target.base_url.rstrip("/") and sticky[1] == target.model:
+                        _clear_sticky()
+                    if target.provider_label == "gemini":
+                        _record_gemini_capacity_failure()
                     last_error = exc
                     continue
                 raise
         if data is None:
-            raise last_error or AppError("AI provajder nije dostupan", status_code=502, code="ai_unavailable")
+            raise last_error or AppError(
+                "AI servis trenutno nije dostupan. Pokušajte ponovo za minut-dva.",
+                status_code=502,
+                code="ai_unavailable",
+            )
 
         choice = (data.get("choices") or [{}])[0].get("message") or {}
         tool_calls = []
@@ -143,7 +222,7 @@ class OpenAICompatibleProvider:
                 arguments = json.loads(function.get("arguments") or "{}")
             except json.JSONDecodeError:
                 arguments = {}
-            extra = raw.get("extra_content")
+            extra = raw.get("extra_content") if used_label == "gemini" else None
             tool_calls.append(
                 ToolCall(
                     id=raw.get("id") or f"call-{uuid4().hex[:8]}",
@@ -154,7 +233,6 @@ class OpenAICompatibleProvider:
             )
         content = _message_text(choice.get("content"))
         if not content and not tool_calls:
-            # Some Gemini responses put text only in refusal / nested parts.
             content = _message_text(choice.get("refusal")) or _message_text(
                 (data.get("choices") or [{}])[0].get("text")
             )
@@ -193,7 +271,7 @@ class OpenAICompatibleProvider:
         payload: dict[str, Any] = {"model": self.embedding_model, "input": text}
         if self.embedding_dim:
             payload["dimensions"] = self.embedding_dim
-        data = self._post("/embeddings", payload)
+        data = self._post(self.base_url, self.api_key, "/embeddings", payload)
         return _trim_embedding(
             list((data.get("data") or [{}])[0].get("embedding") or []),
             self.embedding_dim,
@@ -205,19 +283,74 @@ class OpenAICompatibleProvider:
         payload: dict[str, Any] = {"model": self.embedding_model, "input": texts}
         if self.embedding_dim:
             payload["dimensions"] = self.embedding_dim
-        data = self._post("/embeddings", payload)
+        data = self._post(self.base_url, self.api_key, "/embeddings", payload)
         rows = sorted(data.get("data") or [], key=lambda item: item.get("index", 0))
         return [
             _trim_embedding(list(item.get("embedding") or []), self.embedding_dim)
             for item in rows
         ]
 
-    def _post(self, path: str, payload: dict[str, Any]) -> dict[str, Any]:
+    def _chat_targets(self) -> list[_ChatTarget]:
+        targets: list[_ChatTarget] = []
+        seen: set[tuple[str, str]] = set()
+
+        def add(base_url: str, api_key: str, model: str, label: str) -> None:
+            key = (base_url.rstrip("/"), model)
+            if not api_key or not model or key in seen:
+                return
+            seen.add(key)
+            targets.append(
+                _ChatTarget(
+                    base_url=base_url.rstrip("/"),
+                    api_key=api_key,
+                    model=model,
+                    provider_label=label,
+                )
+            )
+
+        sticky = _get_sticky()
+        skip_gemini = _gemini_circuit_open() and bool(self.openai_api_key)
+
+        if sticky:
+            sticky_url, sticky_model = sticky
+            sticky_is_gemini = _is_gemini_endpoint(sticky_url)
+            if not (skip_gemini and sticky_is_gemini):
+                key = self.api_key if sticky_is_gemini or sticky_url == self.base_url else (self.openai_api_key or "")
+                if sticky_is_gemini:
+                    key = self.api_key
+                elif sticky_url.rstrip("/") == self.openai_base_url.rstrip("/"):
+                    key = self.openai_api_key or ""
+                else:
+                    key = self.api_key
+                label = "gemini" if sticky_is_gemini else "openai"
+                add(sticky_url, key or "", sticky_model, label)
+
+        if not skip_gemini:
+            add(self.base_url, self.api_key, self.chat_model, "gemini" if _is_gemini_endpoint(self.base_url) else "primary")
+            if _is_gemini_endpoint(self.base_url) or self.chat_model.startswith("gemini"):
+                for model in _GEMINI_CHAT_FALLBACKS:
+                    add(self.base_url, self.api_key, model, "gemini")
+        elif sticky is None:
+            logger.info("AI Gemini circuit open — trying OpenAI fallbacks first")
+
+        if self.openai_api_key:
+            for model in self.openai_fallback_models:
+                add(self.openai_base_url, self.openai_api_key, model, "openai")
+
+        # If circuit skipped Gemini and OpenAI also fails, allow one last Gemini pass.
+        if skip_gemini and self.openai_api_key:
+            add(self.base_url, self.api_key, self.chat_model, "gemini")
+            for model in _GEMINI_CHAT_FALLBACKS:
+                add(self.base_url, self.api_key, model, "gemini")
+
+        return targets
+
+    def _post(self, base_url: str, api_key: str, path: str, payload: dict[str, Any]) -> dict[str, Any]:
         try:
             response = httpx.post(
-                f"{self.base_url}{path}",
+                f"{base_url.rstrip('/')}{path}",
                 headers={
-                    "Authorization": f"Bearer {self.api_key}",
+                    "Authorization": f"Bearer {api_key}",
                     "Content-Type": "application/json",
                 },
                 json=payload,
@@ -232,6 +365,13 @@ class OpenAICompatibleProvider:
                 code="ai_unavailable",
             )
         return response.json()
+
+
+def _parse_model_list(raw: str | None, *, default: tuple[str, ...]) -> tuple[str, ...]:
+    if not raw or not str(raw).strip():
+        return default
+    items = tuple(item.strip() for item in str(raw).split(",") if item.strip())
+    return items or default
 
 
 def _message_text(value: Any) -> str:
@@ -255,13 +395,14 @@ def _message_text(value: Any) -> str:
 
 
 def _chat_model_candidates(primary: str, base_url: str) -> list[str]:
+    """Backward-compatible helper used by unit tests."""
     models: list[str] = []
-    sticky = _get_sticky_model()
+    sticky = _get_sticky()
     if sticky:
-        models.append(sticky)
+        models.append(sticky[1])
     if primary not in models:
         models.append(primary)
-    if "generativelanguage.googleapis.com" in base_url or primary.startswith("gemini"):
+    if _is_gemini_endpoint(base_url) or primary.startswith("gemini"):
         for item in _GEMINI_CHAT_FALLBACKS:
             if item not in models:
                 models.append(item)
@@ -276,10 +417,12 @@ def _is_capacity_error(exc: AppError) -> bool:
         or "high demand" in text
         or "resource_exhausted" in text
         or "429" in text
+        or "rate limit" in text
+        or "overloaded" in text
     )
 
 
-def _dump_message(message: ChatMessage) -> dict[str, Any]:
+def _dump_message(message: ChatMessage, *, include_extra: bool = True) -> dict[str, Any]:
     payload: dict[str, Any] = {"role": message.role}
     # Gemini rejects empty-string content on tool-call assistant turns; omit or null.
     if message.tool_calls and (message.content is None or message.content == ""):
@@ -296,7 +439,7 @@ def _dump_message(message: ChatMessage) -> dict[str, Any]:
                 "type": "function",
                 "function": {"name": item.name, "arguments": json.dumps(item.arguments)},
             }
-            if item.extra_content:
+            if include_extra and item.extra_content:
                 entry["extra_content"] = item.extra_content
             serialized.append(entry)
         payload["tool_calls"] = serialized

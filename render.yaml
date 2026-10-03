@@ -44,21 +44,27 @@ services:
         sync: false
       - key: S3_REGION
         value: auto
-      # AI Agronom — Option A: Gemini 3.8 Flash via OpenAI-compatible endpoint
+      # AI Agronom — Gemini primary, OpenAI fallback on overload
       - key: AI_PROVIDER
         value: openai_compatible
       - key: AI_BASE_URL
         value: https://generativelanguage.googleapis.com/v1beta/openai/
       - key: AI_CHAT_MODEL
-        value: gemini-3.8-flash
+        value: gemini-3.5-flash
       - key: AI_VISION_MODEL
-        value: gemini-3.8-flash
+        value: gemini-3.5-flash
       - key: AI_EMBEDDING_MODEL
         value: gemini-embedding-001
       - key: AI_EMBEDDING_DIM
         value: "1536"
-      # Set in Render Dashboard → agrotwin-api → Environment (Gemini API key)
+      - key: AI_OPENAI_BASE_URL
+        value: https://api.openai.com/v1
+      - key: AI_OPENAI_FALLBACK_MODELS
+        value: gpt-4.1-mini,gpt-4o
+      # Set in Render Dashboard → agrotwin-api → Environment
       - key: AI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
         sync: false
       - key: RUN_SEED
         value: "false"

@@ -129,13 +129,16 @@ On **agrotwin-api** set:
 AI_PROVIDER=openai_compatible
 AI_API_KEY=<your Gemini API key>
 AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai/
-AI_CHAT_MODEL=gemini-3.8-flash
-AI_VISION_MODEL=gemini-3.8-flash
+AI_CHAT_MODEL=gemini-3.5-flash
+AI_VISION_MODEL=gemini-3.5-flash
 AI_EMBEDDING_MODEL=gemini-embedding-001
 AI_EMBEDDING_DIM=1536
+OPENAI_API_KEY=<your OpenAI API key>
+AI_OPENAI_FALLBACK_MODELS=gpt-4.1-mini,gpt-4o
 ```
 
-`AI_API_KEY` must be set manually in the Render dashboard (Blueprint marks it `sync: false`).
+`AI_API_KEY` (Gemini) and `OPENAI_API_KEY` must be set manually in the Render dashboard.
+When Gemini returns 503/high-demand, chat and vision automatically fall through to OpenAI.
 
 To switch later to GPT-5, change base URL/models and use the OpenAI key.
 
