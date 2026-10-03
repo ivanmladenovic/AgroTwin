@@ -73,7 +73,7 @@ def delete_conversation(conversation_id: UUID, current_user: CurrentUser, db: DB
 
 
 @router.post("/conversations/{conversation_id}/messages", response_model=ConversationDetail)
-async def send_message(
+def send_message(
     conversation_id: UUID,
     current_user: CurrentUser,
     db: DBSession,
@@ -81,12 +81,16 @@ async def send_message(
     parcel_id: UUID | None = Form(None),
     file: UploadFile | None = File(None),
 ) -> ConversationDetail:
+    # Sync route on purpose: ask() uses blocking httpx. An `async def` that calls
+    # sync httpx blocks the event loop; Render health checks then fail for ~60s and
+    # restart the instance mid-fallback (before OpenAI). FastAPI runs sync routes
+    # in a threadpool so /health stays responsive.
     service = AgronomistService(db)
     image: bytes | None = None
     image_filename: str | None = None
     image_content_type: str | None = None
     if file is not None and file.filename:
-        image = await file.read()
+        image = file.file.read()
         image_filename = file.filename
         image_content_type = file.content_type
     conversation = service.ask(

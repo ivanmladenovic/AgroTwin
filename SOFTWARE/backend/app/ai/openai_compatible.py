@@ -17,8 +17,8 @@ from app.core.exceptions import AppError
 logger = logging.getLogger(__name__)
 
 # Same-provider Gemini retries after the configured primary model.
+# Keep this short — long Gemini cascades delay OpenAI fallback and stress free hosts.
 _GEMINI_CHAT_FALLBACKS = (
-    "gemini-3.5-flash",
     "gemini-3.8-flash",
     "gemini-flash-latest",
 )
@@ -168,7 +168,31 @@ class OpenAICompatibleProvider:
         data: dict[str, Any] | None = None
         used_model = self.chat_model
         used_label = "primary"
-        for target in self._chat_targets():
+        targets = self._chat_targets()
+        if not self.openai_api_key:
+            logger.warning("AI OpenAI fallback disabled — OPENAI_API_KEY is not set")
+        logger.info(
+            "AI chat trying %s target(s): %s",
+            len(targets),
+            ", ".join(f"{t.provider_label}/{t.model}" for t in targets),
+        )
+        # After one Gemini capacity miss, jump to OpenAI instead of waiting on more Gemini 503s.
+        skip_remaining_gemini = False
+        for index, target in enumerate(targets):
+            if skip_remaining_gemini and target.provider_label == "gemini":
+                logger.info(
+                    "AI chat skipping %s/%s after Gemini capacity error (OpenAI available)",
+                    target.provider_label,
+                    target.model,
+                )
+                continue
+            logger.info(
+                "AI chat attempt %s/%s → %s/%s",
+                index + 1,
+                len(targets),
+                target.provider_label,
+                target.model,
+            )
             payload = {
                 **base_payload,
                 "model": target.model,
@@ -187,27 +211,38 @@ class OpenAICompatibleProvider:
                         target.provider_label,
                         target.model,
                     )
+                else:
+                    logger.info("AI chat succeeded with %s/%s", target.provider_label, target.model)
                 _set_sticky(target.base_url, target.model)
                 if target.provider_label == "gemini":
                     _record_gemini_success()
                 break
             except AppError as exc:
                 if _is_capacity_error(exc):
+                    remaining = len(targets) - index - 1
                     logger.warning(
-                        "AI chat target %s/%s unavailable (%s); trying next",
+                        "AI chat target %s/%s unavailable (%s); %s left",
                         target.provider_label,
                         target.model,
-                        exc.message[:120],
+                        exc.message[:120].replace("\n", " "),
+                        remaining,
                     )
                     sticky = _get_sticky()
                     if sticky and sticky[0] == target.base_url.rstrip("/") and sticky[1] == target.model:
                         _clear_sticky()
                     if target.provider_label == "gemini":
                         _record_gemini_capacity_failure()
+                        if self.openai_api_key:
+                            skip_remaining_gemini = True
                     last_error = exc
                     continue
                 raise
         if data is None:
+            logger.error(
+                "AI chat exhausted all %s target(s); last error: %s",
+                len(targets),
+                (last_error.message[:200] if last_error else "none"),
+            )
             raise last_error or AppError(
                 "AI servis trenutno nije dostupan. Pokušajte ponovo za minut-dva.",
                 status_code=502,

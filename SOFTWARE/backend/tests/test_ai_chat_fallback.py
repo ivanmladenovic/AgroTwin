@@ -86,7 +86,10 @@ class StickyFallbackTests(TestCase):
         settings.ai_openai_fallback_models = "gpt-4.1-mini"
         provider = mod.OpenAICompatibleProvider(settings)
 
+        calls: list[str] = []
+
         def fake_post(base_url, api_key, path, payload):
+            calls.append(f"{base_url}|{payload['model']}")
             if "generativelanguage" in base_url:
                 raise AppError("AI provajder je vratio 503: high demand", status_code=502, code="ai_unavailable")
             return {
@@ -98,3 +101,8 @@ class StickyFallbackTests(TestCase):
             result = provider.chat([ChatMessage(role="user", content="Zdravo")])
         self.assertEqual(result.content, "Odgovor sa OpenAI")
         self.assertEqual(result.model, "gpt-4.1-mini")
+        # Only one Gemini attempt, then OpenAI — do not cascade through every Gemini model.
+        gemini_calls = [c for c in calls if "generativelanguage" in c]
+        openai_calls = [c for c in calls if "api.openai.com" in c]
+        self.assertEqual(len(gemini_calls), 1)
+        self.assertEqual(len(openai_calls), 1)
