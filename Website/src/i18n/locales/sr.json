@@ -1,0 +1,386 @@
+{
+  "meta": {
+    "title": "AgroTwin — Softver za upravljanje zasadima i digitalnu poljoprivredu",
+    "description": "AgroTwin je platforma digitalnog blizanca i AI poljoprivrede za digitalizaciju, praćenje i optimizaciju voćarskih zasada. Softver za voćarstvo, AI agronom i satelitsko praćenje biljaka.",
+    "ogTitle": "AgroTwin — Digitalni blizanac i AI platforma za poljoprivredu",
+    "ogDescription": "Vaš zasad. Digitalno povezan. Inteligentno vođen. Mapiranje, satelitski monitoring, upravljanje proizvodnjom i AI agronomska podrška na jednom mestu.",
+    "keywords": "softver za upravljanje zasadima, digitalizacija poljoprivrede, digitalni blizanac zasada, AI agronom, praćenje zdravlja biljaka, softver za voćarstvo"
+  },
+  "a11y": {
+    "skip": "Preskoči na sadržaj",
+    "home": "AgroTwin početna",
+    "primaryNav": "Glavna navigacija",
+    "mobileNav": "Mobilna navigacija",
+    "openMenu": "Otvori meni",
+    "closeMenu": "Zatvori meni",
+    "language": "Jezik"
+  },
+  "nav": {
+    "platform": "Platforma",
+    "features": "Funkcije",
+    "enterprise": "Za preduzeća",
+    "pricing": "Cenovnik",
+    "faq": "Pitanja",
+    "getStarted": "Prijavi se"
+  },
+  "hero": {
+    "kicker": "Digitalni blizanac i AI platforma za poljoprivredu",
+    "title": "Ceo zasad u jednom pametnom sistemu.",
+    "subtitle": "AgroTwin mapira, prati i planira proizvodnju — od pojedinačnog stabla do cele mreže kooperanata. Rešenje skrojeno za moderne voćare, lešnikare i poljoprivredne kompanije.",
+    "primaryCta": "Prijavi se",
+    "support": "Nova era u uzgoju lešnika i voćarstvu — potpuna preglednost, precizno praćenje i pametne odluke na jednom mestu."
+  },
+  "value": {
+    "kicker": "Izazovi u praksi",
+    "title": "Glavne prepreke u upravljanju zasadima.",
+    "subtitle": "Bez umreženih podataka i jasnog uvida na terenu, donošenje pravih odluka i planiranje prinosa postaju veliki rizik.",
+    "photoAlt": "AgroTwin platforma otvorena na laptopu u zasodu lešnika",
+    "photoCaption": "Ceo zasad pod kontrolom — mapiranje, monitoring, evidencija i planiranje.",
+    "items": {
+      "visibility": {
+        "title": "Rasuti podaci",
+        "description": "Evidencije o parcelama, radovima i troškovima često se čuvaju na papiru ili u nepovezanim tabelama."
+      },
+      "decisions": {
+        "title": "Slaba preglednost",
+        "description": "Teško je u realnom vremenu pratiti zdravlje svih stabala, troškove i očekivane rezultate."
+      },
+      "organization": {
+        "title": "Komplikovano planiranje",
+        "description": "Bez ažurnih i preciznih podataka, planiranje sezonskih radova i upravljanje radnom snagom vodi ka gubicima."
+      }
+    }
+  },
+  "features": {
+    "kicker": "Šta je AgroTwin?",
+    "title": "Sve što vam treba za pametan zasad.",
+    "subtitle": "Mapirajte svaku parcelu, red i stablo. Pratite vitalnost biljaka, evidentirajte troškove i planirajte radove na vreme.",
+    "illustrative": "Prikaz platforme",
+    "digitalTwin": {
+      "kicker": "Digitalni blizanac zasada",
+      "title": "Svako stablo na vašem dlanu.",
+      "description": "Imajte tačan uvid u granice parcela, raspored redova i trenutno stanje svakog pojedinačnog stabla.",
+      "points": [
+        "Visokoprecizne mape parcela, redova i stabala",
+        "Brz pregled zdravstvenog stanja i zabeleženih promena",
+        "Evidentirane sorte i datumi sadnje za svaku poziciju",
+        "Centralizovana istorija svih intervencija i tretmana"
+      ]
+    },
+    "satellite": {
+      "kicker": "Satelitski nadzor i AI",
+      "title": "Pratite zdravlje i napredak zasada.",
+      "description": "Blagovremeno uočite promene u vegetaciji i izdvojite delove zasada kojima je potrebna hitna pažnja.",
+      "points": [
+        "Satelitski indeksi vitalnosti (NDVI, NDRE, NDWI)",
+        "Rano otkrivanje stresnih zona i odstupanja",
+        "Objektivne informacije za brže donošenje odluka",
+        "Precizne preporuke za proveru na terenu"
+      ],
+      "note": "Satelitski i AI signali služe kao pouzdana podrška u odlučivanju, a ne kao zamena za direktan pregled stručnjaka."
+    },
+    "agronomist": {
+      "kicker": "AI agronom",
+      "title": "Stručni saveti i brzi odgovori 24/7.",
+      "description": "Postavite pitanje u vezi sa zaštitom ili prihranom i dobijte pametne smernice prilagođene vašem zasadu.",
+      "points": [
+        "Komunikacija na vašem jeziku, prirodnim rečima",
+        "Analiza stanja zasada na osnovu unetih podataka i fotografija",
+        "Preporuke za preventivne mere i pravovremene korake",
+        "Direktan oslonac na proverenu stručnu literaturu"
+      ],
+      "note": "AI agronom pruža brze smernice i analize, ali ne isključuje konsultacije sa ovlašćenim agronomom."
+    },
+    "farm": {
+      "kicker": "Proizvodnja i prinos",
+      "title": "Od cvetanja do uspešne berbe.",
+      "description": "Pratite očekivane količine, realizaciju berbe i operativne troškove na jednom mestu bez nagađanja.",
+      "points": [
+        "Precizna evidencija količina i kvaliteta u berbi",
+        "Realne prognoze očekivanog prinosa",
+        "Poređenje rezultata i troškova kroz sezone",
+        "Planiranje radnih zadataka i angažovanja radnika",
+        "Generisanje izveštaja i dokumentacije jednim klikom"
+      ]
+    }
+  },
+  "mock": {
+    "sampleData": "Primer podataka · testni nalog",
+    "sampleOrchard": "Primer zasada · redovi, stabla i sorte",
+    "parcelName": "Parcela Sever · Lešnik",
+    "boundary": "Granica parcele · digitalni blizanac",
+    "rows": "Redovi 1–12",
+    "healthy": "Zdravo",
+    "monitoring": "U praćenju",
+    "replaced": "Zamenjeno",
+    "schema": "Šema",
+    "orthophoto": "Ortofoto",
+    "indices": "Indeksi",
+    "healthFilter": "Filter zdravlja · Svi",
+    "ndviOverlay": "NDVI prikaz · probni snimak",
+    "indicatorValues": "Vrednosti indikatora",
+    "anomalyTitle": "Potencijalna anomalija",
+    "anomalyBody": "Beležimo nešto slabiji vegetacijski indeks u severozapadnom delu. Preporučujemo obilazak terena.",
+    "compareHint": "Uporedite trenutno stanje sa istorijskim podacima za precizniju procenu.",
+    "conversations": "Razgovori",
+    "assistant": "AgroTwin Asistent",
+    "userQuestion": "Šta treba da proverim pre prolećnog đubrenja u lešnikovom zasadu?",
+    "aiAnswer": "Preporučujemo da analizirate nedavne evidencije aktivnosti, vlažnost zemljišta i trenutne NDVI vrednosti. Posebno obratite pažnju na zone sa slabijim indeksima pre unosa đubriva.",
+    "kbNote": "Povezano sa stručnom bazom znanja za voćarstvo",
+    "activities": "Aktivnosti i istorija",
+    "task1": "Folijarni tretman · Redovi 4–6",
+    "task2": "Kontrola navodnjavanja",
+    "task3": "Evidencija berbe · u ljusci",
+    "task4": "Uzorkovanje zemljišta · Parcela Sever",
+    "scheduled": "Zakazano",
+    "completed": "Završeno",
+    "logged": "Zabeleženo",
+    "costs": "Troškovi proizvodnje",
+    "costsHint": "Prikaz mesečnih troškova",
+    "weather": "Vremenska prognoza",
+    "weatherBody": "Lokalna prognoza optimizovana za vašu lokaciju",
+    "harvest": "Berba",
+    "harvestBody": "Praćenje ubranih količina po parcelama",
+    "overview": "Pregled digitalnog zasada",
+    "mapped": "Uspesno mapirano",
+    "variety": "Sorta",
+    "hazelnut": "Lešnik",
+    "status": "Status",
+    "floatMap": "Precizno mapiranje stabala i redova",
+    "floatSat": "Satelitski NDVI / NDWI / NDRE indeksi",
+    "floatAi": "AI agronom za brze odluke na terenu",
+    "navHome": "Početna",
+    "navOrchards": "Zasadi",
+    "navProduction": "Proizvodnja",
+    "navJournal": "Dnevnik",
+    "navCosts": "Troškovi",
+    "navAgronomist": "Agronom",
+    "chat1": "Prolećno đubrenje",
+    "chat2": "Analiza lista",
+    "chat3": "Optimizacija navodnjavanja",
+    "treeBadge": "Granice · redovi · stabla",
+    "rowsLabel": "Redovi",
+    "varietyTag": "Tonda Gentile",
+    "twelveRows": "12 redova"
+  },
+  "how": {
+    "kicker": "Jednostavan proces uvođenja",
+    "title": "Kako da započnete digitalizaciju?",
+    "steps": {
+      "one": {
+        "title": "1. Izbor zasada za pilot",
+        "description": "Zajedno biramo reprezentativnu parcelu ili gazdinstvo i postavljamo jasne ciljeve."
+      },
+      "two": {
+        "title": "2. Unos i mapiranje",
+        "description": "Uvozimo vaše granice, podatke o stablima, sortama i dosadašnjoj proizvodnji u sistem."
+      },
+      "three": {
+        "title": "3. Praćenje i optimizacija",
+        "description": "Pratite rezultate u realnom vremenu i donosite profitabilnije odluke na terenu."
+      }
+    },
+    "subtitle": "Kroz jednostavan proces uvođenja osiguravamo da odmah vidite vrednost i napredak u radu."
+  },
+  "enterprise": {
+    "kicker": "Za preduzeća i otkupljivače",
+    "title": "Potpuna kontrola nad celom mrežom proizvođača.",
+    "subtitle": "Centralizovani registar svih zasada, satelitski uvid i pouzdano planiranje otkupa na jednom mestu.",
+    "intro": "AgroTwin povezuje sve vaše kooperante, parcele i podatke u jedinstven poslovni sistem, idealan za kompanije koje upravljaju velikim proizvodnim lancima.",
+    "tailor": "Savršeno balansirano rešenje — za samostalne poljoprivrednike, ali i za velike sisteme i otkupljivače.",
+    "discussTitle": "Unapredite poslovanje i digitalizujte mrežu kooperanata.",
+    "discussBody": "Recite nam više o vašem poslovanju, broju kooperanata i ciljevima, a mi ćemo predložiti idealan pilot program.",
+    "cta": "Zatražite Enterprise prezentaciju",
+    "ctaSupport": "Prilagođene integracije. Maksimalna bezbednost podataka. Puna tehnička podrška.",
+    "capabilities": {
+      "multiFarm": {
+        "title": "Centralni registar zasada",
+        "points": [
+          "Jedinstvena baza svih parcela, površina i sorti",
+          "Jasna organizacija kooperanata po regionima",
+          "Brz pristup svim važnim informacijama"
+        ]
+      },
+      "network": {
+        "title": "Precizne prognoze otkupa",
+        "points": [
+          "Uvid u istorijske i očekivane prinose cele mreže",
+          "Planiranje količina i dinamike otkupa unapred",
+          "Standardizovan unos podataka od strane partnera"
+        ]
+      },
+      "intelligence": {
+        "title": "Nadzor zdravlja proizvodnje",
+        "points": [
+          "Satelitski pregled stanja na nivou svih regiona",
+          "Rano uočavanje rizika i šteta od vremenskih nepogoda",
+          "Detaljna analitika po gazdinstvima"
+        ]
+      },
+      "ai": {
+        "title": "Evidencija i standardi",
+        "points": [
+          "Pouzdani elektronski dnevnici radova na terenu",
+          "Praćenje primene zaštite i tretmana",
+          "Baza znanja dostupna celom timu"
+        ]
+      },
+      "integrations": {
+        "title": "Analiza performansi",
+        "points": [
+          "Poređenje učinka partnera i identifikacija najboljih praksi",
+          "Pravovremeno usmeravanje stručne podrške tamo gde je najpotrebnije",
+          "Optimizacija troškova na nivou cele mreže"
+        ]
+      },
+      "scale": {
+        "title": "Skalabilnost i bezbednost",
+        "points": [
+          "Podrška za neograničen broj korisnika i uloga",
+          "Napredna kontrola pristupa i prava pregleda",
+          "Mogućnost prilagođavanja izveštaja vašim potrebama"
+        ]
+      }
+    },
+    "workspaceLabel": "Enterprise radni prostor",
+    "forProducers": {
+      "kicker": "Za proizvođače",
+      "title": "Potpuna kontrola nad vašim zasadom.",
+      "photoAlt": "Ruke sa ubranim lešnicima",
+      "points": [
+        "Jasna slika stanja i zdravlja svakog stabla",
+        "Jednostavno praćenje radova i troškova",
+        "Lakše planiranje sezone i radne snage",
+        "Bolji uvid u finansijski učinak i prinos"
+      ]
+    },
+    "forNetwork": {
+      "kicker": "Za mreže i otkupljivače",
+      "title": "Nadzor cele mreže kooperanata.",
+      "photoAlt": "Pregled troškova i izveštaja u AgroTwin platformi",
+      "points": [
+        "Centralizovani podaci svih proizvođača na jednom mestu",
+        "Konstantan uvid u zdravlje i napredak zasada u mreži",
+        "Sigurnije planiranje otkupa i logistike",
+        "Efikasnije usmeravanje agronomske podrške"
+      ]
+    }
+  },
+  "form": {
+    "fullName": "Ime i prezime",
+    "company": "Naziv kompanije",
+    "email": "Poslovni email",
+    "country": "Država",
+    "orgType": "Tip organizacije",
+    "orgSelect": "Izaberite tip",
+    "farms": "Broj gazdinstava / proizvođača (opciono)",
+    "message": "Poruka",
+    "messagePlaceholder": "Opišite vaše potrebe: gajene kulture, broj lokacija, specifični zahtevi…",
+    "submit": "Pošaljite upit",
+    "submitting": "Slanje u toku…",
+    "orgTypes": {
+      "producer": "Poljoprivredni proizvođač",
+      "manufacturer": "Proizvođač hrane",
+      "cooperative": "Poljoprivredna zadruga",
+      "buyer": "Kupac / Distributer",
+      "organization": "Poljoprivredna organizacija",
+      "other": "Ostalo"
+    },
+    "errors": {
+      "fullName": "Molimo unesite ime i prezime.",
+      "company": "Molimo unesite naziv kompanije.",
+      "email": "Molimo unesite poslovni email.",
+      "emailInvalid": "Unesite ispravnu email adresu.",
+      "country": "Molimo unesite državu.",
+      "orgType": "Izaberite tip organizacije.",
+      "message": "Unesite opis zahteva (najmanje 20 karaktera)."
+    },
+    "success": "Vaš upit je uspešno poslat. Javićemo vam se u najkraćem roku.",
+    "error": "Došlo je do greške pri slanju. Pokušajte ponovo ili nam pišite direktno na email.",
+    "mailtoNote": "Nakon potvrde, otvoriće se pripremljen email na adresi {{email}}. Pošaljite poruku kako biste kompletirali upit.",
+    "integrationNote": "Poruka se trenutno šalje direktno na {{email}}."
+  },
+  "pricing": {
+    "kicker": "Cenovnik",
+    "title": "Transparentne licence za proizvođače.",
+    "subtitle": "Jednostavne pretplate prilagođene pojedinačnim proizvođačima. Javite nam se i aktiviraćemo vaš nalog.",
+    "monthly": "Mesečna licenca",
+    "monthlyPeriod": "/ mesec",
+    "monthlyBilling": "Naplata na mesečnom nivou.",
+    "annual": "Godišnja licenca",
+    "annualPeriod": "/ godina",
+    "annualBilling": "Naplata na godišnjem nivou.",
+    "savings": "Uštedite {{amount}} uz godišnju pretplatu.",
+    "recommended": "Najbolji izbor",
+    "monthlyCta": "Izaberite mesečni paket",
+    "annualCta": "Izaberite godišnji paket",
+    "includes": [
+      "Digitalni blizanac i kompletno mapiranje zasada",
+      "Satelitski vegetacijski indikatori i upozorenja",
+      "AI agronom — pametna podrška za odluke",
+      "Praćenje aktivnosti, troškova, vremena i berbe"
+    ]
+  },
+  "faq": {
+    "kicker": "Česta pitanja",
+    "title": "Sve što treba da znate o platformi.",
+    "items": [
+      {
+        "q": "Šta tačno predstavlja AgroTwin?",
+        "a": "AgroTwin je napredna platforma koja kombinuje digitalnog blizanca zasada i veštačku inteligenciju. Pomaže poljoprivrednicima i kompanijama da digitalizuju voćarstvo, prate stanje zasada putem satelita i vode preciznu evidenciju radova."
+      },
+      {
+        "q": "Kome je namenjen AgroTwin?",
+        "a": "Platforma je namenjena individualnim voćarima i proizvođačima lešnika, kao i većim preduzećima, zadrugama, poljoprivrednim kompanijama i otkupljivačima koji upravljaju mrežom kooperanata."
+      },
+      {
+        "q": "Da li mogu da pratim više različitih zasada?",
+        "a": "Da. Sistem u potpunosti podržava organizaciju više parcela, lokacija i različitih voćnih kultura na jednom mestu, dok veći sistemi imaju posebne enterprise opcije."
+      },
+      {
+        "q": "Šta je to digitalni blizanac zasada?",
+        "a": "To je vaša virtuelna, digitalna kopija zasada koja prikazuje stvarne granice, raspored redova, pozicije pojedinačnih stabala, sorte i istoriju radova."
+      },
+      {
+        "q": "Kako radi satelitsko praćenje?",
+        "a": "Kroz napredne indekse (NDVI, NDRE, NDWI) AgroTwin prati zdravstveno stanje i vitalnost biljaka kroz vreme, signalizirajući vam gde na parceli postoje odstupanja ili potencijalni problemi."
+      },
+      {
+        "q": "Na koji način pomaže AI agronom?",
+        "a": "Možete mu postavljati pitanja u vezi sa uzgojem na običnom jeziku i dobiti brze, relevantne smernice zasnovane na vašim podacima i stručnoj bazi znanja, kao dodatnu podršku u radu."
+      },
+      {
+        "q": "Može li se AgroTwin prilagoditi velikim sistemima?",
+        "a": "Apsolutno. Enterprise paket nudi napredne funkcije za upravljanje mrežama kooperanata, prilagođene izveštaje, višekorisnički pristup i integraciju sa vašim postojećim softverima."
+      },
+      {
+        "q": "Kako funkcioniše aktivacija pretplate?",
+        "a": "Individualni proizvođači mogu birati mesečnu (€29/mesec) ili povoljniju godišnju licencu (€299/godina). Kontaktirajte nas i pristup aplikaciji biće vam omogućen u najkraćem roku."
+      }
+    ]
+  },
+  "finalCta": {
+    "title": "Spremni za pametniju poljoprivredu?",
+    "subtitle": "Započnite sa pilot projektom, uverite se u rezultate na terenu i podignite proizvodnju na viši nivo.",
+    "primary": "Započnite upravljanje zasadom",
+    "secondary": "Kontaktirajte naš tim za preduzeća"
+  },
+  "footer": {
+    "description": "AgroTwin je napredna platforma za digitalizaciju, praćenje i optimizaciju voćarske proizvodnje — od pojedinačnog porodičnog zasada do velike mreže proizvođača.",
+    "platform": "Platforma",
+    "company": "Kompanija",
+    "digitalTwin": "Digitalni blizanac",
+    "satellite": "Satelitski monitoring",
+    "agronomist": "AI agronom",
+    "enterpriseContact": "Enterprise rešenja",
+    "rights": "© {{year}} AgroTwin. Sva prava zadržana.",
+    "tagline": "Nova perspektiva na proizvodnju lešnika i voćarstvo"
+  },
+  "shots": {
+    "digitalTwinAlt": "AgroTwin digitalni blizanac zasada — prikaz mape stabala i sorti",
+    "satelliteAlt": "AgroTwin satelitski monitoring — NDVI analiza parcele",
+    "agronomistAlt": "AgroTwin AI agronom — prikaz razgovora i stručnih preporuka",
+    "productionAlt": "AgroTwin moduli za praćenje prinosa i planiranje proizvodnje",
+    "enterpriseAlt": "AgroTwin enterprise radni prostor — pregled mreže proizvođača"
+  }
+}

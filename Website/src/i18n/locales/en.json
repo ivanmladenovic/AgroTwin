@@ -1,0 +1,386 @@
+{
+  "meta": {
+    "title": "AgroTwin — Orchard Management & Digital Agriculture Platform",
+    "description": "AgroTwin is a Digital Twin and AI-powered agriculture platform for digitizing, monitoring and optimizing orchard production. Orchard management software, AI agronomist and satellite crop monitoring.",
+    "ogTitle": "AgroTwin — Digital Twin & AI Agriculture Platform",
+    "ogDescription": "Your Orchard. Digitally Connected. Intelligently Managed. Orchard mapping, satellite monitoring, farm management and AI agronomic assistance in one platform.",
+    "keywords": "digital agriculture platform, digital twin agriculture, orchard management software, smart farming software, AI agronomist, satellite crop monitoring, agricultural farm management"
+  },
+  "a11y": {
+    "skip": "Skip to content",
+    "home": "AgroTwin home",
+    "primaryNav": "Primary navigation",
+    "mobileNav": "Mobile navigation",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "language": "Language"
+  },
+  "nav": {
+    "platform": "Platform",
+    "features": "Features",
+    "enterprise": "Enterprise",
+    "pricing": "Pricing",
+    "faq": "FAQ",
+    "getStarted": "Sign in"
+  },
+  "hero": {
+    "kicker": "Digital Twin & AI Agriculture Platform",
+    "title": "The entire orchard. One digital system.",
+    "subtitle": "AgroTwin maps, monitors, records and plans production — from the individual tree to the producer network. Built for hazelnut orchards and organizations that manage them.",
+    "primaryCta": "Sign in",
+    "support": "A new perspective on hazelnut production — visibility, monitoring and decisions in one platform."
+  },
+  "value": {
+    "kicker": "Challenges",
+    "title": "Challenges in Managing a Network of Orchards.",
+    "subtitle": "Without connected data, visibility and reliable planning, decision-making across the outgrower network becomes compromised.",
+    "photoAlt": "AgroTwin on a laptop in a hazelnut orchard",
+    "photoCaption": "The entire orchard. One digital system — mapping, monitoring, records and planning.",
+    "items": {
+      "visibility": {
+        "title": "Disconnected Data",
+        "description": "Information on parcels, field operations and costs is scattered across different places."
+      },
+      "decisions": {
+        "title": "Limited Visibility",
+        "description": "It is difficult to monitor the condition of all orchards, forecasted yield and seasonal dynamics."
+      },
+      "organization": {
+        "title": "Complicated Planning",
+        "description": "Without reliable and up-to-date data, decision-making and production planning across the entire outgrower network become compromised."
+      }
+    }
+  },
+  "features": {
+    "kicker": "What is AgroTwin?",
+    "title": "The entire orchard. One digital system.",
+    "subtitle": "It maps every parcel, row and tree. Monitors health. Records activities and costs. Plans what needs to be done and when.",
+    "illustrative": "Platform view",
+    "digitalTwin": {
+      "kicker": "Orchard Digital Twin",
+      "title": "Every tree visible on a digital map.",
+      "description": "Clearly see parcel boundaries, row spacing and the precise position of each tree.",
+      "points": [
+        "High-precision map of parcels, rows and trees",
+        "Health overview and logged anomalies per tree",
+        "Cultivar and planting date for each tree",
+        "Centralized activity and intervention history"
+      ]
+    },
+    "satellite": {
+      "kicker": "Satellite Imagery & AI Support",
+      "title": "Monitoring health and condition.",
+      "description": "Monitor vegetative changes across parcels and isolate zones that deviate from the rest of the orchard.",
+      "points": [
+        "Satellite vegetation indicators (NDVI, NDRE, NDWI)",
+        "Early detection of zones that need attention",
+        "Decision support based on field observations",
+        "Actionable recommendations on what to inspect"
+      ],
+      "note": "Satellite indicators and AI signals support decisions — they are not confirmed agronomic diagnoses."
+    },
+    "agronomist": {
+      "kicker": "AI Agronomist",
+      "title": "Early warnings and concrete recommendations.",
+      "description": "Receive guidance on potential risks and what to inspect — grounded in a specialized knowledge base.",
+      "points": [
+        "Ask questions in natural language",
+        "Use orchard context and attached photos",
+        "Protection recommendations and next steps",
+        "Links to manuals and documentation"
+      ],
+      "note": "The AI Agronomist supports decisions. It does not replace professional agronomists or guarantee diagnoses."
+    },
+    "farm": {
+      "kicker": "Production, Yield & Traceability",
+      "title": "From flowering to harvest and final results.",
+      "description": "Track expected yield, harvest records and operational costs — all in one system.",
+      "points": [
+        "Harvest quantity and quality logging",
+        "Expected yield forecasting",
+        "Multi-year historical benchmarking",
+        "Task, cost and workforce planning",
+        "Documentation and one-click reports"
+      ]
+    }
+  },
+  "mock": {
+    "sampleData": "Sample data · not a live customer account",
+    "sampleOrchard": "Sample orchard · rows, trees and varieties",
+    "parcelName": "Parcel North · Hazelnut",
+    "boundary": "Boundary · digital twin",
+    "rows": "Rows 1–12",
+    "healthy": "Healthy",
+    "monitoring": "Monitoring",
+    "replaced": "Replaced",
+    "schema": "Schema",
+    "orthophoto": "Orthophoto",
+    "indices": "Indices",
+    "healthFilter": "Health filter · All",
+    "ndviOverlay": "NDVI overlay · sample observation",
+    "indicatorValues": "Indicator values",
+    "anomalyTitle": "Potential anomaly",
+    "anomalyBody": "Lower vegetation response in the northwest sector. Verify conditions in the field — not a confirmed diagnosis.",
+    "compareHint": "Compare historical indicators where available and use them as decision support.",
+    "conversations": "Conversations",
+    "assistant": "Agricultural assistant",
+    "userQuestion": "What should I review before spring fertilization in a hazelnut orchard?",
+    "aiAnswer": "Review recent activity records, soil information and current vegetation indicators. Cross-check weaker NDVI zones before applying inputs. This is decision-support guidance — confirm important actions with a qualified agronomist.",
+    "kbNote": "Connected to a specialized agricultural knowledge base · decision support only",
+    "activities": "Activities & history",
+    "task1": "Foliar treatment · Rows 4–6",
+    "task2": "Irrigation inspection",
+    "task3": "Harvest record · in-shell",
+    "task4": "Soil sampling · Parcel North",
+    "scheduled": "Scheduled",
+    "completed": "Completed",
+    "logged": "Logged",
+    "costs": "Production costs",
+    "costsHint": "Sample monthly total · fictional",
+    "weather": "Weather forecast",
+    "weatherBody": "Local forecast available for the orchard location",
+    "harvest": "Harvest",
+    "harvestBody": "In-shell quantities tracked by parcel",
+    "overview": "Digital orchard overview",
+    "mapped": "Mapped",
+    "variety": "Variety",
+    "hazelnut": "Hazelnut",
+    "status": "Status",
+    "floatMap": "Orchard mapping with row & tree organization",
+    "floatSat": "NDVI / NDWI / NDRE vegetation indicators",
+    "floatAi": "AI Agronomist for decision-support guidance",
+    "navHome": "Home",
+    "navOrchards": "Orchards",
+    "navProduction": "Production",
+    "navJournal": "Journal",
+    "navCosts": "Costs",
+    "navAgronomist": "Agronomist",
+    "chat1": "Spring fertilization",
+    "chat2": "Leaf spotting check",
+    "chat3": "Irrigation timing",
+    "treeBadge": "Boundaries · rows · trees",
+    "rowsLabel": "Rows",
+    "varietyTag": "Tonda Gentile",
+    "twelveRows": "12 rows"
+  },
+  "how": {
+    "kicker": "Pilot proposal",
+    "title": "Start digitizing your producer network.",
+    "steps": {
+      "one": {
+        "title": "Select initial producers",
+        "description": "Jointly select pilot farmers and define measurable milestones."
+      },
+      "two": {
+        "title": "Digitize their orchards",
+        "description": "Integrate parcel maps, tree counts and baseline production data."
+      },
+      "three": {
+        "title": "Measure results & impact",
+        "description": "Evaluate KPIs and define network-wide scale-up."
+      }
+    },
+    "subtitle": "Jointly select pilot farmers, digitize their orchards and measure results before scaling."
+  },
+  "enterprise": {
+    "kicker": "What do you specifically get?",
+    "title": "A unified view of the producer network.",
+    "subtitle": "Digital orchard registry, satellite insights, activity tracking and a basis for partner benchmarking.",
+    "intro": "AgroTwin connects producers, orchards and operational data in one platform for companies that manage, support or procure production.",
+    "tailor": "One platform. Both sides. Mutual benefit — for producers and for aggregator networks.",
+    "discussTitle": "Let's digitize your producer network.",
+    "discussBody": "Tell us about your organization, grower network and goals. We will propose a pilot with measurable steps.",
+    "cta": "Send an email inquiry",
+    "ctaSupport": "Custom solutions. Flexible integrations. Scalable architecture.",
+    "capabilities": {
+      "multiFarm": {
+        "title": "Orchard overview",
+        "points": [
+          "Digital registry of parcels, acreage, cultivars and orchard age",
+          "Organize growers, locations and production areas",
+          "Unified management of agricultural information"
+        ]
+      },
+      "network": {
+        "title": "Planning & forecasting data",
+        "points": [
+          "Multi-season oversight of recorded and forecasted yields",
+          "Procurement volumes and outcomes",
+          "Standardized data collection from partners"
+        ]
+      },
+      "intelligence": {
+        "title": "Production health insights",
+        "points": [
+          "Satellite vegetation indices",
+          "Proactive anomaly alerts",
+          "Parcel analytics"
+        ]
+      },
+      "ai": {
+        "title": "Activity tracking & documentation",
+        "points": [
+          "Reliable logs of field operations",
+          "Crop protection, irrigation and harvest events",
+          "AI assistance and tailored knowledge bases"
+        ]
+      },
+      "integrations": {
+        "title": "Network-wide benchmarking",
+        "points": [
+          "Compare partner performance",
+          "Pinpoint bottlenecks",
+          "Deploy agronomic support where it matters"
+        ]
+      },
+      "scale": {
+        "title": "Scalable infrastructure",
+        "points": [
+          "Multiple organizations and user roles",
+          "Role-based access control",
+          "Configurable modules, reports and integrations"
+        ]
+      }
+    },
+    "workspaceLabel": "Enterprise workspace",
+    "forProducers": {
+      "kicker": "For producers",
+      "title": "Clearer control over the orchard.",
+      "photoAlt": "Hands holding harvested hazelnuts",
+      "points": [
+        "Clearer visibility over orchard status",
+        "Easier tracking of field tasks and expenditures",
+        "Streamlined seasonal planning",
+        "Actionable insight into yields and economic performance"
+      ]
+    },
+    "forNetwork": {
+      "kicker": "For the aggregator network",
+      "title": "Oversight across the producer network.",
+      "photoAlt": "AgroTwin costs and operational reporting view",
+      "points": [
+        "Centralized records for all producers",
+        "Network-wide crop health and production oversight",
+        "Foundation for yield and procurement forecasting",
+        "Identification of grower needs and agronomic support"
+      ]
+    }
+  },
+  "form": {
+    "fullName": "Full name",
+    "company": "Company",
+    "email": "Business email",
+    "country": "Country",
+    "orgType": "Organization type",
+    "orgSelect": "Select type",
+    "farms": "Number of farms / producers (optional)",
+    "message": "Message",
+    "messagePlaceholder": "Describe your needs: crops, locations, integrations, reporting…",
+    "submit": "Discuss Your Enterprise Project",
+    "submitting": "Submitting…",
+    "orgTypes": {
+      "producer": "Agricultural producer",
+      "manufacturer": "Food manufacturer",
+      "cooperative": "Agricultural cooperative",
+      "buyer": "Buyer / Distributor",
+      "organization": "Agricultural organization",
+      "other": "Other"
+    },
+    "errors": {
+      "fullName": "Enter your full name.",
+      "company": "Enter your company name.",
+      "email": "Enter a business email.",
+      "emailInvalid": "Enter a valid email address.",
+      "country": "Enter your country.",
+      "orgType": "Select an organization type.",
+      "message": "Describe your requirements (at least 20 characters)."
+    },
+    "success": "Your enterprise inquiry was submitted successfully. We will respond shortly.",
+    "error": "We could not submit your inquiry to the server. Please try again or email us directly.",
+    "mailtoNote": "After confirmation, your email client should open a draft to {{email}}. Sending that message completes the inquiry.",
+    "integrationNote": "Inquiries are currently sent by email to {{email}}. When a server endpoint is connected, the form will submit directly."
+  },
+  "pricing": {
+    "kicker": "Pricing",
+    "title": "Licenses for individual producers.",
+    "subtitle": "Straightforward subscriptions for individual users. Send a request by email and we will arrange activation.",
+    "monthly": "Monthly License",
+    "monthlyPeriod": "/ month",
+    "monthlyBilling": "Billed monthly.",
+    "annual": "Annual License",
+    "annualPeriod": "/ year",
+    "annualBilling": "Billed annually.",
+    "savings": "Save {{amount}} compared to monthly billing.",
+    "recommended": "Recommended",
+    "monthlyCta": "Contact",
+    "annualCta": "Contact",
+    "includes": [
+      "Digital orchard twin and mapping",
+      "Satellite vegetation indicators",
+      "AI Agronomist decision support",
+      "Activities, costs, weather and harvest records"
+    ]
+  },
+  "faq": {
+    "kicker": "FAQ",
+    "title": "Clear answers to important questions.",
+    "items": [
+      {
+        "q": "What is AgroTwin?",
+        "a": "AgroTwin is a Digital Twin and AI-powered Agriculture Platform that helps producers and organizations digitize, monitor and optimize orchard production — combining mapping, records, satellite indicators and AI agronomic assistance."
+      },
+      {
+        "q": "Who is AgroTwin designed for?",
+        "a": "Individual orchard owners and agricultural producers, as well as enterprise organizations such as agricultural companies, cooperatives, buyers and groups that manage networks of growers."
+      },
+      {
+        "q": "Can I manage multiple orchards?",
+        "a": "Yes. The platform supports organizing production areas and orchard information. Larger multi-farm and multi-producer setups are typically handled through enterprise configuration."
+      },
+      {
+        "q": "What is a Digital Orchard Twin?",
+        "a": "A digital representation of your orchard: boundaries, rows, tree positions, varieties and related production records kept in one organized environment."
+      },
+      {
+        "q": "How does satellite monitoring work?",
+        "a": "AgroTwin uses satellite-based vegetation indicators such as NDVI, NDWI and NDRE to help you observe orchard conditions over time. Indicators and anomaly signals support decisions — they are not confirmed agronomic diagnoses."
+      },
+      {
+        "q": "What can the AI Agronomist help me with?",
+        "a": "You can ask agricultural questions in natural language and get guidance grounded in a specialized agricultural knowledge base. It is a decision-support assistant and does not replace professional agronomists."
+      },
+      {
+        "q": "Can AgroTwin be customized for larger agricultural companies?",
+        "a": "Yes. Enterprise deployments can be tailored for multi-farm oversight, producer networks, reporting, integrations and organization-specific workflows."
+      },
+      {
+        "q": "How does the subscription work?",
+        "a": "Individual producers can choose a monthly license (€29 / month) or an annual license (€299 / year). Enterprise customers receive custom pricing based on scope. Access is provisioned through the AgroTwin application."
+      }
+    ]
+  },
+  "finalCta": {
+    "title": "Let's digitize your producer network.",
+    "subtitle": "Start with a pilot, measure the impact and scale AgroTwin where it creates the most value.",
+    "primary": "Start Managing Your Orchard",
+    "secondary": "Talk to Our Enterprise Team"
+  },
+  "footer": {
+    "description": "AgroTwin is a Digital Twin and AI-powered agriculture platform for digitizing, monitoring and optimizing production — from a single orchard to a producer network.",
+    "platform": "Platform",
+    "company": "Company",
+    "digitalTwin": "Digital Twin",
+    "satellite": "Satellite",
+    "agronomist": "AI Agronomist",
+    "enterpriseContact": "Enterprise contact",
+    "rights": "© {{year}} AgroTwin. All rights reserved.",
+    "tagline": "A new perspective on hazelnut production"
+  },
+  "shots": {
+    "digitalTwinAlt": "AgroTwin orchard digital twin — tree map and cultivars",
+    "satelliteAlt": "AgroTwin satellite monitoring — NDVI parcel view",
+    "agronomistAlt": "AgroTwin AI agronomist chat with recommendations",
+    "productionAlt": "AgroTwin yield scenarios and production planning",
+    "enterpriseAlt": "AgroTwin enterprise workspace — producer network overview"
+  }
+}
