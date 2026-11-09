@@ -1,18 +1,23 @@
 # Automatic production publish to SuperHosting (FTPS).
 #
-# Site: https://agrotwin.srpskisafran.rs
+# Absolute cPanel paths (confirmed):
+#   /home/myagrotwrs/public_html
+#   /home/myagrotwrs/app.myagrotwin.com
+#   /home/myagrotwrs/agrotwin-api          ← Python App root (deploy target)
+#   /home/myagrotwrs/api.myagrotwin.com    ← Document Root (NOT used for code deploy)
 #
-# What this workflow deploys on every push to main:
-#   1) Built React frontend  → ./agrotwin.srpskisafran.rs/
-#   2) FastAPI backend code  → ./agrotwin.srpskisafran.rs/api/
+# Relative server-dir values below assume FTPS login home is /home/myagrotwrs/.
+# Confirm with a directory listing after FTPS login before first production run.
 #
-# Document root (cPanel "Osnovni direktorijum"): /agrotwin.srpskisafran.rs
+# App build:
+#   VITE_API_URL=https://api.myagrotwin.com/api/v1
 #
-# Required GitHub secrets:
-#   FTP_SERVER    — hostname ONLY (e.g. ftp.srpskisafran.rs or sgXX.superhosting.bg)
-#                   Do NOT include ftps:// or a path
-#   FTP_USERNAME
-#   FTP_PASSWORD
+# Required GitHub secrets (reuse existing):
+#   FTP_SERVER, FTP_USERNAME, FTP_PASSWORD
+#
+# Does NOT: Alembic, pip, Passenger restart, upload var/storage,
+#           or change cPanel environment variables.
+# Does NOT set dangerous-clean-slate.
 
 name: Deploy production (FTPS)
 
@@ -39,18 +44,31 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: SOFTWARE/frontend/package-lock.json
+          cache-dependency-path: |
+            SOFTWARE/frontend/package-lock.json
+            Website/package-lock.json
 
-      - name: Install frontend dependencies
+      - name: Install marketing website dependencies
+        working-directory: Website
+        run: npm ci
+
+      - name: Build marketing website
+        working-directory: Website
+        run: npx vite build
+        env:
+          VITE_APP_URL: https://app.myagrotwin.com
+          VITE_SITE_URL: https://myagrotwin.com
+
+      - name: Install app frontend dependencies
         working-directory: SOFTWARE/frontend
         run: npm ci
 
       # Vite only — full `npm run build` runs tsc and currently fails on older TS debt.
-      - name: Build frontend
+      - name: Build app frontend
         working-directory: SOFTWARE/frontend
         run: npx vite build
         env:
-          VITE_API_URL: https://agrotwin.srpskisafran.rs/api/v1
+          VITE_API_URL: https://api.myagrotwin.com/api/v1
 
       - name: Stage backend for upload
         run: |
@@ -67,13 +85,33 @@ jobs:
             --exclude 'tests/' \
             --exclude '*.pyc' \
             --exclude '.git/' \
+            --exclude '.DS_Store' \
             SOFTWARE/backend/ staging/api/
-          mkdir -p staging/api/var/storage
-          touch staging/api/var/storage/.gitkeep
+          # Intentionally no staging/api/var — keeps server var/storage out of sync state.
           test -f staging/api/passenger_wsgi.py
           test -f staging/api/requirements.txt
+          test -d staging/api/alembic/versions
+          test ! -e staging/api/var
 
-      - name: Deploy frontend via FTPS
+      - name: Deploy marketing website via FTPS
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          port: 21
+          security: loose
+          timeout: 600000
+          local-dir: ./Website/dist/
+          server-dir: ./public_html/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/.DS_Store
+
+      - name: Deploy app frontend via FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.FTP_SERVER }}
@@ -84,14 +122,12 @@ jobs:
           security: loose
           timeout: 600000
           local-dir: ./SOFTWARE/frontend/dist/
-          server-dir: ./agrotwin.srpskisafran.rs/
+          server-dir: ./app.myagrotwin.com/
           exclude: |
             **/.git*
             **/.git*/**
             **/node_modules/**
             **/.DS_Store
-            **/api
-            **/api/**
 
       - name: Deploy backend via FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
@@ -104,7 +140,7 @@ jobs:
           security: loose
           timeout: 600000
           local-dir: ./staging/api/
-          server-dir: ./agrotwin.srpskisafran.rs/api/
+          server-dir: ./agrotwin-api/
           exclude: |
             **/.git*
             **/.git*/**
@@ -113,4 +149,6 @@ jobs:
             **/__pycache__/**
             **/.venv/**
             **/tests/**
+            **/var
+            **/var/**
             **/.DS_Store

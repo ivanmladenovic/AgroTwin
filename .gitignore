@@ -23,3 +23,6 @@ var/storage/
 # Local grant paperwork and large field-photo dumps stay off the public repo
 Prijava za ENECA/
 Slike lesnika za testiranje/
+
+# Local DB migration artifacts (dumps may contain production data)
+migration/
