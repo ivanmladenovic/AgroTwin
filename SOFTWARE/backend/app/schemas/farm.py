@@ -10,6 +10,9 @@ class FarmRead(IDSchema):
     name: str
     description: str | None
     location_name: str | None
+    country: str | None = None
+    public_producer_name: str | None = None
+    logo_url: str | None = None
     latitude: Decimal | None
     longitude: Decimal | None
     area_hectares: Decimal | None

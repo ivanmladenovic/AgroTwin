@@ -7,10 +7,18 @@ from app.api.deps import CurrentUser, DBSession
 from app.schemas.journal import TreeJournalRead, TreeOptionRead
 from app.schemas.orchard import OrchardTwinRead, RowRead, TreeDetailRead
 from app.schemas.parcel import ParcelCreate, ParcelRead, ParcelUpdate
+from app.schemas.planting import (
+    OrganicRowsUpdate,
+    PlantingBatchCreate,
+    PlantingBatchRead,
+    PlantingDistributionUpdate,
+    PlantingSummaryRead,
+)
 from app.schemas.report import ParcelAnnualReportRead
 from app.services.journal import JournalService
 from app.services.orchard import OrchardService
 from app.services.parcel_report import ParcelReportService
+from app.services.planting import PlantingService
 
 router = APIRouter(prefix="/parcels", tags=["parcels"])
 
@@ -53,6 +61,72 @@ def update_parcel(parcel_id: UUID, payload: ParcelUpdate, current_user: CurrentU
     service = OrchardService(db)
     parcel = service.update_parcel(parcel_id, current_user.id, payload)
     return service.to_parcel_read(parcel)
+
+
+@router.get("/{parcel_id}/planting-summary", response_model=PlantingSummaryRead)
+def get_planting_summary(
+    parcel_id: UUID,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> PlantingSummaryRead:
+    return PlantingService(db).get_summary(parcel_id, current_user.id)
+
+
+@router.get("/{parcel_id}/planting-batches", response_model=list[PlantingBatchRead])
+def list_planting_batches(
+    parcel_id: UUID,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> list[PlantingBatchRead]:
+    return PlantingService(db).list_batches(parcel_id, current_user.id)
+
+
+@router.post("/{parcel_id}/planting-batches", response_model=PlantingBatchRead, status_code=201)
+def create_planting_batch(
+    parcel_id: UUID,
+    payload: PlantingBatchCreate,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> PlantingBatchRead:
+    service = PlantingService(db)
+    batch = service.create_batch(parcel_id, current_user.id, payload, current_user.id)
+    return service.to_batch_read(batch)
+
+
+@router.delete("/{parcel_id}/planting-batches/{batch_id}", status_code=204)
+def delete_planting_batch(
+    parcel_id: UUID,
+    batch_id: UUID,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> None:
+    PlantingService(db).delete_batch(parcel_id, batch_id, current_user.id)
+
+
+@router.put("/{parcel_id}/planting-distribution", response_model=PlantingSummaryRead)
+def set_planting_distribution(
+    parcel_id: UUID,
+    payload: PlantingDistributionUpdate,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> PlantingSummaryRead:
+    return PlantingService(db).set_distribution(
+        parcel_id,
+        current_user.id,
+        payload,
+        current_user.id,
+    )
+
+
+@router.put("/{parcel_id}/organic-rows", response_model=list[RowRead])
+def set_organic_rows(
+    parcel_id: UUID,
+    payload: OrganicRowsUpdate,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> list[RowRead]:
+    rows = PlantingService(db).set_organic_rows(parcel_id, current_user.id, payload)
+    return [RowRead.model_validate(row) for row in rows]
 
 
 @router.delete("/{parcel_id}", status_code=204)

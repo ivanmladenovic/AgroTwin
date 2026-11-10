@@ -5,7 +5,8 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.ai import get_ai_provider
-from app.ai.prompts import ANALYSIS_DISCLAIMER, ANALYSIS_PROMPT
+from app.ai.prompts import get_analysis_disclaimer, get_analysis_prompt
+from app.core.locale import effective_reply_locale
 from app.core.exceptions import AppError, NotFoundError
 from app.models.analysis import DiseaseAnalysis
 from app.models.enums import AttachmentEntityType
@@ -36,6 +37,7 @@ class AnalysisService:
         *,
         photo_id: UUID | None,
         notes: str | None,
+        locale: str = "sr",
     ) -> DiseaseAnalysis:
         case = self.diseases.get_case(case_id, owner_id)
         photo = None
@@ -61,18 +63,32 @@ class AnalysisService:
             for part in (case.title, case.description, case.notes, notes, case.category.value)
             if part
         )
-        hits = self.knowledge.search(owner_id, query or "simptomi lesnika", limit=5)
-        knowledge_text = "\n\n".join(
-            f"{item.document_title} (strana {item.page_number or '-'}): {item.content[:400]}" for item in hits
-        ) or "Nema odgovarajućeg odlomka iz priručnika."
+        reply_locale = effective_reply_locale(locale, query)
         tree_context = self.context.tree_context_for_analysis(owner_id, case.tree_id, case.parcel_id)
-        prompt = ANALYSIS_PROMPT.format(
-            disclaimer=ANALYSIS_DISCLAIMER,
-            context=(
+        search_q = query or ("hazelnut symptoms" if reply_locale == "en" else "simptomi lesnika")
+        hits = self.knowledge.search(owner_id, search_q, limit=5)
+        if reply_locale == "en":
+            knowledge_text = "\n\n".join(
+                f"{item.document_title} (page {item.page_number or '-'}): {item.content[:400]}" for item in hits
+            ) or "No matching manual excerpt."
+            context_block = (
+                f"Case: {case.title}\nCategory: {case.category.value}\nSeverity: {case.severity.value}\n"
+                f"Grower notes: {case.description or case.notes or '-'}\nAdditional notes: {notes or '-'}\n"
+                f"Tree context: {tree_context}"
+            )
+        else:
+            knowledge_text = "\n\n".join(
+                f"{item.document_title} (strana {item.page_number or '-'}): {item.content[:400]}" for item in hits
+            ) or "Nema odgovarajućeg odlomka iz priručnika."
+            context_block = (
                 f"Slučaj: {case.title}\nKategorija: {case.category.value}\nOzbiljnost: {case.severity.value}\n"
                 f"Beleške proizvođača: {case.description or case.notes or '-'}\nDodatne beleške: {notes or '-'}\n"
                 f"Kontekst stabla: {tree_context}"
-            ),
+            )
+        disclaimer = get_analysis_disclaimer(reply_locale)
+        prompt = get_analysis_prompt(reply_locale).format(
+            disclaimer=disclaimer,
+            context=context_block,
             knowledge=knowledge_text,
         )
         if not image:
@@ -100,7 +116,7 @@ class AnalysisService:
             ],
             observed_facts=result.observed_facts,
             uncertainty_notes=result.uncertainty_notes,
-            disclaimer=result.disclaimer or ANALYSIS_DISCLAIMER,
+            disclaimer=result.disclaimer or disclaimer,
             provider=self.provider.name,
             model=result.model,
         )

@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, File, Form, Response, UploadFile
 
-from app.api.deps import CurrentUser, DBSession
+from app.api.deps import CurrentUser, DBSession, RequestLocale
 from app.schemas.ai import (
     AIStatusRead,
     ConversationCreate,
@@ -29,6 +29,7 @@ def agronomy_query(
     payload: AgronomyQueryRequest,
     current_user: CurrentUser,
     db: DBSession,
+    locale: RequestLocale,
 ) -> AgronomyQueryResponse:
     return AgronomyQueryService(db).query(
         current_user.id,
@@ -36,6 +37,7 @@ def agronomy_query(
         mode=payload.mode,
         include_images=payload.include_images,
         debug=payload.debug,
+        locale=locale,
     )
 
 
@@ -77,6 +79,7 @@ def send_message(
     conversation_id: UUID,
     current_user: CurrentUser,
     db: DBSession,
+    locale: RequestLocale,
     content: str = Form(""),
     parcel_id: UUID | None = Form(None),
     file: UploadFile | None = File(None),
@@ -101,6 +104,7 @@ def send_message(
         image=image,
         image_filename=image_filename,
         image_content_type=image_content_type,
+        locale=locale,
     )
     return service.to_detail(conversation)
 
@@ -116,10 +120,12 @@ def get_message_image(
     content, content_type, filename = service.get_message_image(
         conversation_id, message_id, current_user.id
     )
+    disposition = "inline"
+    safe_name = (filename or "prilog").replace('"', "")
     return Response(
         content=content,
         media_type=content_type,
-        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+        headers={"Content-Disposition": f'{disposition}; filename="{safe_name}"'},
     )
 
 
@@ -134,7 +140,14 @@ def request_analysis(
     payload: DiseaseAnalysisRequest,
     current_user: CurrentUser,
     db: DBSession,
+    locale: RequestLocale,
 ) -> DiseaseAnalysisRead:
     service = AnalysisService(db)
-    item = service.analyze(case_id, current_user.id, photo_id=payload.photo_id, notes=payload.notes)
+    item = service.analyze(
+        case_id,
+        current_user.id,
+        photo_id=payload.photo_id,
+        notes=payload.notes,
+        locale=locale,
+    )
     return service.to_read(item)

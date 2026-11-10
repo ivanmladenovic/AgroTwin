@@ -4,6 +4,7 @@ import { healthLabel, statusLabel } from '@/features/orchard/health'
 import type { TreeDetail } from '@/shared/api/types'
 import { formatMoney, rowLabel } from '@/shared/lib/format'
 import { Button } from '@/shared/ui/button'
+import { tr } from '@/shared/i18n/i18n'
 
 export function TreeDrawer({
   tree,
@@ -16,26 +17,26 @@ export function TreeDrawer({
 }) {
   const fields = [
     { label: 'ID', value: tree.public_id },
-    { label: 'Red', value: rowLabel(tree.row_number) },
-    { label: 'Poz.', value: String(tree.position_in_row) },
-    { label: 'Sorta', value: tree.variety ?? '—' },
-    { label: 'Sadnja', value: tree.planting_year ? String(tree.planting_year) : '—' },
-    { label: 'Stanje', value: statusLabel(tree.status) },
-    { label: 'Zdravlje', value: healthLabel(tree.health_status) },
-    { label: 'Aktivnosti', value: String(tree.activity_count) },
-    { label: 'Problemi', value: String(tree.disease_issue_count) },
-    { label: 'Trošak', value: formatMoney(tree.total_cost) },
+    { label: tr("Red"), value: rowLabel(tree.row_number) },
+    { label: tr('Poz.'), value: String(tree.position_in_row) },
+    { label: tr('Sorta'), value: tree.variety ?? '—' },
+    { label: tr('Sadnja'), value: tree.planting_year ? String(tree.planting_year) : '—' },
+    { label: tr('Stanje'), value: statusLabel(tree.status) },
+    { label: tr("Zdravlje"), value: healthLabel(tree.health_status) },
+    { label: tr("Aktivnosti"), value: String(tree.activity_count) },
+    { label: tr('Problemi'), value: String(tree.disease_issue_count) },
+    { label: tr("Trošak"), value: formatMoney(tree.total_cost) },
   ]
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-card">
       <div className="flex shrink-0 items-start justify-between gap-2 border-b border-border px-2.5 py-2 lg:px-4 lg:py-2.5">
         <div className="min-w-0">
-          <p className="kicker text-[10px] lg:text-xs">Stablo</p>
+          <p className="kicker text-[10px] lg:text-xs">{tr("Stablo")}</p>
           <h2 className="mt-0.5 truncate font-mono text-sm lg:text-base">{tree.public_id}</h2>
         </div>
         <Button variant="ghost" size="sm" className="h-8 shrink-0 px-2 text-xs lg:h-10 lg:px-3" onClick={onClose}>
-          Zatvori
+          {tr('Zatvori')}
         </Button>
       </div>
 
@@ -55,19 +56,19 @@ export function TreeDrawer({
           to={`/health/new?parcelId=${parcelId}&rowId=${tree.row_id}&treeId=${tree.id}&returnTo=${encodeURIComponent(`/orchard/${parcelId}?tree=${tree.id}`)}`}
           className="inline-flex h-8 w-full items-center justify-center rounded-md bg-primary px-1 text-center text-[11px] font-semibold leading-tight text-primary-foreground hover:bg-primary/90 lg:h-10 lg:rounded-lg lg:text-sm"
         >
-          + Prijavi problem
+          {tr('+ Prijavi problem')}
         </Link>
         <Link
           to={`/activities/new?scope=tree&parcelId=${parcelId}&rowId=${tree.row_id}&treeId=${tree.id}&returnTo=${encodeURIComponent(`/orchard/${parcelId}?tree=${tree.id}`)}`}
           className="inline-flex h-8 w-full items-center justify-center rounded-md border border-border px-1 text-center text-[11px] font-semibold leading-tight hover:bg-muted lg:h-10 lg:rounded-lg lg:text-sm"
         >
-          + Dodaj aktivnost
+          {tr('+ Dodaj aktivnost')}
         </Link>
         <Link
           to={`/orchard/${parcelId}/trees/${tree.id}`}
           className="inline-flex h-8 w-full items-center justify-center rounded-md border border-border px-1 text-center text-[11px] font-semibold leading-tight hover:bg-muted lg:h-10 lg:rounded-lg lg:text-sm"
         >
-          Dnevnik stabla
+          {tr('Dnevnik stabla')}
         </Link>
       </div>
     </div>

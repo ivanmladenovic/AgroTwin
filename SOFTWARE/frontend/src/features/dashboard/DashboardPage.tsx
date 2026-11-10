@@ -1,6 +1,7 @@
 import { lazy, Suspense, useMemo, useRef, type ComponentType } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import {
   ArrowRight,
   ChevronLeft,
@@ -28,6 +29,7 @@ import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import type { DashboardOverview, DashboardParcel } from '@/shared/api/types'
+import { tr } from '@/shared/i18n/i18n'
 
 const ParcelsMap = lazy(async () => {
   const module = await import('@/features/dashboard/ParcelsMap')
@@ -39,13 +41,15 @@ function monthLabel(month: number, width: 'short' | 'long' = 'short') {
 }
 
 export function DashboardPage() {
+  const { i18n } = useTranslation()
+  void i18n.language
   const dashboardQuery = useQuery({ queryKey: ['dashboard'], queryFn: getDashboard })
   const data = dashboardQuery.data
 
   if (dashboardQuery.isError && !dashboardQuery.isFetching) {
     return (
       <div className="w-full">
-        <p className="text-sm text-danger">Početna nije učitana. Osvežite stranicu.</p>
+        <p className="text-sm text-danger">{tr('Početna nije učitana. Osvežite stranicu.')}</p>
       </div>
     )
   }
@@ -53,7 +57,7 @@ export function DashboardPage() {
   if (!data) {
     return (
       <div className="w-full">
-        <p className="text-sm text-muted-foreground">Učitavanje početne…</p>
+        <p className="text-sm text-muted-foreground">{tr('Učitavanje početne…')}</p>
       </div>
     )
   }
@@ -61,18 +65,18 @@ export function DashboardPage() {
   return (
     <div className="w-full min-w-0 space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <h1 className="text-xl font-semibold sm:text-2xl">Početna</h1>
+        <h1 className="text-xl font-semibold sm:text-2xl">{tr("Početna")}</h1>
         <div className="flex flex-wrap items-center gap-2">
           <Link to="/activities/new">
             <Button>
               <Plus className="h-4 w-4" />
-              Unesi aktivnost
+              {tr("Unesi aktivnost")}
             </Button>
           </Link>
           <Link to="/agronomist">
             <Button variant="outline">
               <MessageCircle className="h-4 w-4" />
-              Pitaj agronoma
+              {tr('Pitaj agronoma')}
             </Button>
           </Link>
         </div>
@@ -80,28 +84,28 @@ export function DashboardPage() {
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         <StatCard
-          label="Zasadi"
+          label={tr("Zasadi")}
           value={formatNumber(data.stats.parcel_count)}
-          detail={`${Number(data.stats.area_hectares).toFixed(2)} ha površine`}
+          detail={tr('{{area}} ha površine', { area: Number(data.stats.area_hectares).toFixed(2) })}
           icon={MapPinned}
         />
         <StatCard
-          label="Stabla"
+          label={tr("Stabla")}
           value={formatNumber(data.stats.active_tree_count)}
-          detail="Aktivne sadnice"
+          detail={tr('Aktivne sadnice')}
           icon={Trees}
         />
         <StatCard
-          label={`Troškovi ${data.stats.year}`}
+          label={tr('Troškovi {{year}}', { year: data.stats.year })}
           value={formatMoney(data.stats.year_costs, data.stats.currency)}
-          detail={`${formatMoney(data.stats.month_costs, data.stats.currency)} ovaj mesec`}
+          detail={tr('{{amount}} ovaj mesec', { amount: formatMoney(data.stats.month_costs, data.stats.currency) })}
           icon={Wallet}
           accent="accent"
         />
         <StatCard
-          label="Otvoreni slučajevi"
+          label={tr("Otvoreni slučajevi")}
           value={formatNumber(data.stats.open_health_cases)}
-          detail="Zdravlje stabala"
+          detail={tr('Zdravlje stabala')}
           icon={ShieldAlert}
           accent={data.stats.open_health_cases > 0 ? 'warn' : 'ok'}
         />
@@ -113,7 +117,7 @@ export function DashboardPage() {
             <Suspense
               fallback={
                 <div className="flex h-full min-h-[240px] items-center justify-center sm:min-h-[360px]">
-                  <p className="text-sm text-muted-foreground">Učitavanje mape…</p>
+                  <p className="text-sm text-muted-foreground">{tr('Učitavanje mape…')}</p>
                 </div>
               }
             >
@@ -124,13 +128,13 @@ export function DashboardPage() {
 
         <Card className="flex min-h-0 flex-col xl:min-h-[380px]">
           <CardHeader>
-            <CardTitle>Brze akcije</CardTitle>
+            <CardTitle>{tr('Brze akcije')}</CardTitle>
           </CardHeader>
           <CardContent className="grid flex-1 content-start gap-2">
-            <QuickAction to="/activities/new" icon={Plus} label="Unesi aktivnost" hint="Radovi, prskanje, berba" />
-            <QuickAction to="/health/new" icon={ShieldAlert} label="Prijavi problem" hint="Bolest, štetočina, stres" />
-            <QuickAction to="/orchard/new" icon={Sprout} label="Novi zasad" hint="Nova parcela i raspored sadnje" />
-            <QuickAction to="/agronomist" icon={MessageCircle} label="Pitaj agronoma" hint="Pitanje o voćnjaku" />
+            <QuickAction to="/activities/new" icon={Plus} label={tr('Unesi aktivnost')} hint={tr('Radovi, prskanje, berba')} />
+            <QuickAction to="/health/new" icon={ShieldAlert} label={tr('Prijavi problem')} hint={tr('Bolest, štetočina, stres')} />
+            <QuickAction to="/orchard/new" icon={Sprout} label={tr('Novi zasad')} hint={tr('Nova parcela i raspored sadnje')} />
+            <QuickAction to="/agronomist" icon={MessageCircle} label={tr('Pitaj agronoma')} hint={tr('Pitanje o voćnjaku')} />
           </CardContent>
         </Card>
       </div>
@@ -221,8 +225,8 @@ function ParcelSlider({ parcels }: { parcels: DashboardParcel[] }) {
     <section className="rounded-xl border border-border bg-card p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold">Zasadi</h2>
-          <p className="text-sm text-muted-foreground">Otvori zasad ili mapu parcele.</p>
+          <h2 className="text-base font-semibold">{tr("Zasadi")}</h2>
+          <p className="text-sm text-muted-foreground">{tr('Otvori zasad ili mapu parcele.')}</p>
         </div>
         {parcels.length > 1 ? (
           <div className="flex items-center gap-2">
@@ -230,7 +234,7 @@ function ParcelSlider({ parcels }: { parcels: DashboardParcel[] }) {
               type="button"
               onClick={() => scroll('left')}
               className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-              aria-label="Prethodni zasadi"
+              aria-label={tr("Prethodni zasadi")}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -238,7 +242,7 @@ function ParcelSlider({ parcels }: { parcels: DashboardParcel[] }) {
               type="button"
               onClick={() => scroll('right')}
               className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground"
-              aria-label="Sledeći zasadi"
+              aria-label={tr("Sledeći zasadi")}
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -248,9 +252,11 @@ function ParcelSlider({ parcels }: { parcels: DashboardParcel[] }) {
 
       {parcels.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border px-4 py-8 text-center">
-          <p className="text-sm text-muted-foreground">Još nema zasada. Napravite prvu parcelu da otvorite pregled zasada.</p>
+          <p className="text-sm text-muted-foreground">
+            {tr('Još nema zasada. Napravite prvu parcelu da otvorite pregled zasada.')}
+          </p>
           <Link to="/orchard/new" className="mt-3 inline-flex">
-            <Button size="sm">Nova parcela</Button>
+            <Button size="sm">{tr("Nova parcela")}</Button>
           </Link>
         </div>
       ) : (
@@ -275,20 +281,20 @@ function ParcelCard({ parcel }: { parcel: DashboardParcel }) {
         {parcel.code === parcel.name ? null : <p className="kicker">{parcel.code}</p>}
         <h3 className={parcel.code === parcel.name ? 'text-lg font-semibold' : 'mt-1 text-lg font-semibold'}>{parcel.name}</h3>
         <p className="mt-2 text-xs text-muted-foreground">
-          {located ? 'Lokacija je na mapi' : 'Google Maps link nije unet'}
+          {located ? tr('Lokacija je na mapi') : tr('Google Maps link nije unet')}
         </p>
       </div>
       <div className="grid grid-cols-3 gap-2 p-4 text-sm">
-        <Metric label="Stabla" value={formatNumber(parcel.tree_count)} />
+        <Metric label={tr("Stabla")} value={formatNumber(parcel.tree_count)} />
         <Metric
-          label="Površina"
+          label={tr("Površina")}
           value={parcel.area_hectares ? `${Number(parcel.area_hectares).toFixed(2)} ha` : '—'}
         />
-        <Metric label="Slučajevi" value={formatNumber(parcel.open_cases)} />
+        <Metric label={tr("Slučajevi")} value={formatNumber(parcel.open_cases)} />
       </div>
       <div className="mt-auto flex items-center justify-between border-t border-border px-4 py-3 text-sm">
         <Link to={`/orchard/${parcel.id}`} className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
-          Otvori zasad
+          {tr('Otvori zasad')}
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
         {parcel.maps_url ? (
@@ -297,7 +303,7 @@ function ParcelCard({ parcel }: { parcel: DashboardParcel }) {
           </a>
         ) : (
           <Link to={`/orchard/${parcel.id}/edit`} className="text-xs font-medium text-muted-foreground hover:text-foreground">
-            Dodaj lokaciju
+            {tr('Dodaj lokaciju')}
           </Link>
         )}
       </div>
@@ -343,29 +349,29 @@ function YearAnalytics({ data }: { data: DashboardOverview }) {
     <section className="min-w-0 overflow-hidden rounded-xl border border-border bg-card p-4 sm:p-5">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-base font-semibold">Troškovi</h2>
-          <p className="text-sm text-muted-foreground">Mesec, tekuća godina i ukupno od sadnje.</p>
+          <h2 className="text-base font-semibold">{tr("Troškovi")}</h2>
+          <p className="text-sm text-muted-foreground">{tr('Mesec, tekuća godina i ukupno od sadnje.')}</p>
         </div>
         <Link to="/costs">
           <Button variant="outline" size="sm">
-            Detaljni pregled
+            {tr('Detaljni pregled')}
           </Button>
         </Link>
       </div>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <CostKpi label="Ovaj mesec" value={formatMoney(data.stats.month_costs, currency)} hint={monthLabel(currentMonth, 'long')} />
-        <CostKpi label={`Godina ${year}`} value={formatMoney(data.stats.year_costs, currency)} />
+        <CostKpi label={tr('Ovaj mesec')} value={formatMoney(data.stats.month_costs, currency)} hint={monthLabel(currentMonth, 'long')} />
+        <CostKpi label={tr('Godina {{year}}', { year })} value={formatMoney(data.stats.year_costs, currency)} />
         <CostKpi
-          label="Od sadnje"
+          label={tr('Od sadnje')}
           value={formatMoney(lifetimeTotal, currency)}
-          hint={plantingYear ? `od ${plantingYear}.` : undefined}
+          hint={plantingYear ? tr('od {{year}}.', { year: plantingYear }) : undefined}
         />
       </div>
 
       {lifetime.length > 1 ? (
         <div className="mt-6 min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Po godini</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tr('Po godini')}</p>
           <div className="mt-3 -mx-1 overflow-x-auto overscroll-x-contain px-1 pb-1">
             <div
               className="flex items-end gap-3"
@@ -409,7 +415,9 @@ function YearAnalytics({ data }: { data: DashboardOverview }) {
 
       <div className="mt-6 grid min-w-0 gap-6 border-t border-border pt-5 lg:grid-cols-[1.4fr_0.8fr]">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Po mesecu · {year}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {tr('Po mesecu · {{year}}', { year })}
+          </p>
           <div className="mt-3 -mx-1 overflow-x-auto overscroll-x-contain px-1 pb-1">
             <div className="flex min-w-[36rem] items-end gap-1.5 sm:min-w-0 sm:w-full sm:gap-2">
               {data.year_by_month.map((row) => {
@@ -448,10 +456,12 @@ function YearAnalytics({ data }: { data: DashboardOverview }) {
         </div>
 
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Po kategoriji · {year}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {tr('Po kategoriji · {{year}}', { year })}
+          </p>
           <div className="mt-3 space-y-3">
             {data.year_by_category.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nema evidentiranih troškova ove godine.</p>
+              <p className="text-sm text-muted-foreground">{tr('Nema evidentiranih troškova ove godine.')}</p>
             ) : (
               data.year_by_category.map((row) => (
                 <div key={row.id} className="min-w-0">
@@ -475,9 +485,9 @@ function YearAnalytics({ data }: { data: DashboardOverview }) {
       {data.recent_activities.length > 0 ? (
         <div className="mt-6 border-t border-border pt-5">
           <div className="mb-3 flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Poslednje aktivnosti</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{tr('Poslednje aktivnosti')}</p>
             <Link to="/journal" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-              Dnevnik
+              {tr("Dnevnik")}
               <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>

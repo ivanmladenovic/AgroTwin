@@ -22,6 +22,13 @@ export function useSmartBack(fallback: To = '/') {
   )
 }
 
+/** Query params that are page chrome (selection/filter), not a new “place” to restore scroll for. */
+const SCROLL_IGNORE_PARAMS = new Set(['tree', 'health', 'map', 'row'])
+
 export function locationKey(pathname: string, search: string) {
-  return `${pathname}${search}`
+  if (!search || search === '?') return pathname
+  const params = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
+  for (const key of SCROLL_IGNORE_PARAMS) params.delete(key)
+  const kept = params.toString()
+  return kept ? `${pathname}?${kept}` : pathname
 }

@@ -6,19 +6,26 @@ from uuid import UUID, uuid4
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError, NotFoundError
+from app.models.activity import Activity
 from app.models.disease import DiseaseCase, DiseaseObservation
 from app.models.enums import (
+    ActivitySemanticType,
+    ActivityStatus,
     AttachmentEntityType,
     DiseaseCaseStatus,
     DiseaseCategory,
     DiseaseSeverity,
     HealthStatus,
+    ObservationCategory,
+    ObservationStatus,
+    ScopeType,
     TreeStatus,
 )
 from app.models.parcel import Parcel
 from app.models.photo import Photo
 from app.models.row import Row
 from app.models.tree import Tree
+from app.repositories.catalog import CatalogRepository
 from app.repositories.disease import DiseaseRepository, ObservationRepository
 from app.repositories.parcel import ParcelRepository
 from app.repositories.photo import PhotoRepository
@@ -39,6 +46,23 @@ from app.storage.images import compress_photo
 ALLOWED_PHOTO_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"}
 MAX_PHOTO_BYTES = 25 * 1024 * 1024
 
+_CATEGORY_TO_OBSERVATION: dict[DiseaseCategory, ObservationCategory] = {
+    DiseaseCategory.DISEASE: ObservationCategory.DISEASE,
+    DiseaseCategory.PEST: ObservationCategory.PEST,
+    DiseaseCategory.NUTRIENT_DEFICIENCY: ObservationCategory.NUTRIENT,
+    DiseaseCategory.WATER_STRESS: ObservationCategory.WATER_STRESS,
+    DiseaseCategory.PHYSICAL_DAMAGE: ObservationCategory.WEATHER_DAMAGE,
+    DiseaseCategory.UNKNOWN: ObservationCategory.UNKNOWN,
+    DiseaseCategory.OTHER: ObservationCategory.OTHER,
+}
+
+_STATUS_TO_OBSERVATION: dict[DiseaseCaseStatus, ObservationStatus] = {
+    DiseaseCaseStatus.OPEN: ObservationStatus.NEW,
+    DiseaseCaseStatus.MONITORING: ObservationStatus.MONITORING,
+    DiseaseCaseStatus.RESOLVED: ObservationStatus.RESOLVED,
+    DiseaseCaseStatus.UNKNOWN: ObservationStatus.UNKNOWN,
+}
+
 
 class DiseaseService:
     def __init__(self, db: Session) -> None:
@@ -49,6 +73,7 @@ class DiseaseService:
         self.parcels = ParcelRepository(db)
         self.rows = RowRepository(db)
         self.trees = TreeRepository(db)
+        self.catalogs = CatalogRepository(db)
         self.storage = get_storage()
 
     def list_cases(
@@ -61,6 +86,10 @@ class DiseaseService:
         status: DiseaseCaseStatus | None = None,
         category: DiseaseCategory | None = None,
     ) -> list[DiseaseCaseRead]:
+        try:
+            self.ensure_journal_links(owner_id)
+        except Exception:
+            self.db.rollback()
         records = self.cases.list_for_owner(
             owner_id,
             parcel_id=parcel_id,
@@ -79,6 +108,11 @@ class DiseaseService:
 
     def get_case_detail(self, case_id: UUID, owner_id: UUID) -> DiseaseCaseDetailRead:
         case = self.get_case(case_id, owner_id)
+        if case.activity_id is None:
+            activity = self._create_journal_activity(case, created_by_id=case.created_by_id or owner_id)
+            case.activity_id = activity.id
+            self.db.commit()
+            case = self.get_case(case_id, owner_id)
         observations = [
             self.to_observation_read(item) for item in self.observations.list_for_case(case.id)
         ]
@@ -120,6 +154,8 @@ class DiseaseService:
                 created_by_id=created_by_id,
             )
         )
+        activity = self._create_journal_activity(case, created_by_id=created_by_id)
+        case.activity_id = activity.id
         if tree_id is not None:
             self.sync_tree_health(tree_id)
         self.db.commit()
@@ -139,10 +175,40 @@ class DiseaseService:
                 case.resolved_on = None
         for field, value in data.items():
             setattr(case, field, value)
+        if case.activity_id is None:
+            activity = self._create_journal_activity(case, created_by_id=case.created_by_id or owner_id)
+            case.activity_id = activity.id
+        else:
+            self._sync_journal_activity(case)
         if case.tree_id is not None:
             self.sync_tree_health(case.tree_id)
         self.db.commit()
         return self.get_case(case.id, owner_id)
+
+    def delete_case(self, case_id: UUID, owner_id: UUID) -> None:
+        case = self.get_case(case_id, owner_id)
+        tree_id = case.tree_id
+        activity_id = case.activity_id
+        self.cases.delete(case)
+        if activity_id is not None:
+            activity = self.db.get(Activity, activity_id)
+            if activity is not None and len(activity.costs or []) == 0:
+                self.db.delete(activity)
+        if tree_id is not None:
+            self.sync_tree_health(tree_id)
+        self.db.commit()
+
+    def ensure_journal_links(self, owner_id: UUID) -> int:
+        """Backfill journal activities for disease cases missing activity_id."""
+        missing = self.cases.list_missing_activity(owner_id)
+        created = 0
+        for case in missing:
+            activity = self._create_journal_activity(case, created_by_id=case.created_by_id or owner_id)
+            case.activity_id = activity.id
+            created += 1
+        if created:
+            self.db.commit()
+        return created
 
     def add_observation(
         self,
@@ -274,6 +340,7 @@ class DiseaseService:
             detected_on=case.detected_on,
             resolved_on=case.resolved_on,
             notes=case.notes,
+            activity_id=case.activity_id,
             created_by_id=case.created_by_id,
             parcel_name=parcel.name if parcel else None,
             row_number=row.row_number if row else None,
@@ -281,6 +348,83 @@ class DiseaseService:
             observation_count=len(observation_models),
             photo_count=photo_count,
         )
+
+    def _create_journal_activity(self, case: DiseaseCase, *, created_by_id: UUID) -> Activity:
+        activity_type = self.catalogs.get_activity_type_by_slug("observation")
+        if activity_type is None:
+            raise AppError("Tip aktivnosti 'Zapažanje' nije pronađen", status_code=500, code="missing_observation_type")
+        scope_type, row_id = self._activity_scope(case)
+        location = self._location_label(case)
+        status = (
+            ActivityStatus.COMPLETED
+            if case.status == DiseaseCaseStatus.RESOLVED
+            else ActivityStatus.IN_PROGRESS
+        )
+        activity = Activity(
+            activity_type_id=activity_type.id,
+            title=case.title.strip() or f"Problem — {location}",
+            description=case.description or case.notes,
+            performed_on=case.detected_on,
+            status=status,
+            notes=case.notes,
+            created_by_id=created_by_id,
+            scope_type=scope_type,
+            farm_id=case.farm_id,
+            parcel_id=case.parcel_id,
+            row_id=row_id,
+            tree_id=case.tree_id if scope_type == ScopeType.TREE else None,
+            semantic_type=ActivitySemanticType.PROBLEM,
+            observation_category=_CATEGORY_TO_OBSERVATION.get(case.category, ObservationCategory.UNKNOWN),
+            observation_severity=case.severity,
+            observation_status=_STATUS_TO_OBSERVATION.get(case.status, ObservationStatus.NEW),
+            extra_row_ids=[str(row_id)] if row_id is not None else [],
+        )
+        self.db.add(activity)
+        self.db.flush()
+        return activity
+
+    def _sync_journal_activity(self, case: DiseaseCase) -> None:
+        if case.activity_id is None:
+            return
+        activity = self.db.get(Activity, case.activity_id)
+        if activity is None:
+            return
+        scope_type, row_id = self._activity_scope(case)
+        activity.title = case.title.strip() or activity.title
+        activity.description = case.description or case.notes
+        activity.performed_on = case.detected_on
+        activity.notes = case.notes
+        activity.scope_type = scope_type
+        activity.parcel_id = case.parcel_id
+        activity.row_id = row_id
+        activity.tree_id = case.tree_id if scope_type == ScopeType.TREE else None
+        activity.extra_row_ids = [str(row_id)] if row_id is not None else []
+        activity.observation_category = _CATEGORY_TO_OBSERVATION.get(case.category, ObservationCategory.UNKNOWN)
+        activity.observation_severity = case.severity
+        activity.observation_status = _STATUS_TO_OBSERVATION.get(case.status, ObservationStatus.NEW)
+        if case.status == DiseaseCaseStatus.RESOLVED:
+            activity.status = ActivityStatus.COMPLETED
+        elif activity.status == ActivityStatus.COMPLETED:
+            activity.status = ActivityStatus.IN_PROGRESS
+
+    def _activity_scope(self, case: DiseaseCase) -> tuple[ScopeType, UUID | None]:
+        if case.tree_id is not None and case.row_id is not None:
+            return ScopeType.TREE, case.row_id
+        if case.row_id is not None:
+            return ScopeType.ROW, case.row_id
+        return ScopeType.PARCEL, None
+
+    def _location_label(self, case: DiseaseCase) -> str:
+        parcel = self.db.get(Parcel, case.parcel_id)
+        if case.tree_id is not None:
+            tree = self.db.get(Tree, case.tree_id)
+            if tree is not None:
+                return tree.public_id
+        if case.row_id is not None:
+            row = self.db.get(Row, case.row_id)
+            if row is not None:
+                return f"Red {row.row_number:02d}"
+        return parcel.name if parcel else "Parcela"
 
     def to_observation_read(self, observation: DiseaseObservation) -> ObservationRead:
         return ObservationRead(
@@ -375,6 +519,11 @@ class DiseaseService:
             return case.farm_id
         if entity_type == AttachmentEntityType.DISEASE_CASE:
             return self.get_case(entity_id, owner_id).farm_id
+        if entity_type == AttachmentEntityType.ACTIVITY:
+            from app.services.activity import ActivityService
+
+            activity = ActivityService(self.db).get_activity(entity_id, owner_id)
+            return activity.farm_id
         if entity_type == AttachmentEntityType.TREE:
             from sqlalchemy import select
             from app.models.farm import Farm
@@ -405,4 +554,7 @@ class DiseaseService:
             if event is None:
                 raise NotFoundError("Berba nije pronađena")
             return event.farm_id
-        raise AppError("Fotografije se mogu vezati samo za stablo, opažanje, slučaj ili berbu", status_code=422)
+        raise AppError(
+            "Fotografije se mogu vezati samo za stablo, opažanje, aktivnost, slučaj ili berbu",
+            status_code=422,
+        )

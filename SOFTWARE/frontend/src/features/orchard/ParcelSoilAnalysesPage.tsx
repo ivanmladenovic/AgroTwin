@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
+import { tr } from '@/shared/i18n/i18n'
 
 export function ParcelSoilAnalysesPage() {
   const { parcelId } = useParams()
@@ -46,17 +47,19 @@ export function ParcelSoilAnalysesPage() {
     <div className="w-full space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="kicker">Zemljište</p>
-          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Analize zemljišta</h1>
+          <p className="kicker">{tr('Zemljište')}</p>
+          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">{tr('Analize zemljišta')}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            {parcelQuery.data?.name ?? 'Parcela'} · PDF laboratorijskih analiza i najbliža sadnica uzorka
+            {tr('{{name}} · PDF laboratorijskih analiza i najbliža sadnica uzorka', {
+              name: parcelQuery.data?.name ?? tr('Parcela'),
+            })}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <BackButton fallback={mapHref}>Nazad na mapu</BackButton>
+          <BackButton fallback={mapHref}>{tr('Nazad na mapu')}</BackButton>
           <Button type="button" size="sm" onClick={() => setAdding(true)}>
             <Plus className="h-4 w-4" />
-            Nova analiza
+            {tr('Nova analiza')}
           </Button>
         </div>
       </div>
@@ -75,14 +78,14 @@ export function ParcelSoilAnalysesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Sačuvane analize</CardTitle>
+          <CardTitle>{tr('Sačuvane analize')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {analysesQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Učitavanje analiza…</p>
+            <p className="text-sm text-muted-foreground">{tr('Učitavanje analiza…')}</p>
           ) : analyses.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Još nema analiza. Dodajte PDF i povežite ga sa najbližom sadnicom gde je uzet uzorak.
+              {tr('Još nema analiza. Dodajte PDF i povežite ga sa najbližom sadnicom gde je uzet uzorak.')}
             </p>
           ) : (
             analyses.map((analysis) => <AnalysisRow key={analysis.id} analysis={analysis} parcelId={parcelId} />)
@@ -115,7 +118,7 @@ function AnalysisRow({ analysis, parcelId }: { analysis: SoilLabAnalysis; parcel
       const opened = await openSoilAnalysis(analysis)
       if (!opened) await downloadSoilAnalysis(analysis)
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Otvaranje fajla nije uspelo')
+      setActionError(err instanceof Error ? err.message : tr('Otvaranje fajla nije uspelo'))
     } finally {
       setOpening(false)
     }
@@ -127,18 +130,18 @@ function AnalysisRow({ analysis, parcelId }: { analysis: SoilLabAnalysis; parcel
     try {
       await downloadSoilAnalysis(analysis)
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Preuzimanje nije uspelo')
+      setActionError(err instanceof Error ? err.message : tr('Preuzimanje nije uspelo'))
     } finally {
       setDownloading(false)
     }
   }
 
   function handleDelete() {
-    if (!window.confirm(`Obrisati analizu „${analysis.original_filename}”?`)) return
+    if (!window.confirm(tr('Obrisati analizu „{{name}}”?', { name: analysis.original_filename }))) return
     setActionError(null)
     deleteMutation.mutate(undefined, {
       onError: (err) => {
-        setActionError(err instanceof Error ? err.message : 'Brisanje nije uspelo')
+        setActionError(err instanceof Error ? err.message : tr('Brisanje nije uspelo'))
       },
     })
   }
@@ -154,7 +157,7 @@ function AnalysisRow({ analysis, parcelId }: { analysis: SoilLabAnalysis; parcel
         </p>
         {analysis.tree_id ? (
           <Link to={treeHref} className="mt-1 inline-flex text-xs font-medium text-primary hover:underline">
-            Prikaži sadnicu na mapi
+            {tr('Prikaži sadnicu na mapi')}
           </Link>
         ) : null}
         {actionError ? <p className="mt-2 text-xs text-danger">{actionError}</p> : null}
@@ -162,7 +165,7 @@ function AnalysisRow({ analysis, parcelId }: { analysis: SoilLabAnalysis; parcel
       <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" variant="outline" disabled={opening || deleteMutation.isPending} onClick={() => void handleOpen()}>
           <Eye className="h-4 w-4" />
-          {opening ? 'Otvaranje…' : 'Otvori'}
+          {opening ? tr('Otvaranje…') : tr('Otvori')}
         </Button>
         <Button
           type="button"
@@ -172,7 +175,7 @@ function AnalysisRow({ analysis, parcelId }: { analysis: SoilLabAnalysis; parcel
           onClick={() => void handleDownload()}
         >
           <Download className="h-4 w-4" />
-          {downloading ? 'Preuzimanje…' : 'Preuzmi'}
+          {downloading ? tr('Preuzimanje…') : tr('Preuzmi')}
         </Button>
         <Button
           type="button"
@@ -180,10 +183,10 @@ function AnalysisRow({ analysis, parcelId }: { analysis: SoilLabAnalysis; parcel
           variant="outline"
           disabled={deleteMutation.isPending}
           onClick={handleDelete}
-          aria-label="Obriši analizu"
+          aria-label={tr("Obriši analizu")}
         >
           <Trash2 className="h-4 w-4" />
-          {deleteMutation.isPending ? 'Brisanje…' : 'Obriši'}
+          {deleteMutation.isPending ? tr('Brisanje…') : tr('Obriši')}
         </Button>
       </div>
     </div>
@@ -221,14 +224,14 @@ function AddSoilAnalysisForm({
 
   const mutation = useMutation({
     mutationFn: () => {
-      if (!file || !treeId || !sampledOn) throw new Error('Unesite PDF/fotografiju, datum i sadnicu')
+      if (!file || !treeId || !sampledOn) throw new Error(tr('Unesite PDF/fotografiju, datum i sadnicu'))
       return uploadParcelSoilAnalysis(parcelId, { file, tree_id: treeId, sampled_on: sampledOn })
     },
     onSuccess: async () => {
       await onSaved()
     },
     onError: (err) => {
-      setError(err instanceof Error ? err.message : 'Čuvanje nije uspelo')
+      setError(err instanceof Error ? err.message : tr('Čuvanje nije uspelo'))
     },
   })
 
@@ -236,7 +239,7 @@ function AddSoilAnalysisForm({
     event.preventDefault()
     setError(null)
     if (!file) {
-      setError('Izaberite PDF ili fotografiju analize')
+      setError(tr('Izaberite PDF ili fotografiju analize'))
       return
     }
     if (!sampledOn) {
@@ -244,7 +247,7 @@ function AddSoilAnalysisForm({
       return
     }
     if (!treeId) {
-      setError('Povežite analizu sa najbližom sadnicom')
+      setError(tr('Povežite analizu sa najbližom sadnicom'))
       return
     }
     mutation.mutate()
@@ -254,24 +257,23 @@ function AddSoilAnalysisForm({
     <Card>
       <CardHeader className="flex flex-row items-start justify-between gap-3">
         <div>
-          <CardTitle>Nova analiza</CardTitle>
+          <CardTitle>{tr('Nova analiza')}</CardTitle>
           <p className="mt-1 text-sm text-muted-foreground">
-            Otpremite PDF ili fotografiju i označite najbližu sadnicu gde je uzet uzorak zemljišta.
-            Veliki skenovi se kompresuju automatski (do 400 MB ulaz).
+            {tr('Otpremite PDF ili fotografiju i označite najbližu sadnicu gde je uzet uzorak zemljišta. Veliki skenovi se kompresuju automatski (do 400 MB ulaz).')}
           </p>
         </div>
         <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-          Otkaži
+          {tr('Otkaži')}
         </Button>
       </CardHeader>
       <CardContent>
         <form className="space-y-4" onSubmit={onSubmit}>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>PDF ili fotografija</Label>
+              <Label>{tr('PDF ili fotografija')}</Label>
               <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-3 py-2 text-sm">
                 <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <span className="truncate">{file ? file.name : 'Izaberite datoteku'}</span>
+                <span className="truncate">{file ? file.name : tr('Izaberite datoteku')}</span>
                 <input
                   type="file"
                   accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
@@ -284,14 +286,14 @@ function AddSoilAnalysisForm({
               </label>
             </div>
             <div className="space-y-1.5">
-              <Label>Datum uzorkovanja</Label>
+              <Label>{tr('Datum uzorkovanja')}</Label>
               <Input type="date" value={sampledOn} onChange={(event) => setSampledOn(event.target.value)} />
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>Red</Label>
+              <Label>{tr("Red")}</Label>
               <Select
                 value={rowId}
                 onChange={(event) => {
@@ -299,7 +301,7 @@ function AddSoilAnalysisForm({
                   setTreeId('')
                 }}
               >
-                <option value="">Izaberite red</option>
+                <option value="">{tr('Izaberite red')}</option>
                 {rows.map((row) => (
                   <option key={row.id} value={row.id}>
                     {row.name ?? rowLabel(row.row_number)}
@@ -308,7 +310,7 @@ function AddSoilAnalysisForm({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label>Najbliža sadnica</Label>
+              <Label>{tr('Najbliža sadnica')}</Label>
               <div className="flex items-center gap-2">
                 <Select
                   className="min-w-0 flex-1"
@@ -319,7 +321,7 @@ function AddSoilAnalysisForm({
                     if (tree?.row_id) setRowId(tree.row_id)
                   }}
                 >
-                  <option value="">{rowId ? 'Izaberite sadnicu' : 'Prvo izaberite red'}</option>
+                  <option value="">{rowId ? tr('Izaberite sadnicu') : tr('Prvo izaberite red')}</option>
                   {rowTrees.map((tree) => (
                     <option key={tree.id} value={tree.id}>
                       {tree.public_id}
@@ -328,7 +330,7 @@ function AddSoilAnalysisForm({
                 </Select>
                 <Button type="button" variant="outline" className="shrink-0" onClick={() => setPickerOpen(true)}>
                   <MapPinned className="h-4 w-4" />
-                  Mapa
+                  {tr('Mapa')}
                 </Button>
               </div>
               {selectedTree ? (
@@ -342,16 +344,16 @@ function AddSoilAnalysisForm({
           {error ? <p className="text-sm text-danger">{error}</p> : null}
           {mutation.error && !error ? (
             <p className="text-sm text-danger">
-              {mutation.error instanceof Error ? mutation.error.message : 'Čuvanje nije uspelo'}
+              {mutation.error instanceof Error ? mutation.error.message : tr('Čuvanje nije uspelo')}
             </p>
           ) : null}
 
           <div className="flex flex-wrap justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose}>
-              Otkaži
+              {tr('Otkaži')}
             </Button>
             <Button type="submit" disabled={mutation.isPending}>
-              {mutation.isPending ? 'Čuvanje…' : 'Sačuvaj analizu'}
+              {mutation.isPending ? tr('Čuvanje…') : tr('Sačuvaj analizu')}
             </Button>
           </div>
         </form>

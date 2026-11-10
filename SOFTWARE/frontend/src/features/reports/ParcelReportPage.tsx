@@ -1,6 +1,7 @@
 import { useMemo, type ReactNode } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Printer } from 'lucide-react'
 
 import { listParcels } from '@/features/orchard/api'
@@ -11,7 +12,6 @@ import {
   formatDate,
   formatMoney,
   formatNumber,
-  LOCALE,
   rowLabel,
 } from '@/shared/lib/format'
 import { cn } from '@/shared/lib/utils'
@@ -26,10 +26,15 @@ import type {
 import { Button } from '@/shared/ui/button'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
+import { getBcp47Locale, tr } from '@/shared/i18n/i18n'
 
-const UNAVAILABLE = 'Nije dostupno'
+function unavailable() {
+  return tr('Nije dostupno')
+}
 
 export function ParcelReportPage() {
+  const { i18n } = useTranslation()
+  void i18n.language
   const { parcelId: routeParcelId } = useParams()
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
@@ -89,7 +94,7 @@ export function ParcelReportPage() {
   if (!selectedParcelId && !parcelsQuery.isLoading) {
     return (
       <div className="w-full">
-        <p className="text-sm text-muted-foreground">Nema parcele za izveštaj. Prvo napravite zasad.</p>
+        <p className="text-sm text-muted-foreground">{tr('Nema parcele za izveštaj. Prvo napravite zasad.')}</p>
       </div>
     )
   }
@@ -98,18 +103,18 @@ export function ParcelReportPage() {
     <div className="w-full min-w-0 space-y-6 print:space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4 print:hidden">
         <div>
-          <p className="kicker">Izveštaj</p>
-          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Godišnji izveštaj parcele</h1>
+          <p className="kicker">{tr("Izveštaj")}</p>
+          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">{tr('Godišnji izveštaj parcele')}</h1>
         </div>
         <Button type="button" variant="outline" onClick={printReport}>
           <Printer className="h-4 w-4" />
-          Štampaj / PDF
+          {tr('Štampaj / PDF')}
         </Button>
       </div>
 
       <div className="grid gap-3 print:hidden sm:grid-cols-2 lg:grid-cols-[1fr_10rem_auto] lg:items-end">
         <div className="space-y-1.5">
-          <Label>Parcela</Label>
+          <Label>{tr("Parcela")}</Label>
           <Select value={selectedParcelId} onChange={(event) => updateParcel(event.target.value)}>
             {parcels.map((parcel) => (
               <option key={parcel.id} value={parcel.id}>
@@ -119,7 +124,7 @@ export function ParcelReportPage() {
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label>Godina</Label>
+          <Label>{tr('Godina')}</Label>
           <Select value={String(year)} onChange={(event) => updateYear(Number(event.target.value))}>
             {years.map((item) => (
               <option key={item} value={item}>
@@ -130,17 +135,17 @@ export function ParcelReportPage() {
         </div>
         {report?.parcel_summary.comparison_available ? (
           <p className="text-sm text-muted-foreground lg:pb-2.5">
-            Poređenje sa {report.parcel_summary.previous_year}.
+            {tr('Poređenje sa {{year}}.', { year: report.parcel_summary.previous_year })}
           </p>
         ) : (
-          <p className="text-sm text-muted-foreground lg:pb-2.5">Nema podataka za poređenje.</p>
+          <p className="text-sm text-muted-foreground lg:pb-2.5">{tr('Nema podataka za poređenje.')}</p>
         )}
       </div>
 
       {reportQuery.isLoading || !report ? (
-        <p className="text-sm text-muted-foreground">Priprema izveštaja…</p>
+        <p className="text-sm text-muted-foreground">{tr('Priprema izveštaja…')}</p>
       ) : reportQuery.isError ? (
-        <p className="text-sm text-danger">Izveštaj nije učitan. Osvežite stranicu.</p>
+        <p className="text-sm text-danger">{tr('Izveštaj nije učitan. Osvežite stranicu.')}</p>
       ) : (
         <ReportDocument report={report} />
       )}
@@ -149,6 +154,8 @@ export function ParcelReportPage() {
 }
 
 function ReportDocument({ report }: { report: ParcelAnnualReport }) {
+  const { i18n } = useTranslation()
+  void i18n.language
   const header = report.parcel_summary
   const health = report.health_summary
   const financial = report.financial_summary
@@ -162,7 +169,7 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
   const yieldRow = report.previous_year_comparison.find((row) => row.key === 'yield_kg')
   const yieldChange =
     yieldRow?.change.available && yieldRow.change.percent != null
-      ? `${Number(yieldRow.change.percent) > 0 ? '+' : ''}${Number(yieldRow.change.percent).toLocaleString(LOCALE, { maximumFractionDigits: 1 })}%`
+      ? `${Number(yieldRow.change.percent) > 0 ? '+' : ''}${Number(yieldRow.change.percent).toLocaleString(getBcp47Locale(), { maximumFractionDigits: 1 })}%`
       : null
 
   return (
@@ -170,21 +177,29 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
       <header className="print-avoid border-b border-border pb-5 sm:pb-6">
         <p className="text-sm font-semibold tracking-[0.22em] text-primary uppercase">AgroTwin</p>
         <p className="mt-2 text-[11px] font-bold tracking-[0.18em] text-accent uppercase sm:mt-3 sm:tracking-[0.22em]">
-          Godišnji izveštaj parcele
+          {tr('Godišnji izveštaj parcele')}
         </p>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-          {header.farm_name ? `${header.farm_name} — ${header.parcel_name}` : header.parcel_name}
+          {header.farm_name
+            ? tr('{{farm}} — {{parcel}}', { farm: header.farm_name, parcel: header.parcel_name })
+            : header.parcel_name}
         </h2>
         <p className="mt-2 text-base text-muted-foreground sm:text-lg">
           {header.year}.
-          {header.comparison_available ? ` · upoređeno sa ${header.previous_year}.` : ' · nema podataka za poređenje'}
+          {header.comparison_available
+            ? tr(' · upoređeno sa {{year}}.', { year: header.previous_year })
+            : tr(' · nema podataka za poređenje')}
         </p>
-        <p className="mt-2 text-sm text-muted-foreground sm:mt-3">Generisano: {generated}</p>
+        <p className="mt-2 text-sm text-muted-foreground sm:mt-3">
+          {tr('Generisano: {{date}}', { date: generated })}
+        </p>
       </header>
 
       <section className="print-avoid">
-        <SectionTitle>Pregled godine</SectionTitle>
-        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-foreground">{report.executive_summary}</p>
+        <SectionTitle>{tr('Pregled godine')}</SectionTitle>
+        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-foreground">
+          {buildLocalizedExecutiveSummary(report)}
+        </p>
         <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
           {report.kpis.map((kpi) => (
             <KpiCard key={kpi.key} kpi={kpi} previousYear={header.previous_year} currency={header.currency} />
@@ -193,26 +208,26 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
       </section>
 
       <section className="print-avoid">
-        <SectionTitle>Stanje parcele</SectionTitle>
+        <SectionTitle>{tr('Stanje parcele')}</SectionTitle>
         <HealthBar health={health} />
         <div className="mt-4 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4 lg:grid-cols-7">
-          <MiniStat label="Ukupno" value={formatNumber(health.total_trees)} />
-          <MiniStat label="Zdravo" value={formatNumber(health.healthy)} />
-          <MiniStat label="Praćenje" value={formatNumber(health.monitoring)} />
-          <MiniStat label="Problem" value={formatNumber(health.issue)} />
-          <MiniStat label="Nepoznato" value={formatNumber(health.unknown)} />
-          <MiniStat label="Uklonjeno" value={formatNumber(health.removed)} />
-          <MiniStat label="Zamenjeno" value={formatNumber(health.replaced)} />
+          <MiniStat label={tr('Ukupno')} value={formatNumber(health.total_trees)} />
+          <MiniStat label={tr('Zdravo')} value={formatNumber(health.healthy)} />
+          <MiniStat label={tr('Praćenje')} value={formatNumber(health.monitoring)} />
+          <MiniStat label={tr('Problem')} value={formatNumber(health.issue)} />
+          <MiniStat label={tr('Nepoznato')} value={formatNumber(health.unknown)} />
+          <MiniStat label={tr('Uklonjeno')} value={formatNumber(health.removed)} />
+          <MiniStat label={tr('Zamenjeno')} value={formatNumber(health.replaced)} />
         </div>
         <div className="mt-6">
           <div className="flex flex-wrap items-end justify-between gap-2">
-            <h3 className="text-sm font-semibold">Stabla koja zahtevaju pažnju</h3>
+            <h3 className="text-sm font-semibold">{tr('Stabla koja zahtevaju pažnju')}</h3>
             <Link to={orchardAttentionHref} className="print-hidden shrink-0 text-sm font-medium text-primary hover:underline">
-              Na mapi
+              {tr('Na mapi')}
             </Link>
           </div>
           {report.trees_requiring_attention.length === 0 ? (
-            <p className="mt-3 text-sm text-muted-foreground">Nema stabala koja trenutno zahtevaju pažnju.</p>
+            <p className="mt-3 text-sm text-muted-foreground">{tr('Nema stabala koja trenutno zahtevaju pažnju.')}</p>
           ) : (
             <AttentionTable trees={report.trees_requiring_attention} parcelId={header.parcel_id} />
           )}
@@ -221,13 +236,15 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
 
       <section className="print-avoid">
         <div className="flex flex-wrap items-end justify-between gap-2">
-          <SectionTitle>Aktivnosti tokom godine</SectionTitle>
+          <SectionTitle>{tr('Aktivnosti tokom godine')}</SectionTitle>
           <Link to={journalHref} className="print-hidden text-sm font-medium text-primary hover:underline">
-            Otvori dnevnik
+            {tr('Otvori dnevnik')}
           </Link>
         </div>
         {report.activities_summary.by_type.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">Nema urađenih aktivnosti u {header.year}. godini.</p>
+          <p className="mt-3 text-sm text-muted-foreground">
+            {tr('Nema urađenih aktivnosti u {{year}}. godini.', { year: header.year })}
+          </p>
         ) : (
           <CountBars rows={report.activities_summary.by_type} />
         )}
@@ -250,13 +267,13 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
 
       <section className="print-avoid">
         <div className="flex items-end justify-between gap-3">
-          <SectionTitle>Planirane aktivnosti</SectionTitle>
+          <SectionTitle>{tr('Planirane aktivnosti')}</SectionTitle>
           <Link to={agendaHref} className="print-hidden text-sm font-medium text-primary hover:underline">
-            Otvori agendu
+            {tr('Otvori agendu')}
           </Link>
         </div>
         {report.planned_activities.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">Nema predstojećih planiranih aktivnosti.</p>
+          <p className="mt-3 text-sm text-muted-foreground">{tr('Nema predstojećih planiranih aktivnosti.')}</p>
         ) : (
           <ul className="mt-3 divide-y divide-border">
             {report.planned_activities.map((item) => (
@@ -277,14 +294,14 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
       </section>
 
       <section className="print-avoid">
-        <SectionTitle>Troškovi i finansije</SectionTitle>
+        <SectionTitle>{tr('Troškovi i finansije')}</SectionTitle>
         {!financial.recorded ? (
-          <p className="mt-3 text-sm text-muted-foreground">Nema podataka o troškovima.</p>
+          <p className="mt-3 text-sm text-muted-foreground">{tr('Nema podataka o troškovima.')}</p>
         ) : (
           <>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               <FinanceStat
-                label={`Ukupan trošak — ${header.year}.`}
+                label={tr('Ukupan trošak — {{year}}.', { year: header.year })}
                 value={optionalMoney(financial.annual_cost, header.currency)}
               />
               <FinanceStat
@@ -292,45 +309,45 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
                 value={optionalMoney(financial.previous_year_cost, header.currency)}
               />
               <FinanceStat
-                label="Od osnivanja zasada"
+                label={tr('Od osnivanja zasada')}
                 value={optionalMoney(financial.historical_cost, header.currency)}
               />
             </div>
             {financial.previous_year_cost.available && financial.annual_cost.available ? (
               <p className="mt-3 text-sm text-muted-foreground">
-                Promena:{' '}
+                {tr('Promena:')}{' '}
                 {formatChangeText(
                   changeFromValues(financial.previous_year_cost.value, financial.annual_cost.value, 'annual_cost'),
                   header.previous_year,
                 )}
               </p>
             ) : (
-              <p className="mt-3 text-sm text-muted-foreground">Nema podataka za poređenje.</p>
+              <p className="mt-3 text-sm text-muted-foreground">{tr('Nema podataka za poređenje.')}</p>
             )}
             <div className="mt-6 grid gap-6 lg:grid-cols-2">
               <div>
-                <h3 className="text-sm font-semibold">Po kategoriji</h3>
+                <h3 className="text-sm font-semibold">{tr('Po kategoriji')}</h3>
                 {financial.by_category.length === 0 ? (
-                  <p className="mt-3 text-sm text-muted-foreground">Nema troškova po kategoriji.</p>
+                  <p className="mt-3 text-sm text-muted-foreground">{tr('Nema troškova po kategoriji.')}</p>
                 ) : (
                   <AmountBars rows={financial.by_category} currency={header.currency} />
                 )}
               </div>
               <div>
-                <h3 className="text-sm font-semibold">Najveći troškovi po aktivnosti</h3>
+                <h3 className="text-sm font-semibold">{tr('Najveći troškovi po aktivnosti')}</h3>
                 {financial.by_activity.length === 0 ? (
-                  <p className="mt-3 text-sm text-muted-foreground">Nema troškova vezanih za aktivnosti.</p>
+                  <p className="mt-3 text-sm text-muted-foreground">{tr('Nema troškova vezanih za aktivnosti.')}</p>
                 ) : (
                   <AmountBars rows={financial.by_activity} currency={header.currency} />
                 )}
               </div>
             </div>
             <div className="mt-6">
-              <h3 className="text-sm font-semibold">Efikasnost</h3>
+              <h3 className="text-sm font-semibold">{tr('Efikasnost')}</h3>
               <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                <MiniStat label="Po hektaru" value={optionalMoney(financial.cost_per_hectare, header.currency)} />
-                <MiniStat label="Po stablu" value={optionalMoney(financial.cost_per_tree, header.currency)} />
-                <MiniStat label="Po kilogramu prinosa" value={optionalMoney(financial.cost_per_kg, header.currency)} />
+                <MiniStat label={tr('Po hektaru')} value={optionalMoney(financial.cost_per_hectare, header.currency)} />
+                <MiniStat label={tr('Po stablu')} value={optionalMoney(financial.cost_per_tree, header.currency)} />
+                <MiniStat label={tr('Po kilogramu prinosa')} value={optionalMoney(financial.cost_per_kg, header.currency)} />
               </div>
             </div>
           </>
@@ -339,22 +356,22 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
 
       <section className="print-avoid">
         <div className="flex items-end justify-between gap-3">
-          <SectionTitle>Problemi tokom godine</SectionTitle>
+          <SectionTitle>{tr('Problemi tokom godine')}</SectionTitle>
           <Link to={healthHref} className="print-hidden text-sm font-medium text-primary hover:underline">
-            Otvori zdravlje
+            {tr('Otvori zdravlje')}
           </Link>
         </div>
         {!problems.recorded || problems.total === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">Nema zabeleženih problema.</p>
+          <p className="mt-3 text-sm text-muted-foreground">{tr('Nema zabeleženih problema.')}</p>
         ) : (
           <>
             <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <MiniStat label="Ukupno" value={formatNumber(problems.total)} />
-              <MiniStat label="Otvoreno" value={formatNumber(problems.open_count)} />
-              <MiniStat label="Praćenje" value={formatNumber(problems.monitoring_count)} />
-              <MiniStat label="Rešeno" value={formatNumber(problems.resolved_count)} />
+              <MiniStat label={tr('Ukupno')} value={formatNumber(problems.total)} />
+              <MiniStat label={tr('Otvoreno')} value={formatNumber(problems.open_count)} />
+              <MiniStat label={tr('Praćenje')} value={formatNumber(problems.monitoring_count)} />
+              <MiniStat label={tr('Rešeno')} value={formatNumber(problems.resolved_count)} />
             </div>
-            <h3 className="mt-5 text-sm font-semibold">Najčešći problemi</h3>
+            <h3 className="mt-5 text-sm font-semibold">{tr('Najčešći problemi')}</h3>
             <ul className="mt-2 space-y-1.5 text-sm">
               {problems.by_category.map((item, index) => (
                 <li key={item.slug ?? item.name} className="flex justify-between gap-3">
@@ -365,9 +382,9 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
                 </li>
               ))}
             </ul>
-            <h3 className="mt-5 text-sm font-semibold">Problemi po redu</h3>
+            <h3 className="mt-5 text-sm font-semibold">{tr('Problemi po redu')}</h3>
             {problems.by_row.length === 0 ? (
-              <p className="mt-2 text-sm text-muted-foreground">Nema slučajeva vezanih za konkretan red.</p>
+              <p className="mt-2 text-sm text-muted-foreground">{tr('Nema slučajeva vezanih za konkretan red.')}</p>
             ) : (
               <CountBars
                 rows={problems.by_row.map((row) => ({
@@ -385,13 +402,13 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
 
       <section className="print-avoid">
         <div className="flex items-end justify-between gap-3">
-          <SectionTitle>Stabla za kontrolu</SectionTitle>
+          <SectionTitle>{tr('Stabla za kontrolu')}</SectionTitle>
           <Link to={orchardAttentionHref} className="print-hidden shrink-0 text-sm font-medium text-primary hover:underline">
-            Na mapi
+            {tr('Na mapi')}
           </Link>
         </div>
         {report.trees_requiring_control.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">Nema stabala za kontrolu.</p>
+          <p className="mt-3 text-sm text-muted-foreground">{tr('Nema stabala za kontrolu.')}</p>
         ) : (
           <AttentionTable trees={report.trees_requiring_control} parcelId={header.parcel_id} showReason />
         )}
@@ -399,35 +416,41 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
 
       <section className="print-avoid">
         <div className="flex items-end justify-between gap-3">
-          <SectionTitle>Proizvodnja</SectionTitle>
+          <SectionTitle>{tr("Proizvodnja")}</SectionTitle>
           <Link
             to={`/orchard/${header.parcel_id}/production?year=${header.year}`}
             className="print-hidden text-sm font-medium text-primary hover:underline"
           >
-            Pogledaj proizvodnju
+            {tr('Pogledaj proizvodnju')}
           </Link>
         </div>
         {!harvest.recorded ? (
-          <p className="mt-3 text-sm text-muted-foreground">Prinos nije zabeležen.</p>
+          <p className="mt-3 text-sm text-muted-foreground">{tr('Prinos nije zabeležen.')}</p>
         ) : (
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <MiniStat label="Ukupan prinos" value={formatKg(harvest.total_kg)} />
-            <MiniStat label="Po hektaru" value={harvest.per_hectare.available ? `${formatKg(harvest.per_hectare.value)}/ha` : UNAVAILABLE} />
-            <MiniStat label="Po stablu" value={harvest.per_tree.available ? `${formatKg(harvest.per_tree.value)}/stablo` : UNAVAILABLE} />
+            <MiniStat label={tr('Ukupan prinos')} value={formatReportKg(harvest.total_kg)} />
             <MiniStat
-              label="Berbe"
-              value={harvest.harvest_events != null ? formatNumber(harvest.harvest_events) : UNAVAILABLE}
+              label={tr('Po hektaru')}
+              value={harvest.per_hectare.available ? `${formatReportKg(harvest.per_hectare.value)}/ha` : unavailable()}
             />
             <MiniStat
-              label="Prva berba"
-              value={harvest.first_harvest_date ? formatDate(harvest.first_harvest_date) : UNAVAILABLE}
+              label={tr('Po stablu')}
+              value={harvest.per_tree.available ? formatReportKg(harvest.per_tree.value, 'stablo') : unavailable()}
             />
             <MiniStat
-              label="Poslednja berba"
-              value={harvest.last_harvest_date ? formatDate(harvest.last_harvest_date) : UNAVAILABLE}
+              label={tr('Berbe')}
+              value={harvest.harvest_events != null ? formatNumber(harvest.harvest_events) : unavailable()}
+            />
+            <MiniStat
+              label={tr('Prva berba')}
+              value={harvest.first_harvest_date ? formatDate(harvest.first_harvest_date) : unavailable()}
+            />
+            <MiniStat
+              label={tr('Poslednja berba')}
+              value={harvest.last_harvest_date ? formatDate(harvest.last_harvest_date) : unavailable()}
             />
             {yieldChange ? (
-              <MiniStat label={`Naspram ${header.previous_year}.`} value={yieldChange} />
+              <MiniStat label={tr('Naspram {{year}}.', { year: header.previous_year })} value={yieldChange} />
             ) : null}
           </div>
         )}
@@ -435,25 +458,25 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
 
       <section className="print-avoid">
         <SectionTitle>
-          {header.year}. naspram {header.previous_year}.
+          {tr('{{year}}. naspram {{previous}}.', { year: header.year, previous: header.previous_year })}
         </SectionTitle>
         {!header.comparison_available || report.previous_year_comparison.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">Nema podataka za poređenje.</p>
+          <p className="mt-3 text-sm text-muted-foreground">{tr('Nema podataka za poređenje.')}</p>
         ) : (
           <div className="print-scroll-x mt-3 overflow-x-auto rounded-xl border border-border sm:overflow-visible sm:rounded-none sm:border-0">
             <table className="w-full min-w-[28rem] text-left text-sm print:min-w-0 sm:min-w-[32rem]">
               <thead className="text-xs uppercase tracking-wide text-muted-foreground">
                 <tr className="border-b border-border">
-                  <th className="px-3 py-2.5 font-semibold sm:px-0 sm:py-2">Pokazatelj</th>
+                  <th className="px-3 py-2.5 font-semibold sm:px-0 sm:py-2">{tr('Pokazatelj')}</th>
                   <th className="px-3 py-2.5 font-semibold sm:px-0 sm:py-2">{header.previous_year}.</th>
                   <th className="px-3 py-2.5 font-semibold sm:px-0 sm:py-2">{header.year}.</th>
-                  <th className="px-3 py-2.5 font-semibold sm:px-0 sm:py-2">Promena</th>
+                  <th className="px-3 py-2.5 font-semibold sm:px-0 sm:py-2">{tr('Promena')}</th>
                 </tr>
               </thead>
               <tbody>
                 {report.previous_year_comparison.map((row) => (
                   <tr key={row.key} className="border-b border-border/70 last:border-0">
-                    <td className="px-3 py-2.5 sm:px-0">{row.label}</td>
+                    <td className="px-3 py-2.5 sm:px-0">{comparisonLabel(row.key, row.label)}</td>
                     <td className="px-3 py-2.5 tabular-nums sm:px-0">{formatKpiValue(row.kind, row.previous, header.currency)}</td>
                     <td className="px-3 py-2.5 tabular-nums sm:px-0">{formatKpiValue(row.kind, row.current, header.currency)}</td>
                     <td className="px-3 py-2.5 sm:px-0">{formatChangeText(row.change, header.previous_year)}</td>
@@ -466,13 +489,17 @@ function ReportDocument({ report }: { report: ParcelAnnualReport }) {
       </section>
 
       <section className="print-avoid">
-        <SectionTitle>Tok godine — mesečni troškovi</SectionTitle>
+        <SectionTitle>{tr('Tok godine — mesečni troškovi')}</SectionTitle>
         <MonthBars months={report.yearly_trend.months} currency={header.currency} recorded={financial.recorded} />
       </section>
 
       <footer className="border-t border-border pt-5 text-xs text-muted-foreground">
         <p>AgroTwin · {header.parcel_name} · {header.year}.</p>
-        <p className="mt-1">Generisano {generated} Izveštaj je sažetak postojećih evidencija, bez predikcija.</p>
+        <p className="mt-1">
+          {tr('Generisano {{generated}}. Izveštaj je sažetak postojećih evidencija, bez predikcija.', {
+            generated,
+          })}
+        </p>
       </footer>
     </article>
   )
@@ -494,10 +521,10 @@ function KpiCard({
   return (
     <article className="print-avoid rounded-xl border border-border bg-background px-3 py-3 sm:px-4 sm:py-4">
       <p className="truncate text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:text-[11px]">
-        {kpi.label}
+        {kpiLabel(kpi.key, kpi.label)}
       </p>
       <p className="mt-1.5 text-xl font-semibold tracking-tight tabular-nums sm:mt-2 sm:text-2xl">
-        {kpi.available ? formatKpiValue(kpi.kind, kpi.value, currency) : UNAVAILABLE}
+        {kpi.available ? formatKpiValue(kpi.kind, kpi.value, currency) : unavailable()}
       </p>
       {kpi.change.available ? <p className="mt-1.5 text-xs sm:mt-2">{formatChangeText(kpi.change, previousYear)}</p> : null}
     </article>
@@ -558,10 +585,14 @@ function AttentionTable({
     <>
       <ul className="mt-3 space-y-2 print:hidden sm:hidden">
         {trees.map((tree) => {
-          const status = showReason ? tree.reason : healthLabel(tree.health_status)
+          const status = showReason ? tr(tree.reason) : healthLabel(tree.health_status)
           const lastCheck = tree.last_check_on
-            ? `${formatDate(tree.last_check_on)}${tree.days_since_check != null ? ` · pre ${tree.days_since_check}d` : ''}`
-            : 'Bez pregleda'
+            ? `${formatDate(tree.last_check_on)}${
+                tree.days_since_check != null
+                  ? tr(' · pre {{days}}d', { days: tree.days_since_check })
+                  : ''
+              }`
+            : tr('Bez pregleda')
           return (
             <li key={tree.tree_id} className="rounded-xl border border-border bg-background px-3 py-2.5">
               <div className="flex items-start justify-between gap-2">
@@ -600,10 +631,10 @@ function AttentionTable({
         <table className="w-full min-w-0 text-left text-sm">
           <thead className="text-xs uppercase tracking-wide text-muted-foreground">
             <tr className="border-b border-border">
-              <th className="py-2 font-semibold">Stablo</th>
-              <th className="py-2 font-semibold">Red</th>
-              <th className="py-2 font-semibold">{showReason ? 'Razlog' : 'Status'}</th>
-              <th className="py-2 font-semibold">Poslednji pregled</th>
+              <th className="py-2 font-semibold">{tr("Stablo")}</th>
+              <th className="py-2 font-semibold">{tr("Red")}</th>
+              <th className="py-2 font-semibold">{showReason ? tr('Razlog') : tr('Status')}</th>
+              <th className="py-2 font-semibold">{tr('Poslednji pregled')}</th>
             </tr>
           </thead>
           <tbody>
@@ -619,11 +650,15 @@ function AttentionTable({
                     {rowLabel(tree.row_number)}
                   </Link>
                 </td>
-                <td className="py-2.5">{showReason ? tree.reason : healthLabel(tree.health_status)}</td>
+                <td className="py-2.5">{showReason ? tr(tree.reason) : healthLabel(tree.health_status)}</td>
                 <td className="py-2.5 text-muted-foreground">
                   {tree.last_check_on
-                    ? `${formatDate(tree.last_check_on)}${tree.days_since_check != null ? ` · pre ${tree.days_since_check} dana` : ''}`
-                    : UNAVAILABLE}
+                    ? `${formatDate(tree.last_check_on)}${
+                        tree.days_since_check != null
+                          ? tr(' · pre {{days}} dana', { days: tree.days_since_check })
+                          : ''
+                      }`
+                    : unavailable()}
                 </td>
               </tr>
             ))}
@@ -703,7 +738,7 @@ function MonthBars({
   recorded: boolean
 }) {
   if (!recorded) {
-    return <p className="mt-3 text-sm text-muted-foreground">Nema podataka o troškovima.</p>
+    return <p className="mt-3 text-sm text-muted-foreground">{tr('Nema podataka o troškovima.')}</p>
   }
   const max = Math.max(...months.map((row) => Number(row.amount)), 0)
   return (
@@ -745,30 +780,36 @@ function formatChartAmount(amount: number) {
 }
 
 function formatKpiValue(kind: ReportKpi['kind'], value: string | number | null, currency: string) {
-  if (value === null || value === undefined) return UNAVAILABLE
+  if (value === null || value === undefined) return unavailable()
   if (kind === 'money') return formatMoney(value, currency)
-  if (kind === 'mass') return formatKg(value)
+  if (kind === 'mass') return formatReportKg(value)
   return formatNumber(Number(value))
 }
 
 function optionalMoney(amount: ReportOptionalAmount, currency: string) {
-  if (!amount.available || amount.value === null) return UNAVAILABLE
+  if (!amount.available || amount.value === null) return unavailable()
   return formatMoney(amount.value, currency)
 }
 
-function formatKg(value: string | number | null | undefined) {
-  if (value === null || value === undefined || value === '') return UNAVAILABLE
+function formatReportKg(value: string | number | null | undefined, per?: string) {
+  if (value === null || value === undefined || value === '') return unavailable()
   const numeric = Number(value)
-  if (Number.isNaN(numeric)) return UNAVAILABLE
-  return `${numeric.toLocaleString(LOCALE, { maximumFractionDigits: 2 })} kg`
+  if (Number.isNaN(numeric)) return unavailable()
+  const formatted = `${numeric.toLocaleString(getBcp47Locale(), { maximumFractionDigits: 2 })} kg`
+  return per ? `${formatted}/${tr(per)}` : formatted
 }
 
 function formatChangeText(change: ReportYearChange, previousYear: number) {
   if (!change.available) {
-    return <span className="text-muted-foreground">Nema podataka za poređenje</span>
+    return <span className="text-muted-foreground">{tr('Nema podataka za poređenje')}</span>
   }
   const arrow = change.direction === 'up' ? '↑' : change.direction === 'down' ? '↓' : '→'
-  const verb = change.direction === 'up' ? 'povećano' : change.direction === 'down' ? 'smanjeno' : 'bez promene'
+  const verb =
+    change.direction === 'up'
+      ? tr('povećano')
+      : change.direction === 'down'
+        ? tr('smanjeno')
+        : tr('bez promene')
   const percent = change.percent === null ? verb : formatPercent(change.percent)
   return (
     <span className={cn(toneClass(change.tone))}>
@@ -781,7 +822,7 @@ function formatPercent(value: string) {
   const numeric = Number(value)
   if (Number.isNaN(numeric)) return value
   const prefix = numeric > 0 ? '+' : ''
-  return `${prefix}${numeric.toLocaleString(LOCALE, { maximumFractionDigits: 1 })}%`
+  return `${prefix}${numeric.toLocaleString(getBcp47Locale(), { maximumFractionDigits: 1 })}%`
 }
 
 function toneClass(tone: ReportYearChange['tone']) {
@@ -809,11 +850,117 @@ function changeFromValues(previous: string | null, current: string | null, key: 
 }
 
 function monthName(month: number) {
-  return new Intl.DateTimeFormat(LOCALE, { month: 'long' }).format(new Date(2026, month - 1, 1))
+  return new Intl.DateTimeFormat(getBcp47Locale(), { month: 'long' }).format(new Date(2026, month - 1, 1))
 }
 
 function formatLongDate(value: string) {
   const date = new Date(`${value}T00:00:00`)
   if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'long', year: 'numeric' }).format(date)
+  return new Intl.DateTimeFormat(getBcp47Locale(), {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(date)
+}
+
+function kpiLabel(key: string, fallback: string) {
+  const labels: Record<string, string> = {
+    total_trees: tr('Ukupno stabala'),
+    healthy_trees: tr('Zdrava stabla'),
+    attention_trees: tr('Zahtevaju pažnju'),
+    activities_completed: tr('Urađene aktivnosti'),
+    activities_planned: tr('Planirane aktivnosti'),
+    annual_cost: tr('Godišnji trošak'),
+    yield_kg: tr('Prinos'),
+    cost_per_hectare: tr('Trošak po hektaru'),
+  }
+  return labels[key] ?? tr(fallback)
+}
+
+function comparisonLabel(key: string, fallback: string) {
+  const labels: Record<string, string> = {
+    attention_trees: tr('Stabla koja zahtevaju pažnju'),
+    activities_completed: tr('Urađene aktivnosti'),
+    annual_cost: tr('Ukupni troškovi'),
+    yield_kg: tr('Prinos'),
+    problem_cases: tr('Slučajevi problema'),
+  }
+  return labels[key] ?? tr(fallback)
+}
+
+function buildLocalizedExecutiveSummary(report: ParcelAnnualReport): string {
+  const year = report.parcel_summary.year
+  const previousYear = report.parcel_summary.previous_year
+  const parcelName = report.parcel_summary.parcel_name
+  const currency = report.parcel_summary.currency
+  const activities = report.activities_summary.completed_count
+  const cost = report.financial_summary.annual_cost
+  const harvest = report.yield_summary
+  const attention = report.health_summary.attention_count
+  const topRow = report.problem_summary.recorded ? report.problem_summary.by_row[0]?.row_number : undefined
+  const parts: string[] = []
+
+  if (cost.available && cost.value != null) {
+    parts.push(
+      tr(
+        'Tokom {{year}}. godine parcela {{name}} je imala {{count}} urađenih aktivnosti i ukupan trošak od {{cost}}.',
+        {
+          year,
+          name: parcelName,
+          count: formatNumber(activities),
+          cost: formatMoney(cost.value, currency),
+        },
+      ),
+    )
+  } else {
+    parts.push(
+      tr('Tokom {{year}}. godine parcela {{name}} je imala {{count}} urađenih aktivnosti.', {
+        year,
+        name: parcelName,
+        count: formatNumber(activities),
+      }),
+    )
+  }
+
+  const yieldRow = report.previous_year_comparison.find((row) => row.key === 'yield_kg')
+  const yieldChange =
+    yieldRow?.change.available && yieldRow.change.percent != null ? Number(yieldRow.change.percent) : null
+  if (harvest.recorded && harvest.total_kg != null && yieldChange != null) {
+    if (yieldChange > 0) {
+      parts.push(
+        tr('Prinos je porastao za {{percent}}% u odnosu na {{year}}.', {
+          percent: Math.abs(yieldChange).toLocaleString(getBcp47Locale(), { maximumFractionDigits: 1 }),
+          year: previousYear,
+        }),
+      )
+    } else if (yieldChange < 0) {
+      parts.push(
+        tr('Prinos je pao za {{percent}}% u odnosu na {{year}}.', {
+          percent: Math.abs(yieldChange).toLocaleString(getBcp47Locale(), { maximumFractionDigits: 1 }),
+          year: previousYear,
+        }),
+      )
+    } else {
+      parts.push(
+        tr('Prinos je ostao na nivou {{year}}. ({{yield}}).', {
+          year: previousYear,
+          yield: formatReportKg(harvest.total_kg),
+        }),
+      )
+    }
+  } else if (harvest.recorded && harvest.total_kg != null) {
+    parts.push(tr('Zabeležen prinos iznosi {{yield}}.', { yield: formatReportKg(harvest.total_kg) }))
+  }
+
+  let attentionText =
+    attention === 1
+      ? tr('1 stablo trenutno zahteva pažnju')
+      : tr('{{count}} stabala trenutno zahteva pažnju', { count: formatNumber(attention) })
+  if (topRow != null) {
+    attentionText += tr(', sa najvećom koncentracijom problema u redu {{row}}.', { row: topRow })
+  } else {
+    attentionText += '.'
+  }
+  parts.push(attentionText)
+  return parts.join(' ')
 }

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { compressPhoto } from '@/shared/lib/compressImage'
 import { Button } from '@/shared/ui/button'
+import { tr } from '@/shared/i18n/i18n'
 
 type PhotoPickerProps = {
   files: File[]
@@ -31,7 +32,7 @@ export function PhotoPicker({ files, onChange, description }: PhotoPickerProps) 
       const compressed = await Promise.all(images.map((file) => compressPhoto(file)))
       onChange([...filesRef.current, ...compressed])
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'Fotografija nije mogla da se učita.')
+      window.alert(error instanceof Error ? error.message : tr('Fotografija nije mogla da se učita.'))
     } finally {
       setCompressing(false)
     }
@@ -52,7 +53,7 @@ export function PhotoPicker({ files, onChange, description }: PhotoPickerProps) 
   return (
     <div className="space-y-3">
       <p className="text-xs text-muted-foreground">
-        {description ?? 'U voćnjaku otvorite kameru i uslikajte simptom, ili izaberite fotografiju iz galerije.'}
+        {description ?? tr('U voćnjaku otvorite kameru i uslikajte simptom, ili izaberite fotografiju iz galerije.')}
         {' '}
         Fotografije se odmah kompresuju da zauzmu manje prostora. HEIC/HEIF se pretvara u PNG.
       </p>
@@ -88,7 +89,7 @@ export function PhotoPicker({ files, onChange, description }: PhotoPickerProps) 
           event.target.value = ''
         }}
       />
-      {compressing ? <p className="text-xs text-muted-foreground">Kompresija fotografija…</p> : null}
+      {compressing ? <p className="text-xs text-muted-foreground">{tr('Kompresija fotografija…')}</p> : null}
       {files.length > 0 ? (
         <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
           {files.map((file, index) => (
@@ -176,7 +177,7 @@ function CameraCapture({
         }
       } catch {
         if (!cancelled) {
-          setError('Kamera nije dostupna. Dozvolite pristup ili uslikajte telefonom.')
+          setError(tr('Kamera nije dostupna. Dozvolite pristup ili uslikajte telefonom.'))
         }
       }
     }
@@ -214,7 +215,7 @@ function CameraCapture({
       <div className="w-full max-w-lg overflow-hidden rounded-t-2xl border border-border bg-card shadow-lg sm:rounded-xl">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <p className="text-sm font-medium">Kamera</p>
-          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label="Zatvori kameru">
+          <button type="button" onClick={onClose} className="text-muted-foreground hover:text-foreground" aria-label={tr('Zatvori kameru')}>
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -243,7 +244,7 @@ function CameraCapture({
         </div>
         <div className="flex justify-end gap-2 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <Button type="button" variant="outline" onClick={onClose}>
-            Otkaži
+            {tr('Otkaži')}
           </Button>
           <Button type="button" onClick={capture} disabled={!ready || Boolean(error)}>
             Uslikaj

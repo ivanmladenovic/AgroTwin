@@ -8,6 +8,7 @@ import type { DashboardParcel } from '@/shared/api/types'
 import { formatNumber } from '@/shared/lib/format'
 import { parcelCoordinates } from '@/shared/lib/maps'
 import { cn } from '@/shared/lib/utils'
+import { tr } from '@/shared/i18n/i18n'
 
 const SERBIA_CENTER: [number, number] = [44.05, 20.55]
 
@@ -124,14 +125,14 @@ export function ParcelsMap({ className, parcels }: ParcelsMapProps) {
         </MapContainer>
       ) : (
         <div className="flex h-full items-center justify-center bg-muted/60">
-          <p className="text-sm text-muted-foreground">Učitavanje mape…</p>
+          <p className="text-sm text-muted-foreground">{tr('Učitavanje mape…')}</p>
         </div>
       )}
 
       {parcels.length > 0 && located.length === 0 ? (
         <div className="pointer-events-none absolute inset-0 z-[400] flex items-center justify-center p-6">
           <p className="rounded-xl border border-border bg-card/90 px-4 py-3 text-center text-sm text-muted-foreground">
-            Unesite Google Maps link na parceli da se zasad prikaže na mapi.
+            {tr("Unesite Google Maps link na parceli da se zasad prikaže na mapi.")}
           </p>
         </div>
       ) : null}
@@ -139,7 +140,7 @@ export function ParcelsMap({ className, parcels }: ParcelsMapProps) {
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[500] p-3">
         <div className="pointer-events-auto inline-flex flex-wrap gap-2 rounded-xl border border-border/70 bg-card/95 px-3 py-2 text-xs shadow-md">
           <LegendDot color={MARKER_COLORS.healthy} label="Uredno" />
-          <LegendDot color={MARKER_COLORS.monitoring} label="Praćenje" />
+          <LegendDot color={MARKER_COLORS.monitoring} label={tr("Praćenje")} />
           <LegendDot color={MARKER_COLORS.issue} label="Problem" />
         </div>
       </div>

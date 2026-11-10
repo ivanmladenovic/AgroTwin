@@ -23,6 +23,7 @@ from app.context.providers.weather import WeatherContextProvider
 from app.context.request import ContextRequest, ResolvedSubject
 from app.context.subject import SubjectResolver
 from app.context.types import CONTEXT_VERSION, DataQualityStatus, SourceType, WarningType
+from app.services.planting_resolution import resolve_planting_year
 from app.core.exceptions import AppError
 from app.repositories.parcel import ParcelRepository
 from app.schemas.context import (
@@ -300,8 +301,10 @@ def _crop_dto(subject: ResolvedSubject) -> ContextCropRead:
     tree = subject.tree
     parcel = subject.parcel
     variety = (tree.variety if tree and tree.variety else None) or (parcel.default_variety if parcel else None)
-    planting_year = (tree.planting_year if tree and tree.planting_year else None) or (
-        parcel.default_planting_year if parcel else None
+    planting_year = resolve_planting_year(
+        tree=tree,
+        row=subject.row,
+        parcel=parcel,
     )
     age = None
     if planting_year:

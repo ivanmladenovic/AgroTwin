@@ -132,6 +132,8 @@ class CostRepository:
         owner_id: UUID,
         *,
         parcel_id: UUID | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
     ) -> dict[int, Decimal]:
         year_col = extract("year", Cost.incurred_on)
         stmt = (
@@ -142,6 +144,10 @@ class CostRepository:
         )
         if parcel_id is not None:
             stmt = stmt.where(Cost.parcel_id == parcel_id)
+        if date_from is not None:
+            stmt = stmt.where(Cost.incurred_on >= date_from)
+        if date_to is not None:
+            stmt = stmt.where(Cost.incurred_on <= date_to)
         totals: dict[int, Decimal] = {}
         for year, total in self.db.execute(stmt).all():
             totals[int(year)] = Decimal(total)

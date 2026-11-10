@@ -1,6 +1,7 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import type { To } from 'react-router-dom'
 
+import { tr } from '@/shared/i18n/i18n'
 import { useSmartBack } from '@/shared/lib/navigation'
 import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
@@ -15,7 +16,7 @@ type BackButtonProps = {
 
 export function BackButton({
   fallback = '/',
-  children = 'Nazad',
+  children,
   variant = 'outline',
   size = 'sm',
   className,
@@ -25,14 +26,14 @@ export function BackButton({
 
   return (
     <Button type="button" variant={variant} size={size} className={className} onClick={() => goBack()} {...props}>
-      {children}
+      {children ?? tr('Nazad')}
     </Button>
   )
 }
 
 export function BackLink({
   fallback = '/',
-  children = 'Nazad',
+  children,
   className,
 }: {
   fallback?: To
@@ -47,7 +48,7 @@ export function BackLink({
       onClick={() => goBack()}
       className={cn('text-sm text-muted-foreground hover:text-foreground', className)}
     >
-      {children}
+      {children ?? tr('Nazad')}
     </button>
   )
 }

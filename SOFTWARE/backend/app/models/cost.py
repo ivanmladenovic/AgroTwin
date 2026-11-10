@@ -4,11 +4,12 @@ from datetime import date
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import Date, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import CheckConstraint, Date, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base, TimestampMixin, UUIDPrimaryKeyMixin
+from app.models.enums import CostSource, pg_enum
 from app.models.mixins import ScopedEntityMixin
 
 
@@ -25,7 +26,13 @@ class CostCategory(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class Cost(UUIDPrimaryKeyMixin, TimestampMixin, ScopedEntityMixin, Base):
     __tablename__ = "costs"
-    __table_args__ = (ScopedEntityMixin.scope_check_constraint("costs"),)
+    __table_args__ = (
+        ScopedEntityMixin.scope_check_constraint("costs"),
+        CheckConstraint(
+            "(activity_id IS NOT NULL) OR (source IS NOT NULL AND source_id IS NOT NULL)",
+            name="ck_costs_activity_or_source",
+        ),
+    )
 
     amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), default="EUR", nullable=False)
@@ -37,12 +44,18 @@ class Cost(UUIDPrimaryKeyMixin, TimestampMixin, ScopedEntityMixin, Base):
         nullable=False,
         index=True,
     )
-    activity_id: Mapped[UUID] = mapped_column(
+    activity_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("activities.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
         index=True,
     )
+    source: Mapped[CostSource | None] = mapped_column(
+        pg_enum(CostSource, "cost_source"),
+        nullable=True,
+        index=True,
+    )
+    source_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True, index=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     receipt_filename: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_by_id: Mapped[UUID | None] = mapped_column(
@@ -51,5 +64,5 @@ class Cost(UUIDPrimaryKeyMixin, TimestampMixin, ScopedEntityMixin, Base):
         nullable=True,
     )
 
-    activity: Mapped["Activity"] = relationship("Activity", back_populates="costs")
+    activity: Mapped["Activity | None"] = relationship("Activity", back_populates="costs")
     cost_category: Mapped[CostCategory] = relationship("CostCategory", back_populates="costs")

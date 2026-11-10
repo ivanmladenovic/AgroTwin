@@ -1,5 +1,6 @@
 import { apiDownload, apiRequest, apiUpload, ApiError, fetchObjectUrl } from '@/shared/lib/api'
 import { getAccessToken } from '@/shared/lib/auth'
+import { tr } from '@/shared/i18n/i18n'
 import type { AgronomyQueryResult, KnowledgeCategory, KnowledgeDocument, KnowledgeHit } from '@/shared/api/types'
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') || '/api/v1'
@@ -61,10 +62,10 @@ export async function fetchKnowledgeDocumentBytes(documentId: string): Promise<A
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
   } catch {
-    throw new ApiError('Veza sa serverom nije uspela. Proverite mrežu i pokušajte ponovo.', 0)
+    throw new ApiError(tr('Veza sa serverom nije uspela. Proverite mrežu i pokušajte ponovo.'), 0)
   }
   if (!response.ok) {
-    let detail = 'PDF nije učitan'
+    let detail = tr('PDF nije učitan')
     try {
       const body = (await response.json()) as { detail?: string }
       if (body.detail) detail = body.detail

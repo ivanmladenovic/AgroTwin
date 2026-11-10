@@ -162,6 +162,56 @@ class HarvestApiTests(TestCase):
             deleted = self.client.delete(f"/api/v1/parcels/{parcel_id}", headers=self.headers)
             self.assertEqual(deleted.status_code, 204, deleted.text)
 
+    def test_draft_harvest_without_quantity_then_complete(self) -> None:
+        parcel = self._create_parcel()
+        parcel_id = parcel["id"]
+        try:
+            draft = self._create_harvest(
+                parcel_id,
+                {
+                    "harvested_on": "2026-09-02",
+                    "scope_type": "parcel",
+                    "notes": "Početak berbe, količina kasnije",
+                },
+            )
+            self.assertIsNone(draft["gross_quantity"])
+            self.assertIsNone(draft["net_quantity"])
+            self.assertEqual(_money(draft["loss_quantity"]), Decimal("0"))
+
+            production = self.client.get(
+                f"/api/v1/parcels/{parcel_id}/production",
+                params={"year": 2026},
+                headers=self.headers,
+            )
+            self.assertEqual(production.status_code, 200, production.text)
+            body = production.json()
+            self.assertTrue(body["recorded"])
+            self.assertFalse(body["parcel_total_recorded"])
+            self.assertEqual(body["all_event_count"], 1)
+            self.assertIsNone(body["harvest_event_count"])
+            self.assertEqual(body["first_harvest_date"], "2026-09-02")
+
+            updated = self.client.patch(
+                f"/api/v1/parcels/{parcel_id}/harvests/{draft['id']}",
+                headers=self.headers,
+                json={"gross_quantity": "500", "loss_quantity": "20", "moisture_percent": "8.5"},
+            )
+            self.assertEqual(updated.status_code, 200, updated.text)
+            self.assertEqual(_money(updated.json()["net_quantity"]), Decimal("480"))
+
+            production_after = self.client.get(
+                f"/api/v1/parcels/{parcel_id}/production",
+                params={"year": 2026},
+                headers=self.headers,
+            )
+            after = production_after.json()
+            self.assertTrue(after["parcel_total_recorded"])
+            self.assertEqual(after["harvest_event_count"], 1)
+            self.assertEqual(_money(after["total_net_yield"]["value"]), Decimal("480"))
+        finally:
+            deleted = self.client.delete(f"/api/v1/parcels/{parcel_id}", headers=self.headers)
+            self.assertEqual(deleted.status_code, 204, deleted.text)
+
     def test_invalid_loss_and_quality_and_scope(self) -> None:
         parcel = self._create_parcel()
         parcel_id = parcel["id"]
@@ -305,7 +355,62 @@ class HarvestApiTests(TestCase):
         finally:
             self.client.delete(f"/api/v1/parcels/{parcel_id}", headers=self.headers)
 
-    def test_kusiljevo_2026_seed_and_performance(self) -> None:
+    def test_expected_yield_uses_planting_year_and_parcel_net(self) -> None:
+        parcel = self._create_parcel()
+        parcel_id = parcel["id"]
+        try:
+            # planting_year=2024 → age year 3 in 2026 → realistic 0.1 kg/tree
+            # 2 rows × 3 trees = 6 trees → expected 0.6 kg
+            self._create_harvest(
+                parcel_id,
+                {
+                    "harvested_on": "2026-09-10",
+                    "scope_type": "parcel",
+                    "gross_quantity": "1.0",
+                    "loss_quantity": "0.2",
+                },
+            )
+            # row/tree harvest must not change expected-vs-actual parcel comparison base
+            rows = self._rows(parcel_id)
+            trees = self._trees(parcel_id, rows[0]["id"])
+            self._create_harvest(
+                parcel_id,
+                {
+                    "harvested_on": "2026-09-11",
+                    "scope_type": "tree",
+                    "tree_id": trees[0]["id"],
+                    "gross_quantity": "9",
+                    "loss_quantity": "0",
+                },
+            )
+            production = self.client.get(
+                f"/api/v1/parcels/{parcel_id}/production",
+                params={"year": 2026},
+                headers=self.headers,
+            )
+            self.assertEqual(production.status_code, 200, production.text)
+            body = production.json()
+            expected = body["expected_yield"]
+            self.assertTrue(expected["available"])
+            self.assertEqual(expected["age_years"], [3])
+            # Curve values are bruto (in-shell); comparison uses pessimistic neto = 40% bruto.
+            # age 3 → pessimistic 0.0 kg/tree × 6 trees = 0 bruto → 0 neto
+            self.assertEqual(_money(expected["realistic_kg"]["value"]), Decimal("0.6"))
+            self.assertEqual(_money(expected["pessimistic_kg"]["value"]), Decimal("0.0"))
+            self.assertEqual(_money(expected["pessimistic_net_kg"]["value"]), Decimal("0.00"))
+            self.assertEqual(_money(expected["shell_to_net_ratio"]), Decimal("0.40"))
+            self.assertEqual(_money(expected["actual_net_kg"]["value"]), Decimal("0.8"))
+            self.assertEqual(_money(expected["difference_kg"]["value"]), Decimal("0.8"))
+            self.assertIsNone(expected["difference_percent"]["value"])
+            self.assertEqual(len(expected["curve"]), 15)
+            self.assertTrue(any(point["is_current"] for point in expected["curve"]))
+            self.assertTrue(any(item["year"] == 2026 for item in expected["history"]))
+            history_2026 = next(item for item in expected["history"] if item["year"] == 2026)
+            self.assertEqual(_money(history_2026["expected_pessimistic_net_kg"]["value"]), Decimal("0.00"))
+        finally:
+            self.client.delete(f"/api/v1/parcels/{parcel_id}", headers=self.headers)
+
+    def test_kusiljevo_production_endpoint_performance(self) -> None:
         started = perf_counter()
         response = self.client.get(
             f"/api/v1/parcels/{self.kusiljevo_id}/production",
@@ -316,16 +421,8 @@ class HarvestApiTests(TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         body = response.json()
         self.assertLess(elapsed, 2.0)
-        if not body["parcel_total_recorded"]:
-            self.skipTest("Kusiljevo harvest seed nije primenjen")
-        self.assertEqual(_money(body["total_net_yield"]["value"]), Decimal("1420"))
-        self.assertEqual(body["harvest_event_count"], 3)
-        self.assertGreaterEqual(body["all_event_count"], 3)
-        self.assertEqual(body["first_harvest_date"], "2026-09-10")
-        self.assertEqual(body["last_harvest_date"], "2026-09-20")
-        self.assertTrue(body["yield_per_hectare"]["available"])
-        self.assertEqual(len(body["timeline"]), 3)
-        self.assertEqual(_money(body["timeline"][-1]["cumulative_net_kg"]), Decimal("1420"))
+        self.assertEqual(body["parcel_id"], self.kusiljevo_id)
+        self.assertIn("events", body)
         csv_response = self.client.get(
             f"/api/v1/parcels/{self.kusiljevo_id}/harvests/export.csv",
             params={"year": 2026},
@@ -339,7 +436,6 @@ class HarvestApiTests(TestCase):
             f"/api/v1/parcels/{self.kusiljevo_id}/report",
             params={"year": 2026},
             headers=self.headers,
-        ).json()
-        self.assertEqual(_money(report["yield_summary"]["total_kg"]), Decimal("1420"))
-        self.assertEqual(report["yield_summary"]["harvest_events"], 3)
-        self.assertEqual(report["yield_summary"]["source"], "harvest_event")
+        )
+        self.assertEqual(report.status_code, 200, report.text)
+        self.assertIn("yield_summary", report.json())

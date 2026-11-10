@@ -10,11 +10,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
+import { tr } from '@/shared/i18n/i18n'
 
 const REQUEST_TYPES: Array<{ value: ContextRequestType; label: string }> = [
   { value: 'PHOTO_ANALYSIS', label: 'PHOTO_ANALYSIS' },
   { value: 'PROBLEM_ANALYSIS', label: 'PROBLEM_ANALYSIS' },
-  { value: 'PARCEL_ANALYSIS', label: 'PARCEL_ANALYSIS' },
+  { value: tr('PARCEL_ANALYSIS'), label: tr('PARCEL_ANALYSIS') },
   { value: 'SEASON_ANALYSIS', label: 'SEASON_ANALYSIS' },
   { value: 'ACTIVITY_ANALYSIS', label: 'ACTIVITY_ANALYSIS' },
 ]
@@ -76,7 +77,7 @@ export function ContextPreviewPage() {
         <p className="kicker">Razvoj</p>
         <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Context Engine pregled</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Interni alat. Generiše strukturirani AgroTwinContext bez AI zaključivanja.
+          {tr('Interni alat. Generiše strukturirani AgroTwinContext bez AI zaključivanja.')}
         </p>
       </div>
 
@@ -100,7 +101,7 @@ export function ContextPreviewPage() {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="context-parcel">Parcela</Label>
+            <Label htmlFor="context-parcel">{tr("Parcela")}</Label>
             <Select
               id="context-parcel"
               value={parcelId}
@@ -120,7 +121,7 @@ export function ContextPreviewPage() {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="context-row">Red</Label>
+            <Label htmlFor="context-row">{tr("Red")}</Label>
             <Select
               id="context-row"
               value={rowId}
@@ -139,7 +140,7 @@ export function ContextPreviewPage() {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="context-tree">Stablo</Label>
+            <Label htmlFor="context-tree">{tr("Stablo")}</Label>
             <Select
               id="context-tree"
               value={treeId}
@@ -160,12 +161,12 @@ export function ContextPreviewPage() {
               id="context-photo"
               value={photoId}
               onChange={(event) => setPhotoId(event.target.value)}
-              placeholder="opciono UUID"
+              placeholder={tr('opciono UUID')}
             />
           </div>
           {requestType === 'ACTIVITY_ANALYSIS' ? (
             <div className="space-y-2">
-              <Label htmlFor="context-activity">Aktivnost</Label>
+              <Label htmlFor="context-activity">{tr('Aktivnost')}</Label>
               <Select
                 id="context-activity"
                 value={activityId}
@@ -187,12 +188,12 @@ export function ContextPreviewPage() {
               id="context-query"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Šta se dešava sa listovima?"
+              placeholder={tr("Šta se dešava sa listovima?")}
             />
           </div>
           <div className="flex items-end">
             <Button type="button" onClick={generate} disabled={mutation.isPending}>
-              Generiši kontekst
+              {tr('Generiši kontekst')}
             </Button>
           </div>
         </CardContent>
@@ -206,7 +207,7 @@ export function ContextPreviewPage() {
         <>
           <Card>
             <CardHeader>
-              <CardTitle>Upozorenja i kvalitet</CardTitle>
+              <CardTitle>{tr('Upozorenja i kvalitet')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
               <p>
@@ -214,7 +215,7 @@ export function ContextPreviewPage() {
                 {(mutation.data.debug?.providers_used ?? []).join(', ') || '—'}
               </p>
               <ul className="list-disc space-y-1 pl-5">
-                {mutation.data.warnings.length === 0 ? <li>Nema upozorenja.</li> : null}
+                {mutation.data.warnings.length === 0 ? <li>{tr('Nema upozorenja.')}</li> : null}
                 {mutation.data.warnings.map((warning) => (
                   <li key={`${warning.source}-${warning.type}`}>
                     {warning.source}: {warning.message}
@@ -229,14 +230,14 @@ export function ContextPreviewPage() {
               <CardTitle>Izabrani zapisi</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              {selected.length === 0 ? <p className="text-muted-foreground">Nema izabranih zapisa.</p> : null}
+              {selected.length === 0 ? <p className="text-muted-foreground">{tr('Nema izabranih zapisa.')}</p> : null}
               {selected.map((item) => (
                 <div key={`${item.kind}-${item.id}`} className="rounded-lg border border-border px-3 py-2">
                   <p className="font-medium">
                     {item.kind} {item.id.slice(0, 8)} · {item.scope ?? '—'} · {item.relevance_score}
                   </p>
                   <p className="text-muted-foreground">
-                    {item.date ?? 'bez datuma'} · {item.temporal_relation ?? '—'}
+                    {item.date ?? tr('bez datuma')} · {item.temporal_relation ?? '—'}
                   </p>
                   <p>{item.reasons.join(' · ')}</p>
                 </div>
@@ -246,10 +247,10 @@ export function ContextPreviewPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Isključeni zapisi</CardTitle>
+              <CardTitle>{tr('Isključeni zapisi')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              {excluded.length === 0 ? <p className="text-muted-foreground">Nema isključenih zapisa u pregledu.</p> : null}
+              {excluded.length === 0 ? <p className="text-muted-foreground">{tr('Nema isključenih zapisa u pregledu.')}</p> : null}
               {excluded.map((item) => (
                 <div key={`${item.kind}-${item.id}`} className="rounded-lg border border-border px-3 py-2">
                   <p className="font-medium">

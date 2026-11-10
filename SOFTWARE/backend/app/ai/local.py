@@ -35,10 +35,18 @@ class LocalAIProvider:
         tools: list[ToolSpec] | None = None,
         json_mode: bool = False,
         temperature: float = 0.2,
+        model: str | None = None,
     ) -> ChatResult:
-        del temperature
+        del temperature, model
         latest = _latest_user_text(messages)
         if json_mode:
+            system = " ".join(
+                str(message.content)
+                for message in messages
+                if message.role == "system" and isinstance(message.content, str)
+            )
+            if "PARCEL_INTELLIGENCE" in system or "PARCEL_INTELLIGENCE_REQUEST" in latest:
+                return ChatResult(content=_parcel_intelligence_json(latest), model=self.chat_model)
             return ChatResult(content=_analysis_json_from_prompt(latest), model=self.chat_model)
         if tools:
             call = _maybe_tool_call(latest, tools)
@@ -279,6 +287,142 @@ def _analysis_focus_text(prompt: str) -> str:
         body = prompt.split("Context from AgroTwin:", 1)[1]
         return body.split("Relevant knowledge excerpts:", 1)[0]
     return prompt
+
+
+def _parcel_intelligence_json(prompt: str) -> str:
+    lower = prompt.lower()
+    zone_keys, observation_date, kinds = _extract_zone_anomaly_hints(prompt)
+    if zone_keys or (
+        "ndvi" in lower and ("decline" in lower or "anomaly" in lower or "anomal" in lower or "opad")
+    ):
+        facts = [
+            "Na satelitskom snimku deo parcele izgleda manje zeleno od ostatka.",
+        ]
+        if observation_date:
+            facts.append(f"Snimak od {observation_date}.")
+        tree_ids = _extract_tree_ids_from_prompt(prompt)
+        if tree_ids:
+            shown = ", ".join(tree_ids[:6])
+            extra = len(tree_ids) - min(len(tree_ids), 6)
+            facts.append(f"Stabla na koja treba obratiti pažnju: {shown}" + (f" (+{extra})" if extra > 0 else "."))
+        elif zone_keys:
+            facts.append(f"Uočeno na {min(len(zone_keys), 6)} mesta na parceli.")
+        if kinds:
+            if "persistent_low" in kinds:
+                facts.append("Ista mesta su slabija na više snimaka zaredom.")
+            elif "sudden_decline" in kinds:
+                facts.append("Promena je nagla u odnosu na prethodni snimak.")
+            else:
+                facts.append("Ta mesta su slabija od proseka parcele.")
+        title = (
+            f"Slabije biljke kod {tree_ids[0]}" + (f" i još {len(tree_ids) - 1}" if len(tree_ids) > 1 else "")
+            if tree_ids
+            else "Slabije biljke na delu parcele"
+        )
+        payload = {
+            "status": "WARNING",
+            "title": title,
+            "summary": (
+                "Na snimku se vidi da su neka mesta manje zelena od ostatka zasada. "
+                "Uzrok nije poznat — obiđite navedena stabla na terenu."
+                if tree_ids
+                else (
+                    "Na snimku se vidi da su neka mesta manje zelena od ostatka zasada. "
+                    "Uzrok nije poznat — obiđite ta mesta na terenu."
+                )
+            ),
+            "observed_facts": facts,
+            "possible_causes": [
+                "moguće da fali vode",
+                "moguće da fali hraniva u tlu",
+                "moguće oštećenje ili štetočine (samo pretpostavka)",
+            ],
+            "recommended_actions": [
+                "Obiđite navedena stabla i uporedite ih sa zelenijim delovima"
+                if tree_ids
+                else "Obiđite ta mesta i uporedite biljke sa zelenijim delovima",
+                "Proverite zalivanje i da li ima suvih ili oštećenih biljaka",
+                "Ako izgleda loše, pitajte agronoma pre bilo kakvog tretmana",
+            ],
+            "confidence": 0.55,
+            "should_notify": True,
+            "issue_key": "ndvi_zone_anomaly",
+            "zone_keys": zone_keys[:8],
+            "tree_public_ids": tree_ids[:20],
+            "affected_indices": ["ndvi"],
+            "observation_date": observation_date,
+            "data_quality_notes": [
+                "Ovo je upozorenje sa snimka, ne potvrđena dijagnoza.",
+            ],
+        }
+    else:
+        payload = {
+            "status": "INFO",
+            "title": "Parcela izgleda uobičajeno",
+            "summary": "Na osnovu dostupnih podataka nema jasnog razloga za zabrinutost.",
+            "observed_facts": ["Dostupni su podaci za praćenje parcele."],
+            "possible_causes": [],
+            "recommended_actions": ["Nastavite redovan monitoring"],
+            "confidence": 0.4,
+            "should_notify": False,
+            "issue_key": "routine_ok",
+            "zone_keys": [],
+            "affected_indices": [],
+            "observation_date": None,
+            "data_quality_notes": [],
+        }
+    return json.dumps(payload)
+
+
+def _extract_zone_anomaly_hints(prompt: str) -> tuple[list[str], str | None, list[str]]:
+    """Best-effort parse of satellite_zone_anomalies from the intelligence context JSON."""
+    zone_keys: list[str] = []
+    kinds: list[str] = []
+    observation_date: str | None = None
+    try:
+        marker = '"satellite_zone_anomalies"'
+        idx = prompt.find(marker)
+        if idx < 0:
+            return [], None, []
+        # Find acquisition_date near satellite_latest if present.
+        date_match = re.search(r'"acquisition_date"\s*:\s*"([^"]+)"', prompt)
+        if date_match:
+            observation_date = date_match.group(1)
+        for match in re.finditer(r'"zone_key"\s*:\s*"([^"]+)"', prompt[idx : idx + 8000]):
+            key = match.group(1)
+            if key not in zone_keys:
+                zone_keys.append(key)
+        for match in re.finditer(r'"kind"\s*:\s*"([^"]+)"', prompt[idx : idx + 8000]):
+            kind = match.group(1)
+            if kind not in kinds:
+                kinds.append(kind)
+    except Exception:  # noqa: BLE001
+        return zone_keys, observation_date, kinds
+    return zone_keys, observation_date, kinds
+
+
+def _extract_tree_ids_from_prompt(prompt: str) -> list[str]:
+    """Pull tree_public_ids from satellite_zone_anomalies context when present."""
+    ids: list[str] = []
+    try:
+        marker = '"satellite_zone_anomalies"'
+        idx = prompt.find(marker)
+        if idx < 0:
+            return []
+        chunk = prompt[idx : idx + 12000]
+        for match in re.finditer(r'"tree_public_ids"\s*:\s*\[(.*?)\]', chunk, re.S):
+            for item in re.findall(r'"([^"]+)"', match.group(1)):
+                value = item.strip().upper()
+                if value and value not in ids:
+                    ids.append(value)
+        if not ids:
+            for match in re.finditer(r'\b(R\d{2}-T\d{4})\b', chunk, re.I):
+                value = match.group(1).upper()
+                if value not in ids:
+                    ids.append(value)
+    except Exception:  # noqa: BLE001
+        return ids
+    return ids[:40]
 
 
 def _analysis_json_from_prompt(prompt: str) -> str:

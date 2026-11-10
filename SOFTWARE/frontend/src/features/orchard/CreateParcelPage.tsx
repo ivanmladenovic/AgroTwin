@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 import { createParcel } from '@/features/orchard/api'
 import { PlantingLayoutEditor, gapKey, type PlantingPlan } from '@/features/orchard/PlantingLayoutEditor'
@@ -14,10 +15,13 @@ import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
+import { tr } from '@/shared/i18n/i18n'
 
 const currentYear = new Date().getFullYear()
 
 export function CreateParcelPage() {
+  const { i18n } = useTranslation()
+  void i18n.language
   const navigate = useNavigate()
   const [step, setStep] = useState<'details' | 'layout'>('details')
   const [selectedVariety, setSelectedVariety] = useState(DEFAULT_VARIETIES[0].name)
@@ -110,33 +114,33 @@ export function CreateParcelPage() {
     <div className="w-full space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="kicker">Plan voćnjaka</p>
+          <p className="kicker">{tr('Plan voćnjaka')}</p>
           <h1 className="mt-1 text-xl font-semibold sm:text-2xl">
-            {step === 'details' ? 'Parcela i zasađene sorte' : 'Označite plan sadnje'}
+            {step === 'details' ? tr('Parcela i zasađene sorte') : tr('Označite plan sadnje')}
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
             {step === 'details'
-              ? 'Opišite blok i sorte lesnika. Zasad se pravi nakon što označite redove i praznine.'
-              : 'Obojite svaki red sortom i kliknite na mesta bez sadnica. Samo ovaj plan postaje zasad.'}
+              ? tr('Opišite blok i sorte lesnika. Zasad se pravi nakon što označite redove i praznine.')
+              : tr('Obojite svaki red sortom i kliknite na mesta bez sadnica. Samo ovaj plan postaje zasad.')}
           </p>
         </div>
-        <BackLink fallback="/orchard">Nazad na zasade</BackLink>
+        <BackLink fallback="/orchard">{tr('Nazad na zasade')}</BackLink>
       </div>
 
       {step === 'details' ? (
         <form className="space-y-6 rounded-xl border border-border bg-card p-4 sm:p-6" onSubmit={(event) => event.preventDefault()}>
           <div className="grid gap-5 md:grid-cols-2">
-            <Field label="Naziv parcele" error={form.formState.errors.name?.message}>
-              <Input id="name" placeholder="Severna padina" {...form.register('name')} />
+            <Field label={tr('Naziv parcele')} error={form.formState.errors.name?.message}>
+              <Input id="name" placeholder={tr('Severna padina')} {...form.register('name')} />
             </Field>
-            <Field label="Površina (ha)" error={form.formState.errors.area_hectares?.message}>
+            <Field label={tr('Površina (ha)')} error={form.formState.errors.area_hectares?.message}>
               <Input id="area_hectares" type="number" step="0.0001" {...form.register('area_hectares')} />
             </Field>
             <Field
               className="md:col-span-2"
-              label="Google Maps link"
+              label={tr('Google Maps link')}
               error={form.formState.errors.maps_url?.message}
-              hint="U Google Maps otvorite zasad, zatim Deli → Kopiraj link."
+              hint={tr('U Google Maps otvorite zasad, zatim Deli → Kopiraj link.')}
             >
               <Input
                 id="maps_url"
@@ -145,19 +149,19 @@ export function CreateParcelPage() {
                 {...form.register('maps_url')}
               />
             </Field>
-            <Field label="Broj redova" error={form.formState.errors.row_count?.message}>
+            <Field label={tr('Broj redova')} error={form.formState.errors.row_count?.message}>
               <Input id="row_count" type="number" min={1} {...form.register('row_count')} />
             </Field>
-            <Field label="Sadnica u redu" error={form.formState.errors.trees_per_row?.message}>
+            <Field label={tr('Sadnica u redu')} error={form.formState.errors.trees_per_row?.message}>
               <Input id="trees_per_row" type="number" min={1} {...form.register('trees_per_row')} />
             </Field>
-            <Field label="Razmak redova (m)" error={form.formState.errors.row_spacing_m?.message}>
+            <Field label={tr('Razmak redova (m)')} error={form.formState.errors.row_spacing_m?.message}>
               <Input id="row_spacing_m" type="number" step="0.01" {...form.register('row_spacing_m')} />
             </Field>
-            <Field label="Razmak sadnica (m)" error={form.formState.errors.tree_spacing_m?.message}>
+            <Field label={tr('Razmak sadnica (m)')} error={form.formState.errors.tree_spacing_m?.message}>
               <Input id="tree_spacing_m" type="number" step="0.01" {...form.register('tree_spacing_m')} />
             </Field>
-            <Field label="Godina sadnje" error={form.formState.errors.planting_year?.message}>
+            <Field label={tr('Godina sadnje')} error={form.formState.errors.planting_year?.message}>
               <Input
                 id="planting_year"
                 type="number"
@@ -166,7 +170,7 @@ export function CreateParcelPage() {
                 {...form.register('planting_year')}
               />
             </Field>
-            <Field label="Početni broj stabla" error={form.formState.errors.starting_tree_number?.message}>
+            <Field label={tr('Početni broj stabla')} error={form.formState.errors.starting_tree_number?.message}>
               <Input id="starting_tree_number" type="number" min={1} {...form.register('starting_tree_number')} />
             </Field>
           </div>
@@ -174,8 +178,8 @@ export function CreateParcelPage() {
           <div className="space-y-3 border-t border-border pt-5">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-medium">Zasađene sorte</h2>
-                <p className="text-sm text-muted-foreground">Dodajte svaku sortu u bloku i izaberite boju na mapi.</p>
+                <h2 className="text-lg font-medium">{tr('Zasađene sorte')}</h2>
+                <p className="text-sm text-muted-foreground">{tr('Dodajte svaku sortu u bloku i izaberite boju na mapi.')}</p>
               </div>
               <Button
                 type="button"
@@ -189,7 +193,7 @@ export function CreateParcelPage() {
                   form.setValue('varieties', next, { shouldValidate: true })
                 }}
               >
-                Dodaj sortu
+                {tr('Dodaj sortu')}
               </Button>
             </div>
             {form.formState.errors.varieties?.message ? (
@@ -198,7 +202,7 @@ export function CreateParcelPage() {
             <div className="space-y-3">
               {varieties.map((item, index) => (
                 <div key={`${item.color}-${index}`} className="grid gap-3 border border-border p-3 md:grid-cols-[1fr_10rem_6rem_auto]">
-                  <Field label="Sorta" error={form.formState.errors.varieties?.[index]?.name?.message}>
+                  <Field label={tr('Sorta')} error={form.formState.errors.varieties?.[index]?.name?.message}>
                     <Input
                       value={item.name}
                       onChange={(event) => {
@@ -209,7 +213,7 @@ export function CreateParcelPage() {
                       }}
                     />
                   </Field>
-                  <Field label="Uloga">
+                  <Field label={tr('Uloga')}>
                     <Select
                       value={item.role}
                       onChange={(event) => {
@@ -226,7 +230,7 @@ export function CreateParcelPage() {
                       <option value="other">{roleLabel('other')}</option>
                     </Select>
                   </Field>
-                  <Field label="Boja">
+                  <Field label={tr('Boja')}>
                     <Input
                       type="color"
                       value={item.color}
@@ -252,7 +256,7 @@ export function CreateParcelPage() {
                         )
                       }}
                     >
-                      Ukloni
+                      {tr('Ukloni')}
                     </Button>
                   </div>
                 </div>
@@ -263,11 +267,15 @@ export function CreateParcelPage() {
           <div className="flex items-center justify-between border-t border-border pt-5">
             <p className="font-mono text-sm text-muted-foreground">
               {rowCount > 0 && treesPerRow > 0
-                ? `${rowCount} redova × ${treesPerRow} mesta = ${formatNumber(rowCount * treesPerRow)} mogućih sadnica`
-                : 'Unesite strukturu da nastavite'}
+                ? tr('{{rows}} redova × {{trees}} mesta = {{total}} mogućih sadnica', {
+                    rows: rowCount,
+                    trees: treesPerRow,
+                    total: formatNumber(rowCount * treesPerRow),
+                  })
+                : tr('Unesite strukturu da nastavite')}
             </p>
             <Button type="button" onClick={goToLayout}>
-              Nastavi na plan sadnje
+              {tr('Nastavi na plan sadnje')}
             </Button>
           </div>
         </form>
@@ -284,14 +292,14 @@ export function CreateParcelPage() {
           />
           <div className="flex items-center justify-between border-t border-border pt-5">
             <Button type="button" variant="outline" onClick={() => setStep('details')}>
-              Nazad
+              {tr('Nazad')}
             </Button>
             <div className="flex items-center gap-4">
               <p className="font-mono text-sm text-muted-foreground">
-                Nastaće {rowCount} redova i {formatNumber(planted)} stabala
+                {tr('Nastaće {{rows}} redova i {{trees}} stabala', { rows: rowCount, trees: formatNumber(planted) })}
               </p>
               <Button type="button" onClick={generate} disabled={mutation.isPending || planted < 1}>
-                {mutation.isPending ? 'Pravljenje voćnjaka…' : 'Napravi zasad'}
+                {mutation.isPending ? tr('Pravljenje voćnjaka…') : tr('Napravi zasad')}
               </Button>
             </div>
           </div>

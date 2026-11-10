@@ -17,6 +17,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 import { Textarea } from '@/shared/ui/textarea'
+import { tr } from '@/shared/i18n/i18n'
 
 export function ActivityDetailPage() {
   const { activityId } = useParams()
@@ -82,10 +83,10 @@ export function ActivityDetailPage() {
   })
 
   if (activityQuery.isLoading) {
-    return <div className="text-sm text-muted-foreground">Učitavanje aktivnosti…</div>
+    return <div className="text-sm text-muted-foreground">{tr('Učitavanje aktivnosti…')}</div>
   }
   if (!activity) {
-    return <div className="text-sm text-danger">Aktivnost nije pronađena.</div>
+    return <div className="text-sm text-danger">{tr('Aktivnost nije pronađena.')}</div>
   }
 
   const kind = activityCalendarKind(activity.status, activity.performed_on, todayKey())
@@ -106,7 +107,7 @@ export function ActivityDetailPage() {
         <div className="flex flex-wrap gap-2">
           {activity.status !== 'completed' && activity.status !== 'cancelled' ? (
             <Button size="sm" disabled={statusMutation.isPending} onClick={() => statusMutation.mutate('completed')}>
-              Označi kao urađeno
+              {tr('Označi kao urađeno')}
             </Button>
           ) : null}
           {activity.status === 'completed' ? (
@@ -125,11 +126,11 @@ export function ActivityDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Stavke troška</CardTitle>
+          <CardTitle>{tr('Stavke troška')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {activity.costs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Još nema stavki. Ova aktivnost trenutno košta 0,00 €.</p>
+            <p className="text-sm text-muted-foreground">{tr('Još nema stavki. Ova aktivnost trenutno košta 0,00 €.')}</p>
           ) : (
             <div className="space-y-2">
               {activity.costs.map((cost) => (
@@ -155,7 +156,7 @@ export function ActivityDetailPage() {
       {addingCost ? (
         <Card>
           <CardHeader>
-            <CardTitle>Nova stavka troška</CardTitle>
+            <CardTitle>{tr('Nova stavka troška')}</CardTitle>
           </CardHeader>
           <CardContent>
             <form
@@ -169,7 +170,7 @@ export function ActivityDetailPage() {
               <div className="space-y-1.5">
                 <Label>Kategorija</Label>
                 <Select {...form.register('cost_category_id')}>
-                  <option value="">Izaberite kategoriju</option>
+                  <option value="">{tr('Izaberite kategoriju')}</option>
                   {(categoriesQuery.data ?? []).map((category) => (
                     <option key={category.id} value={category.id}>
                       {category.name}
@@ -190,21 +191,21 @@ export function ActivityDetailPage() {
                 <Input type="date" {...form.register('incurred_on')} />
               </div>
               <div className="space-y-1.5">
-                <Label>Račun / referenca fotografije</Label>
+                <Label>{tr('Račun / referenca fotografije')}</Label>
                 <Input {...form.register('receipt_filename')} />
               </div>
               <div className="space-y-1.5 md:col-span-2">
-                <Label>Beleške</Label>
+                <Label>{tr('Beleške')}</Label>
                 <Textarea rows={3} {...form.register('notes')} />
               </div>
               {mutation.isError ? (
                 <p className="text-sm text-danger md:col-span-2">
-                  {mutation.error instanceof Error ? mutation.error.message : 'Trošak nije dodat'}
+                  {mutation.error instanceof Error ? mutation.error.message : tr('Trošak nije dodat')}
                 </p>
               ) : null}
               <div className="flex flex-wrap gap-2 md:col-span-2">
                 <Button type="submit" disabled={mutation.isPending}>
-                  {mutation.isPending ? 'Dodavanje…' : 'Sačuvaj stavku'}
+                  {mutation.isPending ? tr('Dodavanje…') : tr('Sačuvaj stavku')}
                 </Button>
                 <Button
                   type="button"
@@ -215,7 +216,7 @@ export function ActivityDetailPage() {
                     form.reset()
                   }}
                 >
-                  Otkaži
+                  {tr('Otkaži')}
                 </Button>
               </div>
             </form>
@@ -223,14 +224,14 @@ export function ActivityDetailPage() {
         </Card>
       ) : (
         <Button type="button" onClick={() => setAddingCost(true)}>
-          + Dodaj stavku troška
+          {tr('+ Dodaj stavku troška')}
         </Button>
       )}
 
       {activity.soil_analyses?.length ? (
         <Card>
           <CardHeader>
-            <CardTitle>Analize zemljišta</CardTitle>
+            <CardTitle>{tr('Analize zemljišta')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {activity.soil_analyses.map((analysis) => (
@@ -262,7 +263,10 @@ export function ActivityDetailPage() {
               </div>
             ) : activity.quantity ? (
               <p className="font-mono text-xs text-muted-foreground">
-                Količina {activity.quantity} {activity.unit ?? ''}
+                {tr('Količina {{quantity}} {{unit}}', {
+                  quantity: activity.quantity,
+                  unit: activity.unit ?? '',
+                })}
               </p>
             ) : null}
           </CardContent>
@@ -293,7 +297,7 @@ function ActivitySoilAnalysisRow({ analysis, activityId }: { analysis: SoilLabAn
       const opened = await openSoilAnalysis(analysis)
       if (!opened) await downloadSoilAnalysis(analysis)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Otvaranje fajla nije uspelo')
+      setError(err instanceof Error ? err.message : tr('Otvaranje fajla nije uspelo'))
     } finally {
       setBusy(null)
     }
@@ -305,7 +309,7 @@ function ActivitySoilAnalysisRow({ analysis, activityId }: { analysis: SoilLabAn
     try {
       await downloadSoilAnalysis(analysis)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Preuzimanje nije uspelo')
+      setError(err instanceof Error ? err.message : tr('Preuzimanje nije uspelo'))
     } finally {
       setBusy(null)
     }
@@ -335,14 +339,14 @@ function ActivitySoilAnalysisRow({ analysis, activityId }: { analysis: SoilLabAn
           size="sm"
           disabled={deleteMutation.isPending}
           onClick={() => {
-            if (!window.confirm(`Obrisati analizu „${analysis.original_filename}”?`)) return
+            if (!window.confirm(tr('Obrisati analizu „{{name}}”?', { name: analysis.original_filename }))) return
             setError(null)
             deleteMutation.mutate(undefined, {
-              onError: (err) => setError(err instanceof Error ? err.message : 'Brisanje nije uspelo'),
+              onError: (err) => setError(err instanceof Error ? err.message : tr('Brisanje nije uspelo')),
             })
           }}
         >
-          {deleteMutation.isPending ? 'Brisanje…' : 'Obriši'}
+          {deleteMutation.isPending ? tr('Brisanje…') : tr('Obriši')}
         </Button>
       </div>
     </div>

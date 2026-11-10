@@ -4,6 +4,7 @@ import { getOrchardTwin } from '@/features/orchard/api'
 import { OrchardCanvas } from '@/features/orchard/OrchardCanvas'
 import { rowLabel } from '@/shared/lib/format'
 import { Button } from '@/shared/ui/button'
+import { tr } from '@/shared/i18n/i18n'
 
 type OrchardPickerDialogProps = {
   parcelId: string
@@ -48,23 +49,23 @@ export function OrchardPickerDialog({
         <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
           <div>
             <h2 className="text-lg font-semibold">
-              {mode === 'rows' ? 'Označite redove na zasadu' : mode === 'trees' ? 'Označite sadnice na zasadu' : 'Označite stablo na zasadu'}
+              {mode === 'rows' ? tr('Označite redove na zasadu') : mode === 'trees' ? tr('Označite sadnice na zasadu') : tr('Označite stablo na zasadu')}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {mode === 'rows'
-                ? 'Kliknite red ili stablo da dodate ili uklonite red.'
+                ? tr('Kliknite red ili stablo da dodate ili uklonite red.')
                 : mode === 'trees'
-                  ? 'Kliknite sadnice koje želite da prijavite. Ponovni klik skida oznaku.'
-                  : 'Kliknite stablo koje želite da vežete.'}
+                  ? tr('Kliknite sadnice koje želite da prijavite. Ponovni klik skida oznaku.')
+                  : tr('Kliknite stablo koje želite da vežete.')}
             </p>
           </div>
           <Button type="button" variant="outline" size="sm" onClick={onClose}>
-            Zatvori
+            {tr('Zatvori')}
           </Button>
         </div>
         <div className="min-h-[40dvh] flex-1 bg-[var(--color-map-soil)] sm:min-h-[28rem]">
           {twinQuery.isLoading ? (
-            <p className="p-6 text-sm text-muted-foreground">Učitavanje zasada…</p>
+            <p className="p-6 text-sm text-muted-foreground">{tr('Učitavanje zasada…')}</p>
           ) : twin ? (
             <OrchardCanvas
               twin={twin}
@@ -79,38 +80,38 @@ export function OrchardPickerDialog({
               }}
             />
           ) : (
-            <p className="p-6 text-sm text-danger">Zasad nije učitan.</p>
+            <p className="p-6 text-sm text-danger">{tr('Zasad nije učitan.')}</p>
           )}
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-5">
           <p className="text-sm text-muted-foreground">
             {mode === 'rows'
-              ? selectedRows.length
-                ? selectedRows.length > 4
-                  ? `Izabrano: ${selectedRows.length} redova`
-                  : `Izabrano: ${selectedRows.join(', ')}`
-                : 'Nijedan red nije izabran'
+                ? selectedRows.length
+                  ? selectedRows.length > 4
+                    ? tr('Izabrano: {{count}} redova', { count: selectedRows.length })
+                    : tr('Izabrano: {{rows}}', { rows: selectedRows.join(', ') })
+                : tr('Nijedan red nije izabran')
               : mode === 'trees'
                 ? selectedTrees.length
-                  ? `Izabrano: ${selectedTrees.length} sadnica`
-                  : 'Nijedna sadnica nije izabrana'
+                  ? tr('Izabrano: {{count}} sadnica', { count: selectedTrees.length })
+                  : tr('Nijedna sadnica nije izabrana')
                 : selectedTree
-                  ? `Izabrano: ${selectedTree.public_id}`
-                  : 'Nijedno stablo nije izabrano'}
+                  ? tr('Izabrano: {{id}}', { id: selectedTree.public_id })
+                  : tr('Nijedno stablo nije izabrano')}
           </p>
           <div className="flex flex-wrap gap-2">
             {mode === 'rows' ? (
               <>
                 <Button type="button" variant="outline" size="sm" onClick={onSelectAllRows}>
-                  Svi redovi
+                  {tr('Svi redovi')}
                 </Button>
                 <Button type="button" variant="ghost" size="sm" onClick={onClearRows}>
-                  Poništi
+                  {tr('Poništi')}
                 </Button>
               </>
             ) : null}
             <Button type="button" size="sm" onClick={onClose}>
-              Gotovo
+              {tr('Gotovo')}
             </Button>
           </div>
         </div>

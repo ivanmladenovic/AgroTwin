@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { ActivityForm } from '@/features/journal/ActivityForm'
 import type { ActivityScope, ActivityStatus } from '@/shared/api/types'
 import { BackLink } from '@/shared/ui/back-button'
+import { tr } from '@/shared/i18n/i18n'
 
 const STATUSES: ActivityStatus[] = ['planned', 'in_progress', 'completed', 'cancelled']
 
@@ -24,16 +25,16 @@ export function ActivityCreatePage() {
   return (
     <div className="w-full space-y-6">
       <div>
-        <p className="kicker">Dnevnik</p>
-        <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Nova aktivnost</h1>
+        <p className="kicker">{tr("Dnevnik")}</p>
+        <h1 className="mt-1 text-xl font-semibold sm:text-2xl">{tr('Nova aktivnost')}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Zabeležite šta je urađeno ili planirajte šta treba uraditi.
+          {tr('Zabeležite šta je urađeno ili planirajte šta treba uraditi.')}
         </p>
       </div>
       <div className="rounded-xl border border-border bg-card p-4 sm:p-6">
         <ActivityForm prefill={prefill} />
       </div>
-      <BackLink fallback={returnTo}>Nazad</BackLink>
+      <BackLink fallback={returnTo}>{tr("Nazad")}</BackLink>
     </div>
   )
 }

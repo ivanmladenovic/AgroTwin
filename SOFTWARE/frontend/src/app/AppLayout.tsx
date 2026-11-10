@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Menu, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { getCurrentUser } from '@/features/auth/api'
+import { LanguageSwitcher } from '@/shared/i18n/LanguageSwitcher'
+import { tr } from '@/shared/i18n/i18n'
 import { clearAccessToken } from '@/shared/lib/auth'
 import { locationKey } from '@/shared/lib/navigation'
 import { Button } from '@/shared/ui/button'
@@ -11,27 +14,30 @@ import { BrandLogo } from '@/shared/ui/brand-logo'
 import { Separator } from '@/shared/ui/separator'
 import { cn } from '@/shared/lib/utils'
 
-const navItems = [
-  { to: '/', label: 'Početna', enabled: true, end: true },
-  { to: '/orchard', label: 'Zasadi', enabled: true, end: false },
-  { to: '/production', label: 'Proizvodnja', enabled: true, end: false },
-  { to: '/reports', label: 'Izveštaj', enabled: true, end: false },
-  { to: '/journal', label: 'Dnevnik', enabled: true, end: false },
-  { to: '/costs', label: 'Troškovi', enabled: true, end: true },
-  { to: '/invoices', label: 'Računi', enabled: true, end: false },
-  { to: '/health', label: 'Zdravlje stabala', enabled: true, end: false },
-  { to: '/agronomist', label: 'Agronom', enabled: true, end: false },
-  { to: '/knowledge', label: 'Priručnici', enabled: true, end: false },
+/** Serbian source keys — translate with tr() at render so language switches apply. */
+const navItemDefs = [
+  { to: '/', labelKey: 'Početna', enabled: true, end: true },
+  { to: '/orchard', labelKey: 'Zasadi', enabled: true, end: false },
+  { to: '/production', labelKey: 'Proizvodnja', enabled: true, end: false },
+  { to: '/reports', labelKey: 'Izveštaj', enabled: true, end: false },
+  { to: '/journal', labelKey: 'Dnevnik', enabled: true, end: false },
+  { to: '/costs', labelKey: 'Troškovi', enabled: true, end: true },
+  { to: '/invoices', labelKey: 'Računi', enabled: true, end: false },
+  { to: '/health', labelKey: 'Zdravlje stabala', enabled: true, end: false },
+  { to: '/agronomist', labelKey: 'Agronom', enabled: true, end: false },
+  { to: '/knowledge', labelKey: 'Priručnici', enabled: true, end: false },
 ]
 
 export function AppLayout() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { i18n } = useTranslation()
   const [menuOpen, setMenuOpen] = useState(false)
   const userQuery = useQuery({
     queryKey: ['me'],
     queryFn: getCurrentUser,
   })
+  void i18n.language
 
   useEffect(() => {
     setMenuOpen(false)
@@ -56,7 +62,7 @@ export function AppLayout() {
     void navigate('/login')
   }
 
-  const userName = userQuery.data ? userQuery.data.full_name : 'Učitavanje korisnika…'
+  const userName = userQuery.data ? userQuery.data.full_name : tr('Učitavanje korisnika…')
 
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden print:block print:h-auto print:max-h-none print:overflow-visible lg:flex-row">
@@ -67,7 +73,7 @@ export function AppLayout() {
         <button
           type="button"
           className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-sidebar-foreground hover:bg-white/10"
-          aria-label="Otvori meni"
+          aria-label={tr('Otvori meni')}
           onClick={() => setMenuOpen(true)}
         >
           <Menu className="h-6 w-6" />
@@ -91,7 +97,7 @@ export function AppLayout() {
           <button
             type="button"
             className="absolute inset-0 bg-black/50"
-            aria-label="Zatvori meni"
+            aria-label={tr('Zatvori meni')}
             onClick={() => setMenuOpen(false)}
           />
           <aside className="relative flex h-full w-[min(20rem,86vw)] flex-col overflow-hidden bg-sidebar text-sidebar-foreground shadow-xl">
@@ -103,7 +109,7 @@ export function AppLayout() {
               <button
                 type="button"
                 className="inline-flex h-11 w-11 items-center justify-center rounded-lg hover:bg-white/10"
-                aria-label="Zatvori meni"
+                aria-label={tr('Zatvori meni')}
                 onClick={() => setMenuOpen(false)}
               >
                 <X className="h-6 w-6" />
@@ -131,19 +137,22 @@ export function AppLayout() {
 
 function ScrollMemory() {
   const location = useLocation()
+  // Ignore chrome params (tree/health/map/row) so selecting a seedling does not re-run restore → top.
+  const scrollKey = locationKey(location.pathname, location.search)
 
   useEffect(() => {
     const main = document.querySelector<HTMLElement>('[data-app-scroll="main"]')
     if (!main) return
 
-    const key = `agrotwin:scroll:${locationKey(location.pathname, location.search)}`
+    const key = `agrotwin:scroll:${scrollKey}`
     const saved = sessionStorage.getItem(key)
     const target = saved != null ? Number(saved) : 0
     let cancelled = false
+    const el = main
 
     function restore() {
       if (cancelled || Number.isNaN(target)) return
-      main.scrollTop = target
+      el.scrollTop = target
     }
 
     restore()
@@ -151,18 +160,18 @@ function ScrollMemory() {
     const timers = [50, 150, 400, 800].map((ms) => window.setTimeout(restore, ms))
 
     function persist() {
-      sessionStorage.setItem(key, String(main.scrollTop))
+      sessionStorage.setItem(key, String(el.scrollTop))
     }
 
-    main.addEventListener('scroll', persist, { passive: true })
+    el.addEventListener('scroll', persist, { passive: true })
     return () => {
       cancelled = true
       persist()
       cancelAnimationFrame(frame)
       timers.forEach((id) => window.clearTimeout(id))
-      main.removeEventListener('scroll', persist)
+      el.removeEventListener('scroll', persist)
     }
-  }, [location.pathname, location.search])
+  }, [scrollKey])
 
   return null
 }
@@ -178,9 +187,22 @@ function SidebarDecor() {
 
 function SidebarNav() {
   const location = useLocation()
+  const { i18n } = useTranslation()
+  void i18n.language
+  const userQuery = useQuery({
+    queryKey: ['me'],
+    queryFn: getCurrentUser,
+  })
+  const isPlatformAdmin = Boolean(userQuery.data?.is_superuser)
+  const items = [
+    ...navItemDefs,
+    ...(isPlatformAdmin
+      ? [{ to: '/admin', labelKey: 'Nalozi', enabled: true, end: false as const }]
+      : []),
+  ]
   return (
     <nav className="relative z-10 flex flex-1 flex-col gap-1 overflow-auto px-3 py-4">
-      {navItems.map((item) =>
+      {items.map((item) =>
         item.enabled ? (
           <NavLink
             key={item.to}
@@ -190,7 +212,10 @@ function SidebarNav() {
               const active =
                 isActive ||
                 (item.to === '/reports' && location.pathname.includes('/report')) ||
-                (item.to === '/production' && location.pathname.includes('/production'))
+                (item.to === '/production' && location.pathname.includes('/production')) ||
+                (item.to === '/journal' && location.pathname.startsWith('/journal')) ||
+                (item.to === '/costs' && location.pathname.startsWith('/costs')) ||
+                (item.to === '/admin' && location.pathname.startsWith('/admin'))
               return cn(
                 'rounded-lg px-3 py-3 text-sm font-medium transition-colors lg:py-2',
                 active
@@ -199,15 +224,15 @@ function SidebarNav() {
               )
             }}
           >
-            {item.label}
+            {tr(item.labelKey)}
           </NavLink>
         ) : (
           <span
             key={item.to}
             className="flex items-center justify-between rounded-lg px-3 py-3 text-sm text-sidebar-foreground/35 lg:py-2"
           >
-            {item.label}
-            <span className="kicker text-[10px] tracking-wider">Kasnije</span>
+            {tr(item.labelKey)}
+            <span className="kicker text-[10px] tracking-wider">{tr('Kasnije')}</span>
           </span>
         ),
       )}
@@ -218,6 +243,9 @@ function SidebarNav() {
 function SidebarFooter({ userName, onSignOut }: { userName: string; onSignOut: () => void }) {
   return (
     <div className="relative z-10 mt-auto space-y-3 px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 lg:pb-4">
+      <div className="px-1">
+        <LanguageSwitcher />
+      </div>
       <p className="px-2 text-xs text-sidebar-foreground/50">{userName}</p>
       <Button
         variant="outline"
@@ -225,7 +253,7 @@ function SidebarFooter({ userName, onSignOut }: { userName: string; onSignOut: (
         className="h-11 w-full border-white/15 bg-white/5 text-sidebar-foreground hover:bg-white/10 hover:text-white lg:h-8"
         onClick={onSignOut}
       >
-        Odjava
+        {tr('Odjava')}
       </Button>
     </div>
   )

@@ -1,12 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 import { deleteParcel, listParcels } from '@/features/orchard/api'
 import { formatNumber } from '@/shared/lib/format'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader } from '@/shared/ui/card'
+import { tr } from '@/shared/i18n/i18n'
 
 export function OrchardIndexPage() {
+  const { i18n } = useTranslation()
+  void i18n.language
   const queryClient = useQueryClient()
   const parcelsQuery = useQuery({ queryKey: ['parcels'], queryFn: listParcels })
   const parcels = parcelsQuery.data ?? []
@@ -21,20 +25,20 @@ export function OrchardIndexPage() {
     <div className="w-full space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="kicker">Zasadi</p>
-          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Parcele voćnjaka</h1>
+          <p className="kicker">{tr('Zasadi')}</p>
+          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">{tr('Parcele voćnjaka')}</h1>
         </div>
         <Link to="/orchard/new">
-          <Button>Nova parcela</Button>
+          <Button>{tr('Nova parcela')}</Button>
         </Link>
       </div>
 
       {parcelsQuery.isLoading ? (
-        <p className="text-sm text-muted-foreground">Učitavanje parcela…</p>
+        <p className="text-sm text-muted-foreground">{tr('Učitavanje parcela…')}</p>
       ) : parcels.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-sm text-muted-foreground">
-            Još nema parcela. Napravite pravougaoni voćnjak da otvorite zasad.
+            {tr('Još nema parcela. Napravite pravougaoni voćnjak da otvorite zasad.')}
           </CardContent>
         </Card>
       ) : (
@@ -56,28 +60,28 @@ export function OrchardIndexPage() {
                       rel="noreferrer"
                       className="inline-flex text-sm font-medium text-primary hover:underline"
                     >
-                      Otvori na Google Maps
+                      {tr('Otvori na Google Maps')}
                     </a>
                   ) : (
-                    <p className="text-sm text-muted-foreground">Google Maps link nije unet.</p>
+                    <p className="text-sm text-muted-foreground">{tr('Google Maps link nije unet.')}</p>
                   )}
                   <Link to={`/orchard/${parcel.id}`} className="shrink-0">
                     <Button size="sm" className="h-9 px-3 text-xs sm:h-10">
-                      Otvori zasad
+                      {tr('Otvori zasad')}
                     </Button>
                   </Link>
                 </div>
                 <dl className="grid grid-cols-3 gap-2 text-sm sm:gap-3">
                   <div>
-                    <dt className="text-muted-foreground">Redovi</dt>
+                    <dt className="text-muted-foreground">{tr('Redovi')}</dt>
                     <dd className="font-mono">{parcel.row_count ?? '—'}</dd>
                   </div>
                   <div>
-                    <dt className="text-muted-foreground">Stabla</dt>
+                    <dt className="text-muted-foreground">{tr('Stabla')}</dt>
                     <dd className="font-mono">{formatNumber(parcel.tree_count)}</dd>
                   </div>
                   <div>
-                    <dt className="text-muted-foreground">Površina</dt>
+                    <dt className="text-muted-foreground">{tr('Površina')}</dt>
                     <dd className="font-mono">
                       {parcel.area_hectares ? `${Number(parcel.area_hectares).toFixed(2)} ha` : '—'}
                     </dd>
@@ -90,7 +94,7 @@ export function OrchardIndexPage() {
                       variant="outline"
                       className="h-9 w-full px-1 text-[11px] sm:h-10 sm:px-3 sm:text-xs"
                     >
-                      Proizvodnja
+                      {tr('Proizvodnja')}
                     </Button>
                   </Link>
                   <Link to={`/orchard/${parcel.id}/report`} className="min-w-0">
@@ -99,7 +103,7 @@ export function OrchardIndexPage() {
                       variant="outline"
                       className="h-9 w-full px-1 text-[11px] sm:h-10 sm:px-3 sm:text-xs"
                     >
-                      Izveštaj
+                      {tr('Izveštaj')}
                     </Button>
                   </Link>
                   <Link to={`/orchard/${parcel.id}/edit`} className="min-w-0">
@@ -108,7 +112,7 @@ export function OrchardIndexPage() {
                       variant="outline"
                       className="h-9 w-full px-1 text-[11px] sm:h-10 sm:px-3 sm:text-xs"
                     >
-                      Izmeni
+                      {tr('Izmeni')}
                     </Button>
                   </Link>
                   <Button
@@ -117,13 +121,17 @@ export function OrchardIndexPage() {
                     className="h-9 min-w-0 w-full px-1 text-[11px] sm:h-10 sm:px-3 sm:text-xs"
                     disabled={deleteMutation.isPending}
                     onClick={() => {
-                      if (!window.confirm(`Obrisati ${parcel.name}? Zasad i svi zapisi na parceli biće uklonjeni.`)) {
+                      if (
+                        !window.confirm(
+                          tr('Obrisati {{name}}? Zasad i svi zapisi na parceli biće uklonjeni.', { name: parcel.name }),
+                        )
+                      ) {
                         return
                       }
                       deleteMutation.mutate(parcel.id)
                     }}
                   >
-                    Obriši
+                    {tr('Obriši')}
                   </Button>
                 </div>
               </CardContent>
@@ -133,7 +141,7 @@ export function OrchardIndexPage() {
       )}
       {deleteMutation.error ? (
         <p className="text-sm text-danger">
-          {deleteMutation.error instanceof Error ? deleteMutation.error.message : 'Brisanje nije uspelo'}
+          {deleteMutation.error instanceof Error ? deleteMutation.error.message : tr('Brisanje nije uspelo')}
         </p>
       ) : null}
     </div>

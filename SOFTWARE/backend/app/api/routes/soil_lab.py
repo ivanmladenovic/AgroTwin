@@ -5,7 +5,12 @@ from fastapi import APIRouter, File, Form, UploadFile
 from fastapi.responses import FileResponse, Response
 
 from app.api.deps import CurrentUser, DBSession
-from app.schemas.soil_lab import SoilLabAnalysisRead
+from app.schemas.soil_lab import (
+    SoilLabAnalysisRead,
+    SoilLabResultCreate,
+    SoilLabResultUpdate,
+    SoilLabVerifyRequest,
+)
 from app.services.soil_lab import SoilLabAnalysisService
 
 router = APIRouter(tags=["soil-lab"])
@@ -37,7 +42,7 @@ async def create_parcel_soil_analysis(
         content=content,
         created_by_id=current_user.id,
     )
-    return service.to_read(analysis)
+    return service.to_read(analysis, include_results=True)
 
 
 @router.get("/activities/{activity_id}/soil-analyses", response_model=list[SoilLabAnalysisRead])
@@ -66,7 +71,63 @@ async def create_soil_analysis(
         content=content,
         created_by_id=current_user.id,
     )
-    return service.to_read(analysis)
+    return service.to_read(analysis, include_results=True)
+
+
+@router.get("/soil-analyses/{analysis_id}", response_model=SoilLabAnalysisRead)
+def get_soil_analysis(analysis_id: UUID, current_user: CurrentUser, db: DBSession) -> SoilLabAnalysisRead:
+    return SoilLabAnalysisService(db).get_detail(analysis_id, current_user.id)
+
+
+@router.post("/soil-analyses/{analysis_id}/extract", response_model=SoilLabAnalysisRead)
+def reextract_soil_analysis(analysis_id: UUID, current_user: CurrentUser, db: DBSession) -> SoilLabAnalysisRead:
+    return SoilLabAnalysisService(db).reextract(analysis_id, current_user.id)
+
+
+@router.post("/soil-analyses/{analysis_id}/verify", response_model=SoilLabAnalysisRead)
+def verify_soil_analysis(
+    analysis_id: UUID,
+    current_user: CurrentUser,
+    db: DBSession,
+    payload: SoilLabVerifyRequest = SoilLabVerifyRequest(),
+) -> SoilLabAnalysisRead:
+    return SoilLabAnalysisService(db).verify(analysis_id, current_user.id, payload)
+
+
+@router.post("/soil-analyses/{analysis_id}/skip", response_model=SoilLabAnalysisRead)
+def skip_soil_analysis(analysis_id: UUID, current_user: CurrentUser, db: DBSession) -> SoilLabAnalysisRead:
+    return SoilLabAnalysisService(db).skip_verification(analysis_id, current_user.id)
+
+
+@router.post("/soil-analyses/{analysis_id}/results", response_model=SoilLabAnalysisRead, status_code=201)
+def add_soil_analysis_result(
+    analysis_id: UUID,
+    payload: SoilLabResultCreate,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> SoilLabAnalysisRead:
+    return SoilLabAnalysisService(db).add_manual_result(analysis_id, current_user.id, payload)
+
+
+@router.patch("/soil-analyses/{analysis_id}/results/{result_id}", response_model=SoilLabAnalysisRead)
+def update_soil_analysis_result(
+    analysis_id: UUID,
+    result_id: UUID,
+    payload: SoilLabResultUpdate,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> SoilLabAnalysisRead:
+    return SoilLabAnalysisService(db).update_result(analysis_id, result_id, current_user.id, payload)
+
+
+@router.delete("/soil-analyses/{analysis_id}/results/{result_id}", response_model=SoilLabAnalysisRead)
+def delete_soil_analysis_result(
+    analysis_id: UUID,
+    result_id: UUID,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> SoilLabAnalysisRead:
+    return SoilLabAnalysisService(db).delete_result(analysis_id, result_id, current_user.id)
 
 
 @router.get("/soil-analyses/{analysis_id}/file")

@@ -14,6 +14,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 import { Textarea } from '@/shared/ui/textarea'
+import { tr } from '@/shared/i18n/i18n'
 
 export function CostSummaryPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -46,10 +47,10 @@ export function CostSummaryPage() {
     <div className="w-full space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="kicker">Troškovi</p>
-          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Pregled troškova voćnjaka</h1>
+          <p className="kicker">{tr("Troškovi")}</p>
+          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">{tr('Pregled troškova voćnjaka')}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Troškovi se unose u dnevniku aktivnosti, stavkom sa jedinicom EUR.
+            {tr('Troškovi se unose u dnevniku aktivnosti, stavkom sa jedinicom EUR.')}
           </p>
         </div>
         <div className="flex w-full flex-wrap gap-2 sm:w-auto">
@@ -57,14 +58,14 @@ export function CostSummaryPage() {
             Izvezi CSV
           </Button>
           <Link to={parcelId ? `/journal?parcelId=${parcelId}&view=list` : '/journal?view=list'}>
-            <Button variant="outline">Otvori dnevnik</Button>
+            <Button variant="outline">{tr('Otvori dnevnik')}</Button>
           </Link>
         </div>
       </div>
 
       <div className="max-w-xs">
         <Select value={parcelId} onChange={(event) => setParcelId(event.target.value)}>
-          <option value="">Sve parcele</option>
+          <option value="">{tr('Sve parcele')}</option>
           {(parcelsQuery.data ?? []).map((parcel) => (
             <option key={parcel.id} value={parcel.id}>
               {parcel.name}
@@ -74,43 +75,45 @@ export function CostSummaryPage() {
       </div>
 
       {summaryQuery.isLoading || !summary ? (
-        <p className="text-sm text-muted-foreground">Učitavanje troškova…</p>
+        <p className="text-sm text-muted-foreground">{tr('Učitavanje troškova…')}</p>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-2 sm:gap-3">
-            <Metric label="Ukupni troškovi" value={formatMoney(summary.total_costs, summary.currency)} />
-            <Metric label="Tekuća godina" value={formatMoney(summary.current_year_costs, summary.currency)} />
-            <Metric label="Tekući mesec" value={formatMoney(summary.current_month_costs, summary.currency)} />
+            <Metric label={tr("Ukupni troškovi")} value={formatMoney(summary.total_costs, summary.currency)} />
+            <Metric label={tr("Tekuća godina")} value={formatMoney(summary.current_year_costs, summary.currency)} />
+            <Metric label={tr("Tekući mesec")} value={formatMoney(summary.current_month_costs, summary.currency)} />
             <Metric
-              label="Dobijeno kroz subvencije"
+              label={tr('Dobijeno kroz subvencije')}
               value={formatMoney(summary.total_subsidies, summary.currency)}
               hint={
                 summary.subsidy_percent_of_costs
-                  ? `${formatShare(summary.subsidy_percent_of_costs)} ukupnog troška`
-                  : 'Nema pokrivenosti dok nema evidentiranih troškova'
+                  ? tr('{{share}} ukupnog troška', { share: formatShare(summary.subsidy_percent_of_costs) })
+                  : tr('Nema pokrivenosti dok nema evidentiranih troškova')
               }
             />
             <Metric
-              label="Trošak po stablu"
+              label={tr("Trošak po stablu")}
               value={summary.cost_per_tree ? formatMoney(summary.cost_per_tree, summary.currency) : '—'}
               hint={`${formatNumber(summary.active_tree_count)} aktivnih stabala`}
             />
             <Metric
-              label="Trošak po hektaru"
+              label={tr("Trošak po hektaru")}
               value={summary.cost_per_hectare ? formatMoney(summary.cost_per_hectare, summary.currency) : '—'}
-              hint={`${Number(summary.area_hectares).toFixed(2)} ha površine parcela`}
+              hint={tr('{{area}} ha površine parcela', {
+                area: Number(summary.area_hectares).toFixed(2),
+              })}
             />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Breakdown title="Po kategoriji" rows={summary.by_category} currency={summary.currency} />
-            <Breakdown title="Po tipu aktivnosti" rows={summary.by_activity_type} currency={summary.currency} />
+            <Breakdown title={tr('Po kategoriji')} rows={summary.by_category} currency={summary.currency} />
+            <Breakdown title={tr('Po tipu aktivnosti')} rows={summary.by_activity_type} currency={summary.currency} />
           </div>
 
           {(summary.by_year ?? []).length > 1 ? (
             <Card>
               <CardHeader>
-                <CardTitle>Po godini, od sadnje</CardTitle>
+                <CardTitle>{tr('Po godini, od sadnje')}</CardTitle>
               </CardHeader>
               <CardContent>
                 <YearBars rows={summary.by_year} currency={summary.currency} currentYear={new Date().getFullYear()} />
@@ -128,14 +131,14 @@ export function CostSummaryPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Stavke iz dnevnika</CardTitle>
+              <CardTitle>{tr('Stavke iz dnevnika')}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {costsQuery.isLoading ? (
-                <p className="text-sm text-muted-foreground">Učitavanje stavki…</p>
+                <p className="text-sm text-muted-foreground">{tr('Učitavanje stavki…')}</p>
               ) : costs.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  Nema evidentiranih troškova. Dodajte stavku sa jedinicom EUR u dnevniku aktivnosti.
+                  {tr('Nema evidentiranih troškova. Dodajte stavku sa jedinicom EUR u dnevniku aktivnosti.')}
                 </p>
               ) : (
                 costs.map((cost) => (
@@ -206,7 +209,7 @@ function Breakdown({
       </CardHeader>
       <CardContent className="space-y-2">
         {rows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">Nema evidentiranih troškova.</p>
+          <p className="text-sm text-muted-foreground">{tr('Nema evidentiranih troškova.')}</p>
         ) : (
           rows.map((row) => (
             <div key={row.id} className="flex items-center justify-between text-sm">
@@ -288,9 +291,9 @@ function SubsidySection({
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
-        <CardTitle>Sredstva dobijena kroz subvencije</CardTitle>
+        <CardTitle>{tr('Sredstva dobijena kroz subvencije')}</CardTitle>
         <Button type="button" variant="outline" size="sm" onClick={() => setFormOpen((open) => !open)}>
-          {formOpen ? 'Zatvori' : 'Unesi subvenciju'}
+          {formOpen ? tr('Zatvori') : tr('Unesi subvenciju')}
         </Button>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -302,10 +305,10 @@ function SubsidySection({
           />
         ) : null}
         {loading ? (
-          <p className="text-sm text-muted-foreground">Učitavanje subvencija…</p>
+          <p className="text-sm text-muted-foreground">{tr('Učitavanje subvencija…')}</p>
         ) : subsidies.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            Nema evidentiranih subvencija. Unesite na šta se odnosila podrška, ukupni trošak i dobijeni iznos.
+            {tr("Nema evidentiranih subvencija. Unesite na šta se odnosila podrška, ukupni trošak i dobijeni iznos.")}
           </p>
         ) : (
           <div className="space-y-2">
@@ -318,11 +321,16 @@ function SubsidySection({
                   <p className="font-medium">{item.title}</p>
                   <p className="text-[11px] leading-4 text-muted-foreground">
                     {formatDate(item.received_on)}
-                    {item.parcel_name ? ` · ${item.parcel_name}` : ' · Cela plantaža'}
+                    {item.parcel_name ? tr(' · {{name}}', { name: item.parcel_name }) : tr(' · Cela plantaža')}
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Ukupni trošak {formatMoney(item.total_cost, currency)} · dobijeno {formatMoney(item.subsidy_amount, currency)}
-                    {item.subsidy_percent ? ` (${formatShare(item.subsidy_percent)} troška)` : ''}
+                    {tr('Ukupni trošak {{total}} · dobijeno {{subsidy}}', {
+                      total: formatMoney(item.total_cost, currency),
+                      subsidy: formatMoney(item.subsidy_amount, currency),
+                    })}
+                    {item.subsidy_percent
+                      ? tr(' ({{share}} troška)', { share: formatShare(item.subsidy_percent) })
+                      : ''}
                   </p>
                   {item.notes ? <p className="mt-1 text-xs text-muted-foreground">{item.notes}</p> : null}
                 </div>
@@ -333,10 +341,10 @@ function SubsidySection({
                   className="shrink-0 text-destructive"
                   disabled={remove.isPending}
                   onClick={() => {
-                    if (window.confirm('Obrisati ovu subvenciju?')) remove.mutate(item.id)
+                    if (window.confirm(tr('Obrisati ovu subvenciju?'))) remove.mutate(item.id)
                   }}
                 >
-                  Obriši
+                  {tr("Obriši")}
                 </Button>
               </div>
             ))}
@@ -391,17 +399,17 @@ function SubsidyForm({
     <form onSubmit={onSubmit} className="space-y-3 rounded-lg border border-border/60 p-3">
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor="subsidy-title">Na šta se odnosilo</Label>
+          <Label htmlFor="subsidy-title">{tr('Na šta se odnosilo')}</Label>
           <Input
             id="subsidy-title"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
-            placeholder="npr. Sistem za navodnjavanje"
+            placeholder={tr('npr. Sistem za navodnjavanje')}
             required
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="subsidy-total">Ukupni trošak (EUR)</Label>
+          <Label htmlFor="subsidy-total">{tr('Ukupni trošak (EUR)')}</Label>
           <Input
             id="subsidy-total"
             inputMode="decimal"
@@ -431,9 +439,9 @@ function SubsidyForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor="subsidy-parcel">Parcela (opciono)</Label>
+          <Label htmlFor="subsidy-parcel">{tr('Parcela (opciono)')}</Label>
           <Select id="subsidy-parcel" value={parcelId} onChange={(event) => setParcelId(event.target.value)}>
-            <option value="">Cela plantaža</option>
+            <option value="">{tr('Cela plantaža')}</option>
             {parcels.map((parcel) => (
               <option key={parcel.id} value={parcel.id}>
                 {parcel.name}
@@ -453,11 +461,11 @@ function SubsidyForm({
       </div>
       {create.isError ? (
         <p className="text-sm text-destructive">
-          {create.error instanceof Error ? create.error.message : 'Unos nije uspeo.'}
+          {create.error instanceof Error ? create.error.message : tr('Unos nije uspeo.')}
         </p>
       ) : null}
       <Button type="submit" disabled={create.isPending}>
-        {create.isPending ? 'Čuvanje…' : 'Sačuvaj subvenciju'}
+        {create.isPending ? tr('Čuvanje…') : tr('Sačuvaj subvenciju')}
       </Button>
     </form>
   )

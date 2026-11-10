@@ -1,4 +1,5 @@
 import type { ParcelVariety, VarietyRole } from '@/shared/api/types'
+import { tr } from '@/shared/i18n/i18n'
 
 export const DEFAULT_VARIETIES: ParcelVariety[] = [
   { name: 'Tonda di Giffoni', role: 'main', color: '#DC2626' },
@@ -26,9 +27,9 @@ export function varietyColorMap(varieties: ParcelVariety[] | undefined | null) {
 }
 
 export function roleLabel(role: VarietyRole) {
-  if (role === 'main') return 'Glavna sorta'
-  if (role === 'pollinator') return 'Oprašivač'
-  return 'Drugo'
+  if (role === 'main') return tr('Glavna sorta')
+  if (role === 'pollinator') return tr('Oprašivač')
+  return tr('Drugo')
 }
 
 export function varietiesFromTwin(twin: {

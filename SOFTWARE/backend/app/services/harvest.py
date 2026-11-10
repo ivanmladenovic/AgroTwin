@@ -12,16 +12,23 @@ from sqlalchemy.orm import Session
 
 from app.core.exceptions import AppError, NotFoundError
 
-from app.models.enums import AttachmentEntityType, ScopeType, TreeStatus
+from app.models.activity import Activity
+from app.models.enums import ActivitySemanticType, ActivityStatus, AttachmentEntityType, ScopeType, TreeStatus
 from app.models.harvest import HarvestEvent
 from app.models.parcel import Parcel
 from app.models.tree import Tree
+from app.repositories.catalog import CatalogRepository
 from app.repositories.harvest import HarvestRepository, trees_by_id
 from app.repositories.parcel import ParcelRepository
 from app.repositories.photo import PhotoRepository
 from app.repositories.row import RowRepository
 from app.repositories.tree import TreeRepository
 from app.schemas.harvest import (
+    ExpectedYieldCohort,
+    ExpectedYieldCurvePoint,
+    ExpectedYieldRead,
+    ExpectedYieldVarietyRow,
+    ExpectedYieldYearComparison,
     HarvestEventCreate,
     HarvestEventRead,
     HarvestEventUpdate,
@@ -36,6 +43,11 @@ from app.schemas.harvest import (
 )
 from app.schemas.report import OptionalAmount, YearChange
 from app.services.disease import DiseaseService
+from app.services.expected_yield_calc import (
+    compare_actual_to_expected,
+    compute_expected_yield,
+    curve_table,
+)
 from app.services.harvest_calc import (
     MISSING_PREVIOUS_YEAR,
     PARCEL_TOTAL_NOTE,
@@ -53,6 +65,8 @@ from app.services.harvest_calc import (
     yield_per_tree,
 )
 from app.services.parcel_report_calc import change_direction, change_tone, percent_change
+from app.services.planting_resolution import planting_year_distribution
+from app.yield_curve.expected_yield_profile import EXPECTED_YIELD_SOURCE_NOTE
 
 
 class HarvestService:
@@ -63,6 +77,7 @@ class HarvestService:
         self.rows = RowRepository(db)
         self.trees = TreeRepository(db)
         self.photos = PhotoRepository(db)
+        self.catalogs = CatalogRepository(db)
         self.diseases = DiseaseService(db)
 
     def list_harvests(self, owner_id: UUID, parcel_id: UUID, year: int) -> list[HarvestEventRead]:
@@ -77,8 +92,28 @@ class HarvestService:
 
     def create_harvest(self, owner_id: UUID, parcel_id: UUID, payload: HarvestEventCreate, created_by_id: UUID) -> HarvestEvent:
         parcel = self._parcel(owner_id, parcel_id)
-        validate_quantities(payload.gross_quantity, payload.loss_quantity)
+        try:
+            validate_quantities(payload.gross_quantity, payload.loss_quantity)
+        except ValueError as exc:
+            raise AppError(str(exc), status_code=422) from exc
         farm_id, row_id, tree_id = self._resolve_scope(owner_id, parcel.id, payload.scope_type, payload.row_id, payload.tree_id)
+        activity_id = payload.activity_id
+        if activity_id is None:
+            activity = self._create_journal_activity(
+                owner_id=owner_id,
+                created_by_id=created_by_id,
+                parcel=parcel,
+                farm_id=farm_id,
+                scope_type=payload.scope_type,
+                row_id=row_id,
+                tree_id=tree_id,
+                harvested_on=payload.harvested_on,
+                gross_quantity=payload.gross_quantity,
+                loss_quantity=payload.loss_quantity if payload.gross_quantity is not None else Decimal("0"),
+                unit=(payload.unit or "kg").strip() or "kg",
+                notes=payload.notes.strip() if payload.notes else None,
+            )
+            activity_id = activity.id
         event = HarvestEvent(
             harvested_on=payload.harvested_on,
             scope_type=payload.scope_type,
@@ -87,7 +122,7 @@ class HarvestService:
             row_id=row_id,
             tree_id=tree_id,
             gross_quantity=payload.gross_quantity,
-            loss_quantity=payload.loss_quantity,
+            loss_quantity=payload.loss_quantity if payload.gross_quantity is not None else Decimal("0"),
             unit=(payload.unit or "kg").strip() or "kg",
             moisture_percent=payload.moisture_percent,
             quality_category=payload.quality_category,
@@ -96,13 +131,24 @@ class HarvestService:
             foreign_material_percent=payload.foreign_material_percent,
             size_or_caliber=payload.size_or_caliber.strip() if payload.size_or_caliber else None,
             notes=payload.notes.strip() if payload.notes else None,
-            activity_id=payload.activity_id,
+            activity_id=activity_id,
             created_by_id=created_by_id,
         )
         self.harvests.add(event)
         self.db.flush()
         self.db.commit()
         self.db.refresh(event)
+        try:
+            from app.models.enums import ParcelAnalysisEventKind
+            from app.services.intelligence import IntelligenceService
+
+            IntelligenceService(self.db).enqueue_event(
+                parcel.id,
+                ParcelAnalysisEventKind.HARVEST_RECORDED,
+                {"harvest_id": str(event.id)},
+            )
+        except Exception:  # noqa: BLE001
+            pass
         loaded = self.harvests.get_for_owner(event.id, owner_id)
         assert loaded is not None
         return loaded
@@ -115,9 +161,14 @@ class HarvestService:
         payload: HarvestEventUpdate,
     ) -> HarvestEvent:
         event = self._get_event(owner_id, parcel_id, harvest_id)
-        gross = payload.gross_quantity if payload.gross_quantity is not None else event.gross_quantity
-        loss = payload.loss_quantity if payload.loss_quantity is not None else event.loss_quantity
-        validate_quantities(gross, loss)
+        gross = payload.gross_quantity if "gross_quantity" in payload.model_fields_set else event.gross_quantity
+        loss = payload.loss_quantity if "loss_quantity" in payload.model_fields_set else event.loss_quantity
+        if gross is None:
+            loss = Decimal("0")
+        try:
+            validate_quantities(gross, loss)
+        except ValueError as exc:
+            raise AppError(str(exc), status_code=422) from exc
         scope_type = payload.scope_type or event.scope_type
         row_id = payload.row_id if "row_id" in payload.model_fields_set else event.row_id
         tree_id = payload.tree_id if "tree_id" in payload.model_fields_set else event.tree_id
@@ -127,7 +178,7 @@ class HarvestService:
             event.row_id = row_id
             event.tree_id = tree_id
         event.gross_quantity = gross
-        event.loss_quantity = loss
+        event.loss_quantity = loss if loss is not None else Decimal("0")
         if payload.harvested_on is not None:
             event.harvested_on = payload.harvested_on
         if payload.unit is not None:
@@ -152,6 +203,8 @@ class HarvestService:
             event.activity_id = None
         elif "activity_id" in payload.model_fields_set:
             event.activity_id = payload.activity_id
+        if event.activity_id is not None:
+            self._sync_journal_activity(event)
         self.db.commit()
         self.db.refresh(event)
         loaded = self.harvests.get_for_owner(event.id, owner_id)
@@ -160,8 +213,138 @@ class HarvestService:
 
     def delete_harvest(self, owner_id: UUID, parcel_id: UUID, harvest_id: UUID) -> None:
         event = self._get_event(owner_id, parcel_id, harvest_id)
+        activity_id = event.activity_id
         self.harvests.delete(event)
+        if activity_id is not None:
+            activity = self.db.get(Activity, activity_id)
+            # Remove orphan journal entry created for this harvest (no costs attached).
+            if activity is not None and len(activity.costs or []) == 0:
+                self.db.delete(activity)
         self.db.commit()
+
+    def ensure_journal_links(self, owner_id: UUID, parcel_id: UUID) -> int:
+        """Backfill journal activities for harvests that are missing activity_id."""
+        parcel = self._parcel(owner_id, parcel_id)
+        events = self.harvests.list_for_parcel(owner_id, parcel.id)
+        created = 0
+        for event in events:
+            if event.activity_id is not None:
+                continue
+            activity = self._create_journal_activity(
+                owner_id=owner_id,
+                created_by_id=event.created_by_id or owner_id,
+                parcel=parcel,
+                farm_id=event.farm_id,
+                scope_type=event.scope_type,
+                row_id=event.row_id,
+                tree_id=event.tree_id,
+                harvested_on=event.harvested_on,
+                gross_quantity=event.gross_quantity,
+                loss_quantity=event.loss_quantity or Decimal("0"),
+                unit=event.unit or "kg",
+                notes=event.notes,
+            )
+            event.activity_id = activity.id
+            created += 1
+        if created:
+            self.db.commit()
+        return created
+
+    def _create_journal_activity(
+        self,
+        *,
+        owner_id: UUID,
+        created_by_id: UUID,
+        parcel: Parcel,
+        farm_id: UUID,
+        scope_type: ScopeType,
+        row_id: UUID | None,
+        tree_id: UUID | None,
+        harvested_on: date,
+        gross_quantity: Decimal | None,
+        loss_quantity: Decimal,
+        unit: str,
+        notes: str | None,
+    ) -> Activity:
+        activity_type = self.catalogs.get_activity_type_by_slug("harvesting")
+        if activity_type is None:
+            raise AppError("Tip aktivnosti 'Berba' nije pronađen", status_code=500, code="missing_harvest_type")
+        location = parcel.name
+        if scope_type == ScopeType.ROW and row_id is not None:
+            row = self.rows.get_for_parcel(parcel.id, row_id)
+            if row is not None:
+                location = f"{parcel.name} · Red {row.row_number:02d}"
+        elif scope_type == ScopeType.TREE and tree_id is not None:
+            tree_row = self.trees.get_for_parcel(parcel.id, tree_id)
+            if tree_row is not None:
+                location = f"{parcel.name} · {tree_row[0].public_id}"
+        net = None if gross_quantity is None else (gross_quantity - loss_quantity)
+        qty_label = (
+            f"{gross_quantity} {unit}" + (f" (neto {net} {unit})" if net is not None else "")
+            if gross_quantity is not None
+            else "količina nije uneta"
+        )
+        line_items: list[dict] = []
+        if gross_quantity is not None:
+            line_items.append({"name": "Bruto", "quantity": str(gross_quantity), "unit": unit})
+            if loss_quantity > 0:
+                line_items.append({"name": "Gubitak", "quantity": str(loss_quantity), "unit": unit})
+            if net is not None:
+                line_items.append({"name": "Neto", "quantity": str(net), "unit": unit})
+        activity = Activity(
+            activity_type_id=activity_type.id,
+            title=f"Berba — {location}",
+            description=f"Zapis berbe · {qty_label}",
+            performed_on=harvested_on,
+            status=ActivityStatus.COMPLETED if harvested_on <= date.today() else ActivityStatus.PLANNED,
+            quantity=gross_quantity,
+            unit=unit if gross_quantity is not None else None,
+            line_items=line_items,
+            notes=notes,
+            created_by_id=created_by_id,
+            scope_type=scope_type,
+            farm_id=farm_id,
+            parcel_id=parcel.id,
+            row_id=row_id,
+            tree_id=tree_id,
+            semantic_type=ActivitySemanticType.OTHER,
+            extra_row_ids=[str(row_id)] if row_id is not None else [],
+        )
+        self.db.add(activity)
+        self.db.flush()
+        return activity
+
+    def _sync_journal_activity(self, event: HarvestEvent) -> None:
+        if event.activity_id is None:
+            return
+        activity = self.db.get(Activity, event.activity_id)
+        if activity is None:
+            return
+        activity.performed_on = event.harvested_on
+        activity.scope_type = event.scope_type
+        activity.parcel_id = event.parcel_id
+        activity.row_id = event.row_id
+        activity.tree_id = event.tree_id
+        activity.quantity = event.gross_quantity
+        activity.unit = event.unit if event.gross_quantity is not None else None
+        activity.notes = event.notes
+        net = None if event.gross_quantity is None else (event.gross_quantity - (event.loss_quantity or Decimal("0")))
+        line_items: list[dict] = []
+        if event.gross_quantity is not None:
+            line_items.append({"name": "Bruto", "quantity": str(event.gross_quantity), "unit": event.unit})
+            if event.loss_quantity and event.loss_quantity > 0:
+                line_items.append({"name": "Gubitak", "quantity": str(event.loss_quantity), "unit": event.unit})
+            if net is not None:
+                line_items.append({"name": "Neto", "quantity": str(net), "unit": event.unit})
+        activity.line_items = line_items
+        qty_label = (
+            f"{event.gross_quantity} {event.unit}"
+            + (f" (neto {net} {event.unit})" if net is not None else "")
+            if event.gross_quantity is not None
+            else "količina nije uneta"
+        )
+        activity.description = f"Zapis berbe · {qty_label}"
+        activity.title = activity.title if activity.title.startswith("Berba") else f"Berba — {activity.title}"
 
     def get_production(self, owner_id: UUID, parcel_id: UUID, year: int) -> ParcelProductionRead:
         parcel = self._parcel(owner_id, parcel_id)
@@ -174,38 +357,48 @@ class HarvestService:
         previous_measures = [self._measure(item) for item in previous_events]
         parcel_measures = parcel_scope_only(measures)
         previous_parcel = parcel_scope_only(previous_measures)
+        parcel_quantified = [item for item in parcel_measures if item.gross is not None]
+        previous_quantified = [item for item in previous_parcel if item.gross is not None]
         active_trees = self.trees.active_count(owner_id, parcel.id)
         area = parcel.area_hectares
-        net = total_kg(parcel_measures, "net")
-        gross = total_kg(parcel_measures, "gross")
-        loss = total_kg(parcel_measures, "loss")
+        net = total_kg(parcel_quantified, "net")
+        gross = total_kg(parcel_quantified, "gross")
+        loss = total_kg(parcel_quantified, "loss")
         first, last = first_last_dates(parcel_measures)
         per_ha = yield_per_hectare(net, area)
         per_tree = yield_per_tree(net, active_trees) if active_trees > 0 else None
-        previous_net = total_kg(previous_parcel, "net")
+        previous_net = total_kg(previous_quantified, "net")
         previous_per_ha = yield_per_hectare(previous_net, area)
         photos = self._latest_photos(events)
-        quality = quality_from_measures(parcel_measures)
+        quality = quality_from_measures(parcel_quantified)
         reads = [self.to_harvest_read(item, include_photos=False, parcel_name=parcel.name) for item in reversed(events)]
+        available_years = available_production_years(
+            self.harvests.years_for_parcel(parcel.id),
+            selected_year=year,
+            current_year=date.today().year,
+            planting_year=parcel.default_planting_year,
+        )
+        expected_yield = self._expected_yield(
+            owner_id=owner_id,
+            parcel=parcel,
+            year=year,
+            actual_net_kg=net,
+            available_years=available_years,
+        )
         return ParcelProductionRead(
             parcel_id=parcel.id,
             parcel_name=parcel.name,
             year=year,
             area_hectares=area,
             active_trees=active_trees,
-            available_years=available_production_years(
-                self.harvests.years_for_parcel(parcel.id),
-                selected_year=year,
-                current_year=date.today().year,
-                planting_year=parcel.default_planting_year,
-            ),
+            available_years=available_years,
             recorded=len(events) > 0,
-            parcel_total_recorded=len(parcel_measures) > 0,
+            parcel_total_recorded=len(parcel_quantified) > 0,
             measurement_note=PARCEL_TOTAL_NOTE,
             total_gross_quantity=self._optional(gross),
             total_loss_quantity=self._optional(loss),
             total_net_yield=self._optional(net),
-            harvest_event_count=len(parcel_measures) if parcel_measures else None,
+            harvest_event_count=len(parcel_quantified) if parcel_quantified else None,
             all_event_count=len(events),
             first_harvest_date=first,
             last_harvest_date=last,
@@ -213,11 +406,21 @@ class HarvestService:
             yield_per_tree=self._optional(per_tree),
             yield_per_tree_denominator="active_trees" if per_tree is not None else None,
             events=reads,
-            timeline=[HarvestTimelinePoint(**point) for point in timeline_points(parcel_measures)],
+            timeline=[HarvestTimelinePoint(**point) for point in timeline_points(parcel_quantified)],
             row_summary=self._row_summary(parcel.id, events),
             tree_summary=self._tree_summary(parcel.id, events),
             quality_summary=self._quality_schema(quality),
-            comparison=self._comparison(year, previous_year, net, previous_net, per_ha, previous_per_ha, len(parcel_measures), len(previous_parcel)),
+            comparison=self._comparison(
+                year,
+                previous_year,
+                net,
+                previous_net,
+                per_ha,
+                previous_per_ha,
+                len(parcel_quantified),
+                len(previous_quantified),
+            ),
+            expected_yield=expected_yield,
             photos=photos,
         )
 
@@ -522,6 +725,205 @@ class HarvestService:
             direction=direction,
             tone=change_tone(key, direction) if available else None,
         )
+
+    def _expected_yield(
+        self,
+        *,
+        owner_id: UUID,
+        parcel: Parcel,
+        year: int,
+        actual_net_kg: Decimal | None,
+        available_years: list[int],
+    ) -> ExpectedYieldRead:
+        rows = self.rows.list_by_parcel(parcel.id)
+        trees = [tree for tree, _ in self.trees.list_map_for_parcel(parcel.id)]
+        distribution, unknown = planting_year_distribution(parcel=parcel, rows=rows, trees=trees)
+        totals = compute_expected_yield(
+            distribution=distribution,
+            unknown_tree_count=unknown,
+            reference_year=year,
+            area_hectares=parcel.area_hectares,
+        )
+        comparison = compare_actual_to_expected(actual_net_kg, totals.pessimistic_kg)
+        age_label = None
+        if totals.available:
+            if totals.mixed_ages:
+                age_label = "Zasad ima biljke različite starosti"
+            elif totals.age_years:
+                age_label = f"Trenutna starost zasada: {totals.age_years[0]}. godina"
+        history = self._expected_yield_history(
+            owner_id=owner_id,
+            parcel=parcel,
+            distribution=distribution,
+            unknown=unknown,
+            available_years=available_years,
+            selected_year=year,
+        )
+        by_variety = self._expected_yield_by_variety(
+            parcel=parcel,
+            rows=rows,
+            trees=trees,
+            year=year,
+        )
+        return ExpectedYieldRead(
+            available=totals.available,
+            known_tree_count=totals.known_tree_count,
+            unknown_tree_count=totals.unknown_tree_count,
+            active_tree_count=totals.active_tree_count,
+            mixed_ages=totals.mixed_ages,
+            age_years=list(totals.age_years),
+            age_label=age_label,
+            message=totals.message,
+            precision_note=totals.precision_note,
+            disclaimer=EXPECTED_YIELD_SOURCE_NOTE,
+            methodology_type=totals.methodology_type,
+            confidence=totals.confidence,
+            source=totals.source,
+            profile_version=totals.profile_version,
+            shell_to_net_ratio=totals.shell_to_net_ratio,
+            pessimistic_kg=self._optional(totals.pessimistic_kg),
+            realistic_kg=self._optional(totals.realistic_kg),
+            optimistic_kg=self._optional(totals.optimistic_kg),
+            expected_per_tree_realistic=self._optional(totals.expected_per_tree_realistic),
+            expected_per_hectare_realistic=self._optional(totals.expected_per_hectare_realistic),
+            pessimistic_net_kg=self._optional(totals.pessimistic_net_kg),
+            realistic_net_kg=self._optional(totals.realistic_net_kg),
+            optimistic_net_kg=self._optional(totals.optimistic_net_kg),
+            expected_per_tree_realistic_net=self._optional(totals.expected_per_tree_realistic_net),
+            expected_per_hectare_realistic_net=self._optional(
+                totals.expected_per_hectare_realistic_net
+            ),
+            actual_net_kg=self._optional(comparison.actual_net_kg),
+            difference_kg=self._optional(comparison.difference_kg),
+            difference_percent=self._optional(comparison.difference_percent),
+            comparison_message=comparison.message,
+            cohorts=[
+                ExpectedYieldCohort(
+                    planting_year=item.planting_year,
+                    age_year=item.age_year,
+                    tree_count=item.tree_count,
+                    pessimistic_kg_per_tree=item.pessimistic_kg_per_tree,
+                    realistic_kg_per_tree=item.realistic_kg_per_tree,
+                    optimistic_kg_per_tree=item.optimistic_kg_per_tree,
+                    pessimistic_kg=item.pessimistic_kg,
+                    realistic_kg=item.realistic_kg,
+                    optimistic_kg=item.optimistic_kg,
+                )
+                for item in totals.cohorts
+            ],
+            curve=[
+                ExpectedYieldCurvePoint(
+                    age_year=int(row["age_year"]),
+                    pessimistic=Decimal(str(row["pessimistic"])),
+                    realistic=Decimal(str(row["realistic"])),
+                    optimistic=Decimal(str(row["optimistic"])),
+                    is_current=bool(row["is_current"]),
+                )
+                for row in curve_table(highlight_ages=totals.age_years)
+            ],
+            history=history,
+            by_variety=by_variety,
+        )
+
+    def _expected_yield_by_variety(
+        self,
+        *,
+        parcel: Parcel,
+        rows: list,
+        trees: list,
+        year: int,
+    ) -> list[ExpectedYieldVarietyRow]:
+        rows_by_id = {row.id: row for row in rows}
+        default_name = (parcel.default_variety or "").strip() or "Nepoznata sorta"
+        by_variety_trees: dict[str, list] = defaultdict(list)
+        for tree in trees:
+            if tree.status != TreeStatus.ACTIVE:
+                continue
+            row = rows_by_id.get(tree.row_id)
+            label = (tree.variety or "").strip()
+            if not label and row is not None:
+                label = (row.variety or "").strip()
+            if not label:
+                label = default_name
+            by_variety_trees[label].append(tree)
+
+        total_trees = sum(len(items) for items in by_variety_trees.values())
+        results: list[ExpectedYieldVarietyRow] = []
+        for variety, var_trees in sorted(
+            by_variety_trees.items(), key=lambda item: (-len(item[1]), item[0].casefold())
+        ):
+            distribution, unknown = planting_year_distribution(
+                parcel=parcel, rows=rows, trees=var_trees
+            )
+            totals = compute_expected_yield(
+                distribution=distribution,
+                unknown_tree_count=unknown,
+                reference_year=year,
+                area_hectares=None,
+            )
+            count = len(var_trees)
+            share = round(100.0 * count / total_trees, 1) if total_trees else None
+            results.append(
+                ExpectedYieldVarietyRow(
+                    variety=variety,
+                    tree_count=count,
+                    share_of_trees_percent=share,
+                    pessimistic_kg=self._optional(totals.pessimistic_kg if totals.available else None),
+                    realistic_kg=self._optional(totals.realistic_kg if totals.available else None),
+                    optimistic_kg=self._optional(totals.optimistic_kg if totals.available else None),
+                    realistic_net_kg=self._optional(
+                        totals.realistic_net_kg if totals.available else None
+                    ),
+                )
+            )
+        return results
+
+    def _expected_yield_history(
+        self,
+        *,
+        owner_id: UUID,
+        parcel: Parcel,
+        distribution: dict[int, int],
+        unknown: int,
+        available_years: list[int],
+        selected_year: int,
+    ) -> list[ExpectedYieldYearComparison]:
+        if not distribution and unknown <= 0:
+            return []
+        planting_years = sorted(distribution) if distribution else []
+        min_year = planting_years[0] if planting_years else selected_year
+        max_year = max([selected_year, *available_years, date.today().year])
+        years = sorted({year for year in range(min_year, max_year + 1) if year >= min_year})
+        # Keep history compact: show years with harvest and recent window around selected year.
+        harvest_years = set(self.harvests.years_for_parcel(parcel.id))
+        window = {selected_year - 1, selected_year, selected_year + 1}
+        years = [year for year in years if year in harvest_years or year in window or year == min_year]
+        history: list[ExpectedYieldYearComparison] = []
+        for year in years:
+            totals = compute_expected_yield(
+                distribution=distribution,
+                unknown_tree_count=unknown,
+                reference_year=year,
+                area_hectares=parcel.area_hectares,
+            )
+            start, end = year_bounds(year)
+            events = self.harvests.list_for_parcel(owner_id, parcel.id, date_from=start, date_to=end)
+            measures = parcel_scope_only([self._measure(item) for item in events])
+            quantified = [item for item in measures if item.gross is not None]
+            actual = total_kg(quantified, "net") if quantified else None
+            comparison = compare_actual_to_expected(actual, totals.pessimistic_kg)
+            history.append(
+                ExpectedYieldYearComparison(
+                    year=year,
+                    expected_pessimistic_kg=self._optional(totals.pessimistic_kg),
+                    expected_pessimistic_net_kg=self._optional(totals.pessimistic_net_kg),
+                    actual_net_kg=self._optional(actual),
+                    difference_kg=self._optional(comparison.difference_kg),
+                    difference_percent=self._optional(comparison.difference_percent),
+                    message=comparison.message,
+                )
+            )
+        return history
 
     def _optional(self, value: Decimal | None) -> OptionalAmount:
         return OptionalAmount(available=value is not None, value=value)

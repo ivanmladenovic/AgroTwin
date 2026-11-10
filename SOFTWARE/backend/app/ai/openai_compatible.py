@@ -144,6 +144,7 @@ class OpenAICompatibleProvider:
         tools: list[ToolSpec] | None = None,
         json_mode: bool = False,
         temperature: float = 0.2,
+        model: str | None = None,
     ) -> ChatResult:
         base_payload: dict[str, Any] = {
             "temperature": temperature,
@@ -166,14 +167,23 @@ class OpenAICompatibleProvider:
 
         last_error: AppError | None = None
         data: dict[str, Any] | None = None
-        used_model = self.chat_model
+        multimodal = _messages_have_images(messages)
+        # Photo/PDF page turns must use the vision model, not the lite chat model.
+        if model:
+            primary_model = model
+        elif multimodal and self.vision_model:
+            primary_model = self.vision_model
+        else:
+            primary_model = self.chat_model
+        used_model = primary_model
         used_label = "primary"
-        targets = self._chat_targets()
+        targets = self._chat_targets(primary_model=primary_model)
         if not self.openai_api_key:
             logger.warning("AI OpenAI fallback disabled — OPENAI_API_KEY is not set")
         logger.info(
-            "AI chat trying %s target(s): %s",
+            "AI chat trying %s target(s)%s: %s",
             len(targets),
+            " (multimodal/vision)" if multimodal else "",
             ", ".join(f"{t.provider_label}/{t.model}" for t in targets),
         )
         # After one Gemini capacity miss, jump to OpenAI instead of waiting on more Gemini 503s.
@@ -202,10 +212,16 @@ class OpenAICompatibleProvider:
                 ],
             }
             try:
-                data = self._post(target.base_url, target.api_key, "/chat/completions", payload)
+                data = self._post(
+                    target.base_url,
+                    target.api_key,
+                    "/chat/completions",
+                    payload,
+                    timeout=50.0 if multimodal else self.timeout,
+                )
                 used_model = target.model
                 used_label = target.provider_label
-                if target.model != self.chat_model or target.base_url != self.base_url:
+                if target.model != primary_model or target.base_url != self.base_url:
                     logger.warning(
                         "AI chat fell back to %s/%s after provider overload",
                         target.provider_label,
@@ -218,7 +234,7 @@ class OpenAICompatibleProvider:
                     _record_gemini_success()
                 break
             except AppError as exc:
-                if _is_capacity_error(exc):
+                if _is_capacity_error(exc) or _is_transient_transport_error(exc):
                     remaining = len(targets) - index - 1
                     logger.warning(
                         "AI chat target %s/%s unavailable (%s); %s left",
@@ -230,19 +246,48 @@ class OpenAICompatibleProvider:
                     sticky = _get_sticky()
                     if sticky and sticky[0] == target.base_url.rstrip("/") and sticky[1] == target.model:
                         _clear_sticky()
-                    if target.provider_label == "gemini":
+                    # A timed-out PDF/photo is the same stall as a 503: do not walk
+                    # every Gemini model for another 50s each before OpenAI.
+                    gemini_stall = _is_capacity_error(exc) or (
+                        multimodal and _is_transient_transport_error(exc)
+                    )
+                    if target.provider_label == "gemini" and gemini_stall:
                         _record_gemini_capacity_failure()
                         if self.openai_api_key:
                             skip_remaining_gemini = True
                     last_error = exc
                     continue
                 raise
+        if data is None and multimodal:
+            # PDF/photo payloads are heavy; if every multimodal target failed on capacity,
+            # retry once with images stripped (extracted PDF text / captions still remain).
+            text_only = _strip_image_parts(messages)
+            if text_only is not messages:
+                logger.warning("AI chat retrying text-only after multimodal capacity failures")
+                try:
+                    return self.chat(
+                        text_only,
+                        tools=tools,
+                        json_mode=json_mode,
+                        temperature=temperature,
+                    )
+                except AppError as exc:
+                    last_error = exc
+
         if data is None:
             logger.error(
-                "AI chat exhausted all %s target(s); last error: %s",
+                "AI chat exhausted all %s target(s); openai_fallback=%s; last error: %s",
                 len(targets),
+                bool(self.openai_api_key),
                 (last_error.message[:200] if last_error else "none"),
             )
+            if last_error and _is_capacity_error(last_error) and not self.openai_api_key:
+                raise AppError(
+                    "AI model trenutno nije dostupan zbog velikog opterećenja. "
+                    "Pokušajte ponovo za minut-dva.",
+                    status_code=502,
+                    code="ai_unavailable",
+                ) from last_error
             raise last_error or AppError(
                 "AI servis trenutno nije dostupan. Pokušajte ponovo za minut-dva.",
                 status_code=502,
@@ -325,9 +370,10 @@ class OpenAICompatibleProvider:
             for item in rows
         ]
 
-    def _chat_targets(self) -> list[_ChatTarget]:
+    def _chat_targets(self, *, primary_model: str | None = None) -> list[_ChatTarget]:
         targets: list[_ChatTarget] = []
         seen: set[tuple[str, str]] = set()
+        primary = (primary_model or self.chat_model).strip() or self.chat_model
 
         def add(base_url: str, api_key: str, model: str, label: str) -> None:
             key = (base_url.rstrip("/"), model)
@@ -350,7 +396,6 @@ class OpenAICompatibleProvider:
             sticky_url, sticky_model = sticky
             sticky_is_gemini = _is_gemini_endpoint(sticky_url)
             if not (skip_gemini and sticky_is_gemini):
-                key = self.api_key if sticky_is_gemini or sticky_url == self.base_url else (self.openai_api_key or "")
                 if sticky_is_gemini:
                     key = self.api_key
                 elif sticky_url.rstrip("/") == self.openai_base_url.rstrip("/"):
@@ -361,10 +406,18 @@ class OpenAICompatibleProvider:
                 add(sticky_url, key or "", sticky_model, label)
 
         if not skip_gemini:
-            add(self.base_url, self.api_key, self.chat_model, "gemini" if _is_gemini_endpoint(self.base_url) else "primary")
-            if _is_gemini_endpoint(self.base_url) or self.chat_model.startswith("gemini"):
+            add(
+                self.base_url,
+                self.api_key,
+                primary,
+                "gemini" if _is_gemini_endpoint(self.base_url) else "primary",
+            )
+            if _is_gemini_endpoint(self.base_url) or primary.startswith("gemini"):
                 for model in _GEMINI_CHAT_FALLBACKS:
                     add(self.base_url, self.api_key, model, "gemini")
+                # Also keep the configured chat model as a Gemini option when vision is primary.
+                if primary != self.chat_model:
+                    add(self.base_url, self.api_key, self.chat_model, "gemini")
         elif sticky is None:
             logger.info("AI Gemini circuit open — trying OpenAI fallbacks first")
 
@@ -374,13 +427,23 @@ class OpenAICompatibleProvider:
 
         # If circuit skipped Gemini and OpenAI also fails, allow one last Gemini pass.
         if skip_gemini and self.openai_api_key:
-            add(self.base_url, self.api_key, self.chat_model, "gemini")
+            add(self.base_url, self.api_key, primary, "gemini")
             for model in _GEMINI_CHAT_FALLBACKS:
                 add(self.base_url, self.api_key, model, "gemini")
+            if primary != self.chat_model:
+                add(self.base_url, self.api_key, self.chat_model, "gemini")
 
         return targets
 
-    def _post(self, base_url: str, api_key: str, path: str, payload: dict[str, Any]) -> dict[str, Any]:
+    def _post(
+        self,
+        base_url: str,
+        api_key: str,
+        path: str,
+        payload: dict[str, Any],
+        *,
+        timeout: float | None = None,
+    ) -> dict[str, Any]:
         try:
             response = httpx.post(
                 f"{base_url.rstrip('/')}{path}",
@@ -389,7 +452,7 @@ class OpenAICompatibleProvider:
                     "Content-Type": "application/json",
                 },
                 json=payload,
-                timeout=self.timeout,
+                timeout=timeout if timeout is not None else self.timeout,
             )
         except httpx.HTTPError as exc:
             raise AppError(f"Zahtev ka AI provajderu nije uspeo: {exc}", status_code=502, code="ai_unavailable") from exc
@@ -444,6 +507,45 @@ def _chat_model_candidates(primary: str, base_url: str) -> list[str]:
     return models
 
 
+def _messages_have_images(messages: list[ChatMessage]) -> bool:
+    for message in messages:
+        content = message.content
+        if not isinstance(content, list):
+            continue
+        for part in content:
+            if isinstance(part, dict) and part.get("type") == "image_url":
+                return True
+    return False
+
+
+def _strip_image_parts(messages: list[ChatMessage]) -> list[ChatMessage]:
+    """Drop image_url parts so a capacity-hit multimodal turn can retry as text."""
+    if not _messages_have_images(messages):
+        return messages
+    cleaned: list[ChatMessage] = []
+    for message in messages:
+        content = message.content
+        if not isinstance(content, list):
+            cleaned.append(message)
+            continue
+        kept = [part for part in content if not (isinstance(part, dict) and part.get("type") == "image_url")]
+        if len(kept) == 1 and isinstance(kept[0], dict) and kept[0].get("type") == "text":
+            new_content: str | list[Any] = str(kept[0].get("text") or "")
+        elif kept:
+            new_content = kept
+        else:
+            new_content = ""
+        cleaned.append(
+            ChatMessage(
+                role=message.role,
+                content=new_content,
+                tool_call_id=message.tool_call_id,
+                tool_calls=message.tool_calls,
+            )
+        )
+    return cleaned
+
+
 def _is_capacity_error(exc: AppError) -> bool:
     text = (exc.message or "").lower()
     return (
@@ -454,6 +556,21 @@ def _is_capacity_error(exc: AppError) -> bool:
         or "429" in text
         or "rate limit" in text
         or "overloaded" in text
+    )
+
+
+def _is_transient_transport_error(exc: AppError) -> bool:
+    """Timeouts / connection drops should advance to the next fallback target."""
+    text = (exc.message or "").lower()
+    return (
+        "zahtev ka ai provajderu nije uspeo" in text
+        and (
+            "timeout" in text
+            or "timed out" in text
+            or "connect" in text
+            or "connection" in text
+            or "temporarily" in text
+        )
     )
 
 

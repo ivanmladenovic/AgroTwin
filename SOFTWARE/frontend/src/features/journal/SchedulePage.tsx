@@ -19,15 +19,16 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 import { Textarea } from '@/shared/ui/textarea'
+import { tr } from '@/shared/i18n/i18n'
 
 const WEEKDAYS: Array<{ value: number; label: string; short: string }> = [
-  { value: 0, label: 'Ponedeljak', short: 'Pon' },
+  { value: 0, label: tr('Ponedeljak'), short: 'Pon' },
   { value: 1, label: 'Utorak', short: 'Uto' },
   { value: 2, label: 'Sreda', short: 'Sre' },
-  { value: 3, label: 'Četvrtak', short: 'Čet' },
+  { value: 3, label: tr("Četvrtak"), short: 'Čet' },
   { value: 4, label: 'Petak', short: 'Pet' },
   { value: 5, label: 'Subota', short: 'Sub' },
-  { value: 6, label: 'Nedelja', short: 'Ned' },
+  { value: 6, label: tr('Nedelja'), short: 'Ned' },
 ]
 
 type WindowMode = 'season' | 'year' | 'custom'
@@ -64,21 +65,21 @@ export function SchedulePage() {
     <div className="w-full space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="kicker">Dnevnik</p>
-          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Planiranje zadataka</h1>
+          <p className="kicker">{tr("Dnevnik")}</p>
+          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">{tr('Planiranje zadataka')}</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Definišite sezone i ponavljajuće zadatke. Sistem ih upisuje u kalendar kao planirane aktivnosti.
+            {tr('Definišite sezone i ponavljajuće zadatke. Sistem ih upisuje u kalendar kao planirane aktivnosti.')}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <BackButton fallback="/journal">Nazad na dnevnik</BackButton>
+          <BackButton fallback="/journal">{tr("Nazad na dnevnik")}</BackButton>
         </div>
       </div>
 
       <div className="max-w-xs">
-        <Label htmlFor="plan-parcel">Parcela</Label>
+        <Label htmlFor="plan-parcel">{tr("Parcela")}</Label>
         <Select id="plan-parcel" value={parcelId} onChange={(event) => setParcelId(event.target.value)}>
-          <option value="">Sve parcele</option>
+          <option value="">{tr('Sve parcele')}</option>
           {(parcelsQuery.data ?? []).map((parcel) => (
             <option key={parcel.id} value={parcel.id}>
               {parcel.name}
@@ -101,10 +102,10 @@ export function SchedulePage() {
               }}
             />
             {seasonsQuery.isLoading ? (
-              <p className="text-sm text-muted-foreground">Učitavanje sezona…</p>
+              <p className="text-sm text-muted-foreground">{tr('Učitavanje sezona…')}</p>
             ) : seasons.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Nema sezona. Npr. „Navodnjavanje maj–septembar“ ili „Berba 2026“.
+                {tr('Nema sezona. Npr. „Navodnjavanje maj–septembar“ ili „Berba 2026“.')}
               </p>
             ) : (
               <div className="space-y-2">
@@ -114,7 +115,7 @@ export function SchedulePage() {
                       <p className="font-medium">{season.name}</p>
                       <p className="text-xs text-muted-foreground">
                         {formatDate(season.starts_on)} – {formatDate(season.ends_on)}
-                        {season.parcel_name ? ` · ${season.parcel_name}` : ''}
+                        {season.parcel_name ? tr(' · {{name}}', { name: season.parcel_name }) : ''}
                       </p>
                     </div>
                     <Button
@@ -124,12 +125,12 @@ export function SchedulePage() {
                       className="shrink-0 text-destructive"
                       disabled={removeSeason.isPending}
                       onClick={() => {
-                        if (window.confirm('Obrisati sezonu? Rasporedi ostaju, ali gube vezu sa sezonom.')) {
+                        if (window.confirm(tr('Obrisati sezonu? Rasporedi ostaju, ali gube vezu sa sezonom.'))) {
                           removeSeason.mutate(season.id)
                         }
                       }}
                     >
-                      Obriši
+                      {tr("Obriši")}
                     </Button>
                   </div>
                 ))}
@@ -140,7 +141,7 @@ export function SchedulePage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Ponavljajući zadaci</CardTitle>
+            <CardTitle>{tr('Ponavljajući zadaci')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <ScheduleForm
@@ -154,10 +155,10 @@ export function SchedulePage() {
               }}
             />
             {schedulesQuery.isLoading ? (
-              <p className="text-sm text-muted-foreground">Učitavanje rasporeda…</p>
+              <p className="text-sm text-muted-foreground">{tr('Učitavanje rasporeda…')}</p>
             ) : schedules.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Nema rasporeda. Npr. navodnjavanje pon/sre/pet u sezoni.
+                {tr('Nema rasporeda. Npr. navodnjavanje pon/sre/pet u sezoni.')}
               </p>
             ) : (
               <div className="space-y-2">
@@ -171,11 +172,11 @@ export function SchedulePage() {
                       <p className="text-xs text-muted-foreground">
                         {formatDate(item.starts_on)} – {formatDate(item.ends_on)}
                         {item.season_name ? ` · ${item.season_name}` : ''}
-                        {item.parcel_name ? ` · ${item.parcel_name}` : ''}
+                        {item.parcel_name ? tr(' · {{name}}', { name: item.parcel_name }) : ''}
                       </p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {item.planned_count} planiranih dana u kalendaru
-                        {!item.is_active ? ' · pauzirano' : ''}
+                        {tr('{{count}} planiranih dana u kalendaru', { count: item.planned_count })}
+                        {!item.is_active ? tr(' · pauzirano') : ''}
                       </p>
                     </div>
                     <Button
@@ -185,12 +186,12 @@ export function SchedulePage() {
                       className="shrink-0 text-destructive"
                       disabled={removeSchedule.isPending}
                       onClick={() => {
-                        if (window.confirm('Obrisati raspored i njegove planirane (neurađene) stavke?')) {
+                        if (window.confirm(tr('Obrisati raspored i njegove planirane (neurađene) stavke?'))) {
                           removeSchedule.mutate(item.id)
                         }
                       }}
                     >
-                      Obriši
+                      {tr("Obriši")}
                     </Button>
                   </div>
                 ))}
@@ -242,12 +243,12 @@ function SeasonForm({
   return (
     <form onSubmit={onSubmit} className="space-y-3 rounded-lg border border-border/60 p-3">
       <div className="space-y-1.5">
-        <Label htmlFor="season-name">Naziv sezone</Label>
+        <Label htmlFor="season-name">{tr('Naziv sezone')}</Label>
         <Input
           id="season-name"
           value={name}
           onChange={(event) => setName(event.target.value)}
-          placeholder="npr. Navodnjavanje 2026"
+          placeholder={tr('npr. Navodnjavanje 2026')}
           required
         />
       </div>
@@ -262,9 +263,9 @@ function SeasonForm({
         </div>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="season-parcel">Parcela (opciono)</Label>
+        <Label htmlFor="season-parcel">{tr('Parcela (opciono)')}</Label>
         <Select id="season-parcel" value={parcelId} onChange={(event) => setParcelId(event.target.value)}>
-          <option value="">Cela plantaža</option>
+          <option value="">{tr('Cela plantaža')}</option>
           {parcels.map((parcel) => (
             <option key={parcel.id} value={parcel.id}>
               {parcel.name}
@@ -277,10 +278,10 @@ function SeasonForm({
         <Textarea id="season-notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} />
       </div>
       {create.isError ? (
-        <p className="text-sm text-destructive">{create.error instanceof Error ? create.error.message : 'Unos nije uspeo.'}</p>
+        <p className="text-sm text-destructive">{create.error instanceof Error ? create.error.message : tr('Unos nije uspeo.')}</p>
       ) : null}
       <Button type="submit" disabled={create.isPending}>
-        {create.isPending ? 'Čuvanje…' : 'Sačuvaj sezonu'}
+        {create.isPending ? tr('Čuvanje…') : tr('Sačuvaj sezonu')}
       </Button>
     </form>
   )
@@ -346,19 +347,19 @@ function ScheduleForm({
   return (
     <form onSubmit={onSubmit} className="space-y-3 rounded-lg border border-border/60 p-3">
       <div className="space-y-1.5">
-        <Label htmlFor="schedule-title">Naziv zadatka</Label>
+        <Label htmlFor="schedule-title">{tr('Naziv zadatka')}</Label>
         <Input
           id="schedule-title"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          placeholder="npr. Navodnjavanje"
+          placeholder={tr('npr. Navodnjavanje')}
           required
         />
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="schedule-type">Tip aktivnosti</Label>
+        <Label htmlFor="schedule-type">{tr('Tip aktivnosti')}</Label>
         <Select id="schedule-type" value={activityTypeId} onChange={(event) => setActivityTypeId(event.target.value)} required>
-          <option value="">Izaberite tip</option>
+          <option value="">{tr('Izaberite tip')}</option>
           {typeOptions.map((item) => (
             <option key={item.id} value={item.id}>
               {item.name}
@@ -367,7 +368,7 @@ function ScheduleForm({
         </Select>
       </div>
       <div className="space-y-1.5">
-        <Label>Dani u nedelji</Label>
+        <Label>{tr('Dani u nedelji')}</Label>
         <div className="flex flex-wrap gap-2">
           {WEEKDAYS.map((day) => {
             const active = weekdays.includes(day.value)
@@ -395,16 +396,16 @@ function ScheduleForm({
           value={mode}
           onChange={(event) => setMode(event.target.value as WindowMode)}
         >
-          <option value="season">Sezona</option>
-          <option value="year">Cela godina</option>
+          <option value="season">{tr("Sezona")}</option>
+          <option value="year">{tr('Cela godina')}</option>
           <option value="custom">Od – do</option>
         </Select>
       </div>
       {mode === 'season' ? (
         <div className="space-y-1.5">
-          <Label htmlFor="schedule-season">Sezona</Label>
+          <Label htmlFor="schedule-season">{tr("Sezona")}</Label>
           <Select id="schedule-season" value={seasonId} onChange={(event) => setSeasonId(event.target.value)} required>
-            <option value="">Izaberite sezonu</option>
+            <option value="">{tr('Izaberite sezonu')}</option>
             {seasons.map((season) => (
               <option key={season.id} value={season.id}>
                 {season.name} ({formatDate(season.starts_on)} – {formatDate(season.ends_on)})
@@ -415,7 +416,7 @@ function ScheduleForm({
       ) : null}
       {mode === 'year' ? (
         <div className="space-y-1.5">
-          <Label htmlFor="schedule-year">Godina</Label>
+          <Label htmlFor="schedule-year">{tr('Godina')}</Label>
           <Input
             id="schedule-year"
             type="number"
@@ -440,9 +441,9 @@ function ScheduleForm({
         </div>
       ) : null}
       <div className="space-y-1.5">
-        <Label htmlFor="schedule-parcel">Parcela</Label>
+        <Label htmlFor="schedule-parcel">{tr("Parcela")}</Label>
         <Select id="schedule-parcel" value={parcelId} onChange={(event) => setParcelId(event.target.value)} required>
-          <option value="">Izaberite parcelu</option>
+          <option value="">{tr('Izaberite parcelu')}</option>
           {parcels.map((parcel) => (
             <option key={parcel.id} value={parcel.id}>
               {parcel.name}
@@ -455,10 +456,10 @@ function ScheduleForm({
         <Textarea id="schedule-notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} />
       </div>
       {create.isError ? (
-        <p className="text-sm text-destructive">{create.error instanceof Error ? create.error.message : 'Unos nije uspeo.'}</p>
+        <p className="text-sm text-destructive">{create.error instanceof Error ? create.error.message : tr('Unos nije uspeo.')}</p>
       ) : null}
       <Button type="submit" disabled={create.isPending || weekdays.length === 0}>
-        {create.isPending ? 'Čuvanje…' : 'Zakaži u kalendar'}
+        {create.isPending ? tr('Čuvanje…') : tr('Zakaži u kalendar')}
       </Button>
     </form>
   )

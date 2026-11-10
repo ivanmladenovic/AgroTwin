@@ -3,10 +3,18 @@ import type {
   OrchardRow,
   OrchardTwin,
   Parcel,
+  ParcelAlert,
+  ParcelAnalysisRun,
   ParcelCreatePayload,
+  ParcelIntelligence,
+  ParcelSatelliteMonitoring,
   ParcelUpdatePayload,
   ParcelWeather,
   ParcelSoilProfile,
+  SatelliteHistory,
+  SatelliteObservation,
+  SatelliteSample,
+  SatelliteSyncResult,
   TreeDetail,
   TreeJournal,
   TreeOption,
@@ -69,4 +77,62 @@ export function getParcelSoilProfile(parcelId: string) {
 
 export function refreshParcelSoilProfile(parcelId: string) {
   return apiRequest<ParcelSoilProfile>(`/parcels/${parcelId}/soil/refresh`, { method: 'POST' })
+}
+
+/** Warm Yr weather + SoilGrids caches after parcel location/boundary is known. */
+export async function warmParcelEnvironment(parcelId: string) {
+  await Promise.allSettled([getParcelWeather(parcelId), getParcelSoilProfile(parcelId)])
+}
+
+export function getParcelSatelliteMonitoring(parcelId: string) {
+  return apiRequest<ParcelSatelliteMonitoring>(`/parcels/${parcelId}/satellite`)
+}
+
+export function getParcelSatelliteHistory(
+  parcelId: string,
+  params?: { dateFrom?: string; dateTo?: string; date_from?: string; date_to?: string },
+) {
+  const q = new URLSearchParams()
+  const from = params?.dateFrom ?? params?.date_from
+  const to = params?.dateTo ?? params?.date_to
+  if (from) q.set('date_from', from)
+  if (to) q.set('date_to', to)
+  const query = q.toString()
+  return apiRequest<SatelliteHistory>(`/parcels/${parcelId}/satellite/history${query ? `?${query}` : ''}`)
+}
+
+export function refreshParcelSatellite(parcelId: string) {
+  return apiRequest<SatelliteSyncResult>(`/parcels/${parcelId}/satellite/refresh`, { method: 'POST' })
+}
+
+export function getSatelliteObservation(observationId: string) {
+  return apiRequest<SatelliteObservation>(`/satellite/observations/${observationId}`)
+}
+
+export function sampleSatelliteObservation(
+  observationId: string,
+  params: { longitude: number; latitude: number; index?: string },
+) {
+  const q = new URLSearchParams({
+    longitude: String(params.longitude),
+    latitude: String(params.latitude),
+    index: params.index ?? 'ndvi',
+  })
+  return apiRequest<SatelliteSample>(`/satellite/observations/${observationId}/sample?${q}`)
+}
+
+export function getParcelIntelligence(parcelId: string) {
+  return apiRequest<ParcelIntelligence>(`/parcels/${parcelId}/intelligence`)
+}
+
+export function requestParcelIntelligence(parcelId: string) {
+  return apiRequest<ParcelAnalysisRun>(`/parcels/${parcelId}/intelligence/analyze`, { method: 'POST' })
+}
+
+export function acknowledgeIntelligenceAlert(alertId: string) {
+  return apiRequest<ParcelAlert>(`/intelligence/alerts/${alertId}/acknowledge`, { method: 'POST' })
+}
+
+export function resolveIntelligenceAlert(alertId: string) {
+  return apiRequest<ParcelAlert>(`/intelligence/alerts/${alertId}/resolve`, { method: 'POST' })
 }

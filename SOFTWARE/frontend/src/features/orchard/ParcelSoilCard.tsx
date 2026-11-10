@@ -8,6 +8,7 @@ import { formatUpdatedAt } from '@/shared/lib/format'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Select } from '@/shared/ui/select'
+import { tr } from '@/shared/i18n/i18n'
 
 const SOILGRIDS_URL = 'https://www.isric.org/explore/soilgrids'
 const DEFAULT_DEPTH = '30-60cm'
@@ -51,7 +52,7 @@ export function ParcelSoilCard({ parcelId }: { parcelId: string }) {
       <Card>
         <SoilHeader parcelId={parcelId} />
         <CardContent className="space-y-3 px-4 py-3">
-          <p className="text-xs text-muted-foreground">Podaci o zemljištu trenutno nisu dostupni.</p>
+          <p className="text-xs text-muted-foreground">{tr("Podaci o zemljištu trenutno nisu dostupni.")}</p>
           <SoilAnalysesLink parcelId={parcelId} />
         </CardContent>
       </Card>
@@ -64,12 +65,12 @@ export function ParcelSoilCard({ parcelId }: { parcelId: string }) {
         <SoilHeader parcelId={parcelId} />
         <CardContent className="space-y-3 px-4 py-3">
           <div className="space-y-1">
-            <p className="text-sm font-medium">Lokacija parcele nije podešena.</p>
+            <p className="text-sm font-medium">{tr('Lokacija parcele nije podešena.')}</p>
             <p className="text-xs text-muted-foreground">
-              {profile?.message || 'Za prikaz modelovanih podataka o zemljištu unesite lokaciju parcele.'}
+              {profile?.message ? tr(profile.message) : tr('Za prikaz modelovanih podataka o zemljištu unesite lokaciju parcele.')}
             </p>
             <Link to={`/orchard/${parcelId}/edit`} className="inline-flex text-xs font-medium text-primary hover:underline">
-              Unesite lokaciju parcele
+              {tr('Unesite lokaciju parcele')}
             </Link>
           </div>
           <SoilAnalysesLink parcelId={parcelId} />
@@ -84,7 +85,7 @@ export function ParcelSoilCard({ parcelId }: { parcelId: string }) {
         <SoilHeader parcelId={parcelId} />
         <CardContent className="space-y-3 px-4 py-3">
           <p className="text-xs text-muted-foreground">
-            {profile.message || 'Podaci o zemljištu trenutno nisu dostupni.'}
+            {profile.message ? tr(profile.message) : tr('Podaci o zemljištu trenutno nisu dostupni.')}
           </p>
           <SoilAnalysesLink parcelId={parcelId} />
         </CardContent>
@@ -105,7 +106,7 @@ export function ParcelSoilCard({ parcelId }: { parcelId: string }) {
               <Select
                 value={selectedDepth}
                 onChange={(event) => setDepth(event.target.value)}
-                aria-label="Dubina profila"
+                aria-label={tr('Dubina profila')}
                 className="h-8 w-auto min-w-[6.5rem] px-2 py-0 text-xs lg:h-8 lg:text-xs"
               >
                 {depthOptions.map((option) => (
@@ -123,7 +124,7 @@ export function ParcelSoilCard({ parcelId }: { parcelId: string }) {
               disabled={!profile.can_refresh || refreshMutation.isPending}
               onClick={() => refreshMutation.mutate()}
             >
-              {refreshMutation.isPending ? 'Osvežavanje…' : 'Osveži'}
+              {refreshMutation.isPending ? tr('Osvežavanje…') : tr('Osveži')}
             </Button>
           </>
         }
@@ -131,7 +132,7 @@ export function ParcelSoilCard({ parcelId }: { parcelId: string }) {
       <CardContent className="space-y-3 px-4 py-3">
         <SoilAnalysesLink parcelId={parcelId} />
         {profile.is_stale || profile.status === 'stale' || profile.status === 'partial' || profile.message ? (
-          <p className="text-[11px] text-muted-foreground">{profile.message}</p>
+          <p className="text-[11px] text-muted-foreground">{profile.message ? tr(profile.message) : null}</p>
         ) : null}
         <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 xl:grid-cols-7">
           {profile.properties.map((property) => {
@@ -149,15 +150,19 @@ export function ParcelSoilCard({ parcelId }: { parcelId: string }) {
         {detailsOpen ? <SoilDetailsTable properties={profile.properties} depths={depthOptions} /> : null}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
           <button type="button" className="font-medium text-primary hover:underline" onClick={() => setDetailsOpen((open) => !open)}>
-            {detailsOpen ? 'Sakrij detalje' : 'Prikaži detalje'}
+            {detailsOpen ? tr('Sakrij detalje') : tr('Prikaži detalje')}
           </button>
           <details>
-            <summary className="cursor-pointer select-none">Šta znači modelovana procena?</summary>
+            <summary className="cursor-pointer select-none">{tr('Šta znači modelovana procena?')}</summary>
             <p className="mt-1 max-w-2xl">{profile.source_explanation}</p>
           </details>
-          {profile.fetched_at ? <span>Ažurirano: {formatUpdatedAt(profile.fetched_at)}</span> : null}
+          {profile.fetched_at ? (
+            <span>
+              {tr('Ažurirano')}: {formatUpdatedAt(profile.fetched_at)}
+            </span>
+          ) : null}
           <span className="sm:ml-auto">
-            Izvor:{' '}
+            {tr('Izvor')}:{' '}
             <a href={SOILGRIDS_URL} target="_blank" rel="noreferrer" className="font-medium text-primary hover:underline">
               SoilGrids / ISRIC
             </a>
@@ -172,7 +177,7 @@ function SoilAnalysesLink({ parcelId }: { parcelId: string }) {
   return (
     <Link to={`/orchard/${parcelId}/soil-analyses`} className="block">
       <Button type="button" variant="outline" size="sm" className="h-9 w-full justify-center text-xs sm:w-auto">
-        Analize zemljišta
+        {tr('Analize zemljišta')}
       </Button>
     </Link>
   )
@@ -190,8 +195,10 @@ function SoilHeader({
   return (
     <CardHeader className="flex flex-col gap-2 space-y-0 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
-        <CardTitle>Zemljište</CardTitle>
-        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{subtitle || 'Modelovana procena – SoilGrids'}</p>
+        <CardTitle>{tr('Zemljište')}</CardTitle>
+        <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+          {subtitle || tr('Modelovana procena – SoilGrids')}
+        </p>
       </div>
       {actions ? <div className="flex flex-none flex-wrap items-center gap-1.5">{actions}</div> : null}
     </CardHeader>
@@ -227,7 +234,7 @@ function SoilDetailsTable({
                   const value = valueAtDepth(property, depth.value)
                   return (
                     <td key={property.key} className="py-1.5 pr-3 tabular-nums">
-                      {value ? formatSoilValue(value.value, value.unit || property.unit) : 'Nema podataka'}
+                      {value ? formatSoilValue(value.value, value.unit || property.unit) : tr('Nema podataka')}
                     </td>
                   )
                 })}
@@ -247,7 +254,7 @@ function SoilDetailsTable({
                   <div key={property.key} className="flex items-baseline justify-between gap-3">
                     <dt className="text-muted-foreground">{property.label}</dt>
                     <dd className="tabular-nums">
-                      {value ? formatSoilValue(value.value, value.unit || property.unit) : 'Nema podataka'}
+                      {value ? formatSoilValue(value.value, value.unit || property.unit) : tr('Nema podataka')}
                     </dd>
                   </div>
                 )

@@ -96,7 +96,6 @@ def generate_rectangular_layout(
     width_m = Decimal(max(trees_per_row - 1, 0)) * tree_spacing_m
     height_m = Decimal(max(row_count - 1, 0)) * row_spacing_m
     rows: list[LayoutRow] = []
-    sequence = starting_tree_number
     planted = 0
 
     for row_number in range(1, row_count + 1):
@@ -104,8 +103,8 @@ def generate_rectangular_layout(
         y = Decimal(row_number - 1) * row_spacing_m
         variety = varieties.get(row_number, default_variety)
         for position in range(1, trees_per_row + 1):
-            public_id = format_tree_public_id(row_number, sequence)
-            sequence += 1
+            # Tree number restarts in every row: R08-T0001 … R08-T0073
+            tree_number = starting_tree_number + position - 1
             if (row_number, position) in skipped:
                 continue
             x = Decimal(position - 1) * tree_spacing_m
@@ -113,8 +112,8 @@ def generate_rectangular_layout(
                 LayoutTree(
                     row_number=row_number,
                     position_in_row=position,
-                    public_id=public_id,
-                    sequence_number=sequence - 1,
+                    public_id=format_tree_public_id(row_number, tree_number),
+                    sequence_number=tree_number,
                     normalized_x=x,
                     normalized_y=y,
                     planting_year=planting_year,

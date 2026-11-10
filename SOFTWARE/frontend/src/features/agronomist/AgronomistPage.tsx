@@ -19,6 +19,7 @@ import { formatDate } from '@/shared/lib/format'
 import { cn } from '@/shared/lib/utils'
 import { BackButton } from '@/shared/ui/back-button'
 import { Button } from '@/shared/ui/button'
+import { tr } from '@/shared/i18n/i18n'
 
 export function AgronomistPage() {
   const { conversationId } = useParams()
@@ -71,8 +72,8 @@ export function AgronomistPage() {
   })
 
   function confirmDelete(id: string, title?: string) {
-    const label = (title || 'ovaj razgovor').trim()
-    if (!window.confirm(`Obrisati razgovor „${label}”?`)) return
+    const label = (title || tr('ovaj razgovor')).trim()
+    if (!window.confirm(tr('Obrisati razgovor „{{label}}”?', { label }))) return
     deleteMutation.mutate(id)
   }
 
@@ -80,7 +81,7 @@ export function AgronomistPage() {
   const conversations = listQuery.data ?? []
   const messages = conversation?.messages ?? []
   const waiting = Boolean(pendingText) || sendMutation.isPending
-  const title = conversation?.title || (conversationId ? 'Razgovor' : 'Novi razgovor')
+  const title = conversation?.title || (conversationId ? tr('Razgovor') : tr('Novi razgovor'))
   const canSend = Boolean(draft.trim() || attachedPhoto) && !waiting
 
   useEffect(() => {
@@ -127,7 +128,7 @@ export function AgronomistPage() {
       const compressed = await compressPhoto(file)
       setAttachedPhoto(compressed)
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'Fotografija nije mogla da se učita.')
+      window.alert(error instanceof Error ? error.message : tr('Fotografija nije mogla da se učita.'))
     }
     if (photoInputRef.current) photoInputRef.current.value = ''
   }
@@ -144,13 +145,13 @@ export function AgronomistPage() {
     sendingRef.current = true
     setDraft('')
     setAttachedPhoto(null)
-    setPendingText(text || (file ? 'Fotografija' : null))
+    setPendingText(text || (file ? tr('Fotografija') : null))
     setPendingPhotoUrl(preview)
     let activeId = conversationId || null
     pendingConversationId.current = activeId
     try {
       if (!activeId) {
-        const created = await createConversation((text || 'Fotografija').slice(0, 80))
+        const created = await createConversation((text || tr('Fotografija')).slice(0, 80))
         activeId = created.id
         pendingConversationId.current = activeId
         queryClient.setQueryData(['ai-conversation', created.id], created)
@@ -210,12 +211,12 @@ export function AgronomistPage() {
     navigate(`/agronomist/${id}`)
   }
 
-  const heading = reporting ? 'Prijavi problem' : showHub ? 'Agronom' : title
+  const heading = reporting ? tr('Prijavi problem') : showHub ? tr('Agronom') : title
   const subtitle = reporting
-    ? 'Uslikajte ili dodajte fotografije, opišite simptome i pošaljite agronomu na analizu.'
+    ? tr('Uslikajte ili dodajte fotografije, opišite simptome i pošaljite agronomu na analizu.')
     : showHub
-      ? 'Izaberite novi razgovor, prijavu problema ili nastavite ranije dopisivanje.'
-      : 'Pitajte agronoma o voćnjaku i nastavite prethodni razgovor.'
+      ? tr('Izaberite novi razgovor, prijavu problema ili nastavite ranije dopisivanje.')
+      : tr('Pitajte agronoma o voćnjaku i nastavite prethodni razgovor.')
 
   return (
     <div className="-mx-4 -mb-4 flex min-h-0 flex-1 flex-col lg:mx-0 lg:mb-0 lg:flex-row lg:gap-4">
@@ -238,13 +239,13 @@ export function AgronomistPage() {
 
       {listOpen ? (
         <div className="fixed inset-0 z-[2000] lg:hidden">
-          <button type="button" className="absolute inset-0 bg-black/40" aria-label="Zatvori razgovore" onClick={() => setListOpen(false)} />
+          <button type="button" className="absolute inset-0 bg-black/40" aria-label={tr('Zatvori razgovore')} onClick={() => setListOpen(false)} />
           <aside className="relative flex h-full w-[min(20rem,88vw)] flex-col bg-card pt-[env(safe-area-inset-top)] shadow-xl">
             <div className="flex items-center justify-end px-3 pt-2">
               <button
                 type="button"
                 className="inline-flex h-11 w-11 items-center justify-center rounded-lg hover:bg-muted"
-                aria-label="Zatvori"
+                aria-label={tr('Zatvori')}
                 onClick={() => setListOpen(false)}
               >
                 <X className="h-5 w-5" />
@@ -298,14 +299,14 @@ export function AgronomistPage() {
                 size="sm"
                 className="mt-0.5 shrink-0 text-muted-foreground hover:text-danger"
                 disabled={deleteMutation.isPending}
-                aria-label="Obriši razgovor"
+                aria-label={tr('Obriši razgovor')}
                 onClick={() => confirmDelete(conversationId, conversation?.title)}
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
             ) : null}
             <BackButton variant="ghost" fallback="/agronomist" className="mt-0.5 shrink-0">
-              Nazad
+              {tr("Nazad")}
             </BackButton>
           </div>
         ) : null}
@@ -328,12 +329,12 @@ export function AgronomistPage() {
           <>
             <div ref={threadRef} className="min-h-0 flex-1 space-y-3 overflow-auto px-4 py-4 lg:px-5">
               {conversationId && conversationQuery.isLoading ? (
-                <p className="text-sm text-muted-foreground">Učitavanje razgovora…</p>
+                <p className="text-sm text-muted-foreground">{tr('Učitavanje razgovora…')}</p>
               ) : conversationId && conversationQuery.isError ? (
-                <p className="text-sm text-danger">Razgovor nije pronađen.</p>
+                <p className="text-sm text-danger">{tr('Razgovor nije pronađen.')}</p>
               ) : messages.length === 0 && !pendingText ? (
                 <p className="text-sm text-muted-foreground">
-                  Napišite pitanje ili priložite fotografiju. Agronom odgovara na osnovu evidencije voćnjaka.
+                  {tr('Napišite pitanje ili priložite fotografiju. Agronom odgovara na osnovu evidencije voćnjaka.')}
                 </p>
               ) : (
                 <>
@@ -353,14 +354,14 @@ export function AgronomistPage() {
                         }}
                         previewUrl={pendingPhotoUrl}
                       />
-                      <p className="text-sm text-muted-foreground">Agronom piše…</p>
+                      <p className="text-sm text-muted-foreground">{tr('Agronom piše…')}</p>
                     </>
                   ) : null}
                 </>
               )}
               {sendMutation.isError && !pendingText ? (
                 <p className="text-sm text-danger">
-                  {sendMutation.error instanceof Error ? sendMutation.error.message : 'Agronom nije mogao da odgovori.'}
+                  {sendMutation.error instanceof Error ? sendMutation.error.message : tr('Agronom nije mogao da odgovori.')}
                 </p>
               ) : null}
             </div>
@@ -375,12 +376,12 @@ export function AgronomistPage() {
                       onClick={clearPhoto}
                       disabled={waiting}
                       className="absolute right-0.5 top-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white"
-                      aria-label="Ukloni fotografiju"
+                      aria-label={tr('Ukloni fotografiju')}
                     >
                       <X className="h-3 w-3" />
                     </button>
                   </div>
-                  <p className="text-xs text-muted-foreground">Fotografija će biti poslata sa porukom.</p>
+                  <p className="text-xs text-muted-foreground">{tr('Fotografija će biti poslata sa porukom.')}</p>
                 </div>
               ) : null}
               <div className="flex min-w-0 items-end gap-2 rounded-xl border border-border bg-background px-3 py-2">
@@ -397,7 +398,7 @@ export function AgronomistPage() {
                   size="sm"
                   className="h-11 shrink-0 px-2 lg:h-8"
                   disabled={waiting}
-                  aria-label="Priloži fotografiju"
+                  aria-label={tr('Priloži fotografiju')}
                   onClick={() => photoInputRef.current?.click()}
                 >
                   <ImagePlus className="h-4 w-4" />
@@ -409,7 +410,7 @@ export function AgronomistPage() {
                   onChange={(event) => setDraft(event.target.value)}
                   onKeyDown={onKeyDown}
                   disabled={waiting}
-                  placeholder="Napišite poruku ili priložite fotografiju…"
+                  placeholder={tr('Napišite poruku ili priložite fotografiju…')}
                   className="max-h-32 min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2 text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none disabled:opacity-60 lg:min-h-10 lg:text-sm"
                 />
                 <Button
@@ -417,10 +418,10 @@ export function AgronomistPage() {
                   size="sm"
                   className="h-11 shrink-0 lg:h-8"
                   disabled={!canSend}
-                  aria-label="Pošalji"
+                  aria-label={tr('Pošalji')}
                 >
                   <Send className="h-4 w-4" />
-                  <span className="hidden sm:inline">Pošalji</span>
+                  <span className="hidden sm:inline">{tr('Pošalji')}</span>
                 </Button>
               </div>
             </form>
@@ -451,8 +452,8 @@ function HubScreen({
   return (
     <div className="min-h-0 flex-1 overflow-auto px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] lg:px-6 lg:py-6">
       <div className="mb-5">
-        <p className="kicker">Agronom</p>
-        <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Kako možemo da pomognemo?</h1>
+        <p className="kicker">{tr("Agronom")}</p>
+        <h1 className="mt-1 text-xl font-semibold sm:text-2xl">{tr('Kako možemo da pomognemo?')}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Izaberite novi razgovor ili prijavu problema, ili nastavite jedno od ranijih dopisivanja.
         </p>
@@ -468,8 +469,8 @@ function HubScreen({
             <Plus className="h-5 w-5" />
           </span>
           <span className="min-w-0">
-            <span className="block text-base font-semibold">Novi razgovor</span>
-            <span className="mt-1 block text-sm text-muted-foreground">Pitanje o voćnjaku, radovima ili zaštiti.</span>
+            <span className="block text-base font-semibold">{tr('Novi razgovor')}</span>
+            <span className="mt-1 block text-sm text-muted-foreground">{tr('Pitanje o voćnjaku, radovima ili zaštiti.')}</span>
           </span>
         </button>
 
@@ -482,25 +483,25 @@ function HubScreen({
             <ShieldAlert className="h-5 w-5" />
           </span>
           <span className="min-w-0">
-            <span className="block text-base font-semibold">Prijavi problem</span>
-            <span className="mt-1 block text-sm text-muted-foreground">Fotografija i opis simptoma sadnice ili reda.</span>
+            <span className="block text-base font-semibold">{tr('Prijavi problem')}</span>
+            <span className="mt-1 block text-sm text-muted-foreground">{tr('Fotografija i opis simptoma sadnice ili reda.')}</span>
           </span>
         </button>
       </div>
 
       <div className="mt-7">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="text-sm font-semibold">Prethodna dopisivanja</h2>
+          <h2 className="text-sm font-semibold">{tr('Prethodna dopisivanja')}</h2>
           {conversations.length > 0 ? (
             <span className="text-xs text-muted-foreground">{conversations.length}</span>
           ) : null}
         </div>
 
         {loading ? (
-          <p className="text-sm text-muted-foreground">Učitavanje…</p>
+          <p className="text-sm text-muted-foreground">{tr('Učitavanje…')}</p>
         ) : conversations.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border px-4 py-8 text-center">
-            <p className="text-sm text-muted-foreground">Još nema prethodnih dopisivanja.</p>
+            <p className="text-sm text-muted-foreground">{tr('Još nema prethodnih dopisivanja.')}</p>
           </div>
         ) : (
           <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-background">
@@ -525,7 +526,7 @@ function HubScreen({
                 <button
                   type="button"
                   className="inline-flex shrink-0 items-center px-3 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-danger disabled:opacity-50"
-                  aria-label={`Obriši razgovor ${item.title}`}
+                  aria-label={tr('Obriši razgovor {{title}}', { title: item.title })}
                   disabled={deletingId === item.id}
                   onClick={() => onDelete(item.id, item.title)}
                 >
@@ -571,8 +572,8 @@ function ConversationList({
     <>
       <div className="space-y-3 border-b border-border p-4">
         <button type="button" onClick={onHub} className="block w-full text-left">
-          <p className="kicker">Agronom</p>
-          <h1 className="mt-1 text-lg font-semibold">Razgovori</h1>
+          <p className="kicker">{tr("Agronom")}</p>
+          <h1 className="mt-1 text-lg font-semibold">{tr('Razgovori')}</h1>
         </button>
         <Button size="sm" className="w-full" variant={composing && !conversationId ? 'default' : 'outline'} onClick={onNew}>
           <Plus className="h-4 w-4" />
@@ -585,9 +586,9 @@ function ConversationList({
       </div>
       <div className="min-h-0 flex-1 overflow-auto p-2">
         {loading ? (
-          <p className="px-2 py-3 text-sm text-muted-foreground">Učitavanje…</p>
+          <p className="px-2 py-3 text-sm text-muted-foreground">{tr('Učitavanje…')}</p>
         ) : conversations.length === 0 ? (
-          <p className="px-2 py-3 text-sm text-muted-foreground">Još nema prethodnih dopisivanja.</p>
+          <p className="px-2 py-3 text-sm text-muted-foreground">{tr('Još nema prethodnih dopisivanja.')}</p>
         ) : (
           <div className="space-y-1">
             {conversations.map((item) => {
@@ -617,7 +618,7 @@ function ConversationList({
                       'inline-flex shrink-0 items-center px-2.5 transition-colors disabled:opacity-50',
                       active ? 'text-primary-foreground/80 hover:text-primary-foreground' : 'text-muted-foreground hover:text-danger',
                     )}
-                    aria-label={`Obriši razgovor ${item.title}`}
+                    aria-label={tr('Obriši razgovor {{title}}', { title: item.title })}
                     disabled={deletingId === item.id}
                     onClick={() => onDelete(item.id, item.title)}
                   >
@@ -653,7 +654,7 @@ function ChatBubble({
   const hidePlaceholder =
     mine &&
     hasChatImage &&
-    (body === 'Pogledajte priloženu fotografiju.' || body === 'Fotografija')
+    (body === tr('Pogledajte priloženu fotografiju.') || body === tr('Fotografija'))
 
   useEffect(() => {
     if (previewUrl) {
@@ -692,7 +693,7 @@ function ChatBubble({
         {imageUrl ? (
           <img
             src={imageUrl}
-            alt="Priložena fotografija"
+            alt={tr('Priložena fotografija')}
             className={cn(
               'mb-2 max-h-56 w-full rounded-xl object-cover',
               mine ? 'ring-1 ring-primary-foreground/20' : 'ring-1 ring-border/60',
@@ -710,7 +711,7 @@ function ChatBubble({
                   ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border/80 bg-background/80 text-muted-foreground hover:border-foreground/30 hover:text-foreground',
               )}
-              aria-label={sourcesOpen ? 'Sakrij izvore' : 'Prikaži izvore iz priručnika'}
+              aria-label={sourcesOpen ? 'Sakrij izvore' : tr('Prikaži izvore iz priručnika')}
               aria-expanded={sourcesOpen}
               onClick={() => setSourcesOpen((open) => !open)}
             >
@@ -727,7 +728,7 @@ function ChatBubble({
 function SourcesPanel({ sources }: { sources: KnowledgeSource[] }) {
   return (
     <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
-      <p className="text-xs font-medium text-muted-foreground">Izvori iz priručnika</p>
+      <p className="text-xs font-medium text-muted-foreground">{tr('Izvori iz priručnika')}</p>
       <ul className="space-y-2">
         {sources.map((source, index) => {
           const params = new URLSearchParams()
@@ -738,11 +739,11 @@ function SourcesPanel({ sources }: { sources: KnowledgeSource[] }) {
             <li key={`${source.document_title}-${index}`} className="rounded-lg bg-background/70 px-2.5 py-2 text-xs">
               <p className="font-medium text-foreground">{source.document_title}</p>
               <p className="mt-0.5 text-muted-foreground">
-                {source.page_number ? `Strana ${source.page_number}` : 'Bez broja strane'}
+                {source.page_number ? `Strana ${source.page_number}` : tr('Bez broja strane')}
                 {source.section_title ? ` · ${source.section_title}` : ''}
               </p>
               <Link to={href} className="mt-1.5 inline-flex text-primary underline-offset-2 hover:underline">
-                Otvori u priručnicima
+                {tr('Otvori u priručnicima')}
               </Link>
             </li>
           )

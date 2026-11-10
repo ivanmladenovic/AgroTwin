@@ -15,6 +15,7 @@ import { Card, CardContent } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
+import { tr } from '@/shared/i18n/i18n'
 
 export function JournalPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -111,13 +112,13 @@ export function JournalPage() {
     <div className="w-full space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between sm:gap-4">
         <div>
-          <p className="kicker">Dnevnik voćnjaka</p>
-          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Aktivnosti</h1>
+          <p className="kicker">{tr('Dnevnik voćnjaka')}</p>
+          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">{tr("Aktivnosti")}</h1>
         </div>
         <div className="flex w-full min-w-0 flex-nowrap items-center gap-1.5 sm:w-auto sm:gap-2">
           <div className="inline-flex shrink-0 rounded-md border border-border p-0.5">
             <ViewButton active={view === 'calendar'} onClick={() => setJournalView('calendar')}>
-              Kalendar
+              {tr('Kalendar')}
             </ViewButton>
             <ViewButton active={view === 'list'} onClick={() => setJournalView('list')}>
               Lista
@@ -125,12 +126,12 @@ export function JournalPage() {
           </div>
           <Link to="/journal/schedule" className="shrink-0">
             <Button variant="outline" size="sm" className="h-9 px-2.5 text-xs sm:h-10 sm:px-3 sm:text-sm">
-              Planiranje
+              {tr("Planiranje")}
             </Button>
           </Link>
           <Link to={createActivityTo} className="min-w-0 shrink">
             <Button size="sm" className="h-9 px-2.5 text-xs sm:h-10 sm:px-3 sm:text-sm">
-              + Dodaj aktivnost
+              {tr('+ Dodaj aktivnost')}
             </Button>
           </Link>
         </div>
@@ -148,12 +149,12 @@ export function JournalPage() {
               </Filter>
             </>
           ) : null}
-          <Filter label="Tip aktivnosti">
+          <Filter label={tr('Tip aktivnosti')}>
             <Select
               value={filters.activity_type_id ?? ''}
               onChange={(event) => update('activity_type_id', event.target.value)}
             >
-              <option value="">Svi tipovi</option>
+              <option value="">{tr('Svi tipovi')}</option>
               {(typesQuery.data ?? []).map((item) => (
                 <option key={item.id} value={item.id}>
                   {item.name}
@@ -166,15 +167,15 @@ export function JournalPage() {
               value={filters.scope_type ?? ''}
               onChange={(event) => update('scope_type', event.target.value as ActivityScope | '')}
             >
-              <option value="">Svi obuhvati</option>
-              <option value="parcel">Parcela</option>
-              <option value="row">Red</option>
-              <option value="tree">Stablo</option>
+              <option value="">{tr('Svi obuhvati')}</option>
+              <option value="parcel">{tr("Parcela")}</option>
+              <option value="row">{tr("Red")}</option>
+              <option value="tree">{tr("Stablo")}</option>
             </Select>
           </Filter>
-          <Filter label="Parcela">
+          <Filter label={tr("Parcela")}>
             <Select value={filters.parcel_id ?? ''} onChange={(event) => update('parcel_id', event.target.value)}>
-              <option value="">Sve parcele</option>
+              <option value="">{tr('Sve parcele')}</option>
               {(parcelsQuery.data ?? []).map((parcel) => (
                 <option key={parcel.id} value={parcel.id}>
                   {parcel.name}
@@ -184,9 +185,9 @@ export function JournalPage() {
           </Filter>
           {view === 'list' ? (
             <>
-              <Filter label="Red">
+              <Filter label={tr("Red")}>
                 <Select value={filters.row_id ?? ''} onChange={(event) => update('row_id', event.target.value)} disabled={!filters.parcel_id}>
-                  <option value="">Svi redovi</option>
+                  <option value="">{tr('Svi redovi')}</option>
                   {(rowsQuery.data ?? []).map((row) => (
                     <option key={row.id} value={row.id}>
                       {row.name ?? rowLabel(row.row_number)}
@@ -194,9 +195,9 @@ export function JournalPage() {
                   ))}
                 </Select>
               </Filter>
-              <Filter label="Stablo">
+              <Filter label={tr("Stablo")}>
                 <Select value={filters.tree_id ?? ''} onChange={(event) => update('tree_id', event.target.value)} disabled={!filters.row_id}>
-                  <option value="">Sva stabla</option>
+                  <option value="">{tr("Sva stabla")}</option>
                   {(treesQuery.data ?? []).map((tree) => (
                     <option key={tree.id} value={tree.id}>
                       {tree.public_id}
@@ -209,8 +210,8 @@ export function JournalPage() {
                   value={filters.status ?? ''}
                   onChange={(event) => update('status', event.target.value as ActivityStatus | '')}
                 >
-                  <option value="">Svi statusi</option>
-                  {activityStatuses.map((item) => (
+                  <option value="">{tr('Svi statusi')}</option>
+                  {activityStatuses().map((item) => (
                     <option key={item.value} value={item.value}>
                       {item.label}
                     </option>
@@ -224,7 +225,7 @@ export function JournalPage() {
 
       {view === 'calendar' ? (
         calendarQuery.isLoading ? (
-          <p className="text-sm text-muted-foreground">Učitavanje kalendara…</p>
+          <p className="text-sm text-muted-foreground">{tr('Učitavanje kalendara…')}</p>
         ) : (
           <JournalCalendar
             selectedDay={selectedDay}
@@ -234,9 +235,9 @@ export function JournalPage() {
           />
         )
       ) : listQuery.isLoading ? (
-        <p className="text-sm text-muted-foreground">Učitavanje dnevnika…</p>
+        <p className="text-sm text-muted-foreground">{tr('Učitavanje dnevnika…')}</p>
       ) : grouped.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nema aktivnosti za ove filtere.</p>
+        <p className="text-sm text-muted-foreground">{tr('Nema aktivnosti za ove filtere.')}</p>
       ) : (
         <div className="space-y-6">
           {grouped.map(([day, items]) => (

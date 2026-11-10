@@ -42,6 +42,42 @@ def validate_boundary_geojson(value: object) -> dict[str, Any]:
     return {"type": geom_type, "coordinates": coordinates}
 
 
+def square_boundary_from_point(
+    latitude: float,
+    longitude: float,
+    area_hectares: float,
+) -> dict[str, Any]:
+    """Build an axis-aligned square Polygon centered on a point.
+
+    Used when the farmer only has a Maps pin + area — enough for Sentinel-2
+    footprint queries until a precise boundary is drawn.
+    """
+    if not math.isfinite(latitude) or not math.isfinite(longitude):
+        raise InvalidParcelGeometry("Koordinate lokacije nisu validne.")
+    if abs(latitude) > 90 or abs(longitude) > 180:
+        raise InvalidParcelGeometry("Koordinate lokacije su van opsega.")
+    if not math.isfinite(area_hectares) or area_hectares <= 0:
+        raise InvalidParcelGeometry("Površina mora biti veća od nule za približnu granicu.")
+    if area_hectares > MAX_AREA_HA:
+        raise InvalidParcelGeometry("Površina je veća od dozvoljenih 500 ha.")
+
+    side_m = math.sqrt(area_hectares * 10_000.0)
+    half = side_m / 2.0
+    meters_per_deg_lon = METERS_PER_DEGREE_LAT * max(math.cos(math.radians(latitude)), 0.2)
+    d_lat = half / METERS_PER_DEGREE_LAT
+    d_lon = half / meters_per_deg_lon
+    west, east = longitude - d_lon, longitude + d_lon
+    south, north = latitude - d_lat, latitude + d_lat
+    ring = [
+        [west, south],
+        [east, south],
+        [east, north],
+        [west, north],
+        [west, south],
+    ]
+    return validate_boundary_geojson({"type": "Polygon", "coordinates": [ring]})
+
+
 def approximate_area_hectares(geojson: dict[str, Any]) -> float | None:
     geom_type = geojson.get("type")
     if geom_type == "Polygon":

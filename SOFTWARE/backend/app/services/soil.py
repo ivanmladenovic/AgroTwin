@@ -70,11 +70,15 @@ class SoilService:
         return self._profile(owner_id, parcel_id, force_refresh=True)
 
     def _profile(self, owner_id: UUID, parcel_id: UUID, *, force_refresh: bool) -> ParcelSoilProfileRead:
+        from app.services.orchard import OrchardService
+
         parcel = self.parcels.get_for_owner(parcel_id, owner_id)
         if parcel is None:
             raise NotFoundError("Parcela nije pronađena")
         if not coordinates_are_valid(parcel.latitude, parcel.longitude):
-            return self._empty(parcel, "location_required", _LOCATION_REQUIRED)
+            resolved = OrchardService(self.db).ensure_parcel_coordinates(parcel)
+            if resolved != "ok" or not coordinates_are_valid(parcel.latitude, parcel.longitude):
+                return self._empty(parcel, "location_required", _LOCATION_REQUIRED)
 
         lock = _lock_for(parcel.id)
         with lock:

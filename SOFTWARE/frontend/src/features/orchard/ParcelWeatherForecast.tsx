@@ -11,6 +11,7 @@ import {
 } from '@/shared/lib/format'
 import { cn } from '@/shared/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
+import { tr } from '@/shared/i18n/i18n'
 
 const YR_SOURCE_URL = 'https://www.yr.no/'
 
@@ -26,7 +27,7 @@ export function ParcelWeatherForecast({ parcelId }: { parcelId: string }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Vremenska prognoza</CardTitle>
+          <CardTitle>{tr('Vremenska prognoza')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex gap-2 overflow-hidden">
@@ -43,10 +44,10 @@ export function ParcelWeatherForecast({ parcelId }: { parcelId: string }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Vremenska prognoza</CardTitle>
+          <CardTitle>{tr('Vremenska prognoza')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">Vremenska prognoza trenutno nije dostupna.</p>
+          <p className="text-sm text-muted-foreground">{tr('Vremenska prognoza trenutno nije dostupna.')}</p>
         </CardContent>
       </Card>
     )
@@ -57,16 +58,16 @@ export function ParcelWeatherForecast({ parcelId }: { parcelId: string }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Vremenska prognoza</CardTitle>
+          <CardTitle>{tr('Vremenska prognoza')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <p className="text-sm font-medium">Vremenska prognoza nije dostupna</p>
+          <p className="text-sm font-medium">{tr('Vremenska prognoza nije dostupna')}</p>
           <p className="text-sm text-muted-foreground">
-            {weather?.message || 'Za prikaz prognoze potrebno je da parcela ima definisanu lokaciju.'}
+            {weather?.message ? tr(weather.message) : tr('Za prikaz prognoze potrebno je da parcela ima definisanu lokaciju.')}
           </p>
           {weather?.status === 'invalid_location' ? (
             <Link to={`/orchard/${parcelId}/edit`} className="inline-flex text-sm font-medium text-primary hover:underline">
-              Izmenite lokaciju parcele
+              {tr('Izmenite lokaciju parcele')}
             </Link>
           ) : null}
         </CardContent>
@@ -78,10 +79,10 @@ export function ParcelWeatherForecast({ parcelId }: { parcelId: string }) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Vremenska prognoza</CardTitle>
+          <CardTitle>{tr('Vremenska prognoza')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">Vremenska prognoza trenutno nije dostupna.</p>
+          <p className="text-sm text-muted-foreground">{tr('Vremenska prognoza trenutno nije dostupna.')}</p>
         </CardContent>
       </Card>
     )
@@ -91,18 +92,18 @@ export function ParcelWeatherForecast({ parcelId }: { parcelId: string }) {
     <Card>
       <CardHeader className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <CardTitle>Vremenska prognoza</CardTitle>
+          <CardTitle>{tr('Vremenska prognoza')}</CardTitle>
           <p className="mt-2 text-sm font-medium">{weather.parcel_name}</p>
         </div>
         {weather.fetched_at ? (
-          <p className="text-xs text-muted-foreground">Ažurirano: {formatUpdatedAt(weather.fetched_at)}</p>
+          <p className="text-xs text-muted-foreground">{tr('Ažurirano')}: {formatUpdatedAt(weather.fetched_at)}</p>
         ) : null}
       </CardHeader>
       <CardContent className="space-y-3">
         {weather.status === 'stale' ? (
           <p className="text-xs text-muted-foreground">
-            Prikazani su poslednji dostupni podaci.
-            {weather.fetched_at ? ` Poslednje ažuriranje: ${formatUpdatedAt(weather.fetched_at)}` : ''}
+            {tr('Prikazani su poslednji dostupni podaci.')}
+            {weather.fetched_at ? ` ${tr('Poslednje ažuriranje')}: ${formatUpdatedAt(weather.fetched_at)}` : ''}
           </p>
         ) : null}
         <div className="overflow-x-auto">
@@ -119,13 +120,13 @@ export function ParcelWeatherForecast({ parcelId }: { parcelId: string }) {
                   )}
                 >
                   <p className="text-xs font-semibold capitalize">
-                    {today ? 'Danas' : formatWeekday(day.date, true)}
+                    {today ? tr('Danas') : formatWeekday(day.date, true)}
                   </p>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">{formatDayMonth(day.date)}</p>
                   <Icon className="mx-auto mt-2 h-6 w-6 text-accent" aria-label={weatherIconLabel(day.symbol_code)} />
                   <p className="mt-2 text-sm font-semibold tabular-nums">{formatTemp(day.max_temperature)}</p>
                   <p className="text-xs text-muted-foreground tabular-nums">{formatTemp(day.min_temperature)}</p>
-                  <p className="mt-2 text-[11px] text-muted-foreground">Kiša {formatPrecip(day.precipitation)}</p>
+                  <p className="mt-2 text-[11px] text-muted-foreground">{tr('Kiša')} {formatPrecip(day.precipitation)}</p>
                   {day.precipitation_probability == null ? null : (
                     <p className="text-[11px] text-muted-foreground">{Math.round(day.precipitation_probability)}%</p>
                   )}

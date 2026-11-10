@@ -24,8 +24,8 @@ MISSING_PREVIOUS_YEAR = "Nema podataka o berbi za prethodnu godinu."
 class HarvestMeasure:
     scope_type: str
     harvested_on: date
-    gross: Decimal
-    loss: Decimal
+    gross: Decimal | None
+    loss: Decimal | None = None
     unit: str = "kg"
     moisture_percent: Decimal | None = None
     damaged_percent: Decimal | None = None
@@ -36,7 +36,9 @@ class HarvestMeasure:
     tree_id: UUID | None = None
 
     @property
-    def net(self) -> Decimal:
+    def net(self) -> Decimal | None:
+        if self.gross is None:
+            return None
         return net_quantity(self.gross, self.loss)
 
 
@@ -45,7 +47,19 @@ def net_quantity(gross: Decimal, loss: Decimal | None = None) -> Decimal:
     return gross - waste
 
 
-def validate_quantities(gross: Decimal, loss: Decimal | None = None) -> Decimal:
+def validate_quantities(gross: Decimal | None, loss: Decimal | None = None) -> Decimal | None:
+    """Validate quantities for a harvest draft or complete record.
+
+    Missing gross is allowed (partial entry). When gross is set it must be > 0
+    and loss must not exceed it.
+    """
+    if gross is None:
+        waste = loss if loss is not None else Decimal("0")
+        if waste < 0:
+            raise ValueError("Gubitak ne može biti negativan.")
+        if waste > 0:
+            raise ValueError("Gubitak zahteva bruto količinu.")
+        return None
     waste = loss if loss is not None else Decimal("0")
     if gross <= 0:
         raise ValueError("Bruto količina mora biti veća od nule.")
@@ -104,10 +118,12 @@ def timeline_points(items: Iterable[HarvestMeasure]) -> list[dict]:
         bucket["loss_kg"] = Decimal(str(bucket["loss_kg"])) + (loss or Decimal("0"))
         bucket["net_kg"] = Decimal(str(bucket["net_kg"])) + net
     points: list[dict] = []
-    cumulative = Decimal("0")
+    cumulative_net = Decimal("0")
+    cumulative_gross = Decimal("0")
     for harvested_on in sorted(grouped):
         bucket = grouped[harvested_on]
-        cumulative += Decimal(str(bucket["net_kg"]))
+        cumulative_net += Decimal(str(bucket["net_kg"]))
+        cumulative_gross += Decimal(str(bucket["gross_kg"]))
         points.append(
             {
                 "harvested_on": harvested_on,
@@ -115,7 +131,8 @@ def timeline_points(items: Iterable[HarvestMeasure]) -> list[dict]:
                 "gross_kg": Decimal(str(bucket["gross_kg"])),
                 "loss_kg": Decimal(str(bucket["loss_kg"])),
                 "net_kg": Decimal(str(bucket["net_kg"])),
-                "cumulative_net_kg": cumulative,
+                "cumulative_gross_kg": cumulative_gross,
+                "cumulative_net_kg": cumulative_net,
             }
         )
     return points

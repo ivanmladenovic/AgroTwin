@@ -15,6 +15,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 import { Textarea } from '@/shared/ui/textarea'
+import { tr } from '@/shared/i18n/i18n'
 
 export function DiseaseDetailPage() {
   const { caseId } = useParams()
@@ -37,8 +38,8 @@ export function DiseaseDetailPage() {
     },
   })
 
-  if (caseQuery.isLoading) return <p className="text-sm text-muted-foreground">Učitavanje opažanja…</p>
-  if (!item) return <p className="text-sm text-danger">Opažanje nije pronađeno.</p>
+  if (caseQuery.isLoading) return <p className="text-sm text-muted-foreground">{tr('Učitavanje opažanja…')}</p>
+  if (!item) return <p className="text-sm text-danger">{tr('Opažanje nije pronađeno.')}</p>
 
   const treeHref = item.tree_id
     ? `/orchard/${item.parcel_id}/trees/${item.tree_id}`
@@ -59,7 +60,7 @@ export function DiseaseDetailPage() {
         <div className="flex flex-wrap gap-2">
           <Link to={treeHref}>
             <Button variant="outline" size="sm">
-              {item.tree_public_id ? 'Otvori stablo' : 'Otvori parcelu'}
+              {item.tree_public_id ? tr('Otvori stablo') : tr('Otvori parcelu')}
             </Button>
           </Link>
           <BackButton fallback={returnTo} />
@@ -67,13 +68,13 @@ export function DiseaseDetailPage() {
       </div>
 
       <p className="border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-        Ovo je terensko opažanje. AgroTwin ne potvrđuje dijagnozu bolesti, štetočine ili nedostatka hraniva.
+        {tr('Ovo je terensko opažanje. AgroTwin ne potvrđuje dijagnozu bolesti, štetočine ili nedostatka hraniva.')}
       </p>
 
       <div className="grid gap-4 md:grid-cols-3">
         <Fact label="Status" value={statusLabel(item.status)} />
         <Fact label="Ozbiljnost" value={severityLabel(item.severity)} />
-        <Fact label="Zahvaćeno stablo" value={item.tree_public_id ?? 'Grupa / parcela'} />
+        <Fact label={tr("Zahvaćeno stablo")} value={item.tree_public_id ?? 'Grupa / parcela'} />
       </div>
 
       <Card>
@@ -81,7 +82,7 @@ export function DiseaseDetailPage() {
           <CardTitle>Status</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
-          {diseaseStatuses.map((status) => (
+          {diseaseStatuses().map((status) => (
             <Button
               key={status.value}
               size="sm"
@@ -98,7 +99,7 @@ export function DiseaseDetailPage() {
       {item.description || item.notes ? (
         <Card>
           <CardHeader>
-            <CardTitle>Beleške</CardTitle>
+            <CardTitle>{tr('Beleške')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             {item.description ? <p>{item.description}</p> : null}
@@ -112,28 +113,28 @@ export function DiseaseDetailPage() {
           <CardTitle>Hronologija</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <TimelineLine date={item.detected_on} title="Problem je zabeležen" body={item.title} />
+          <TimelineLine date={item.detected_on} title={tr("Problem je zabeležen")} body={item.title} />
           {[...item.observations]
             .sort((a, b) => a.observed_on.localeCompare(b.observed_on))
             .map((observation) => (
               <TimelineLine
                 key={observation.id}
                 date={observation.observed_on}
-                title="Opažanje"
-                body={observation.symptoms || observation.notes || 'Simptomi nisu navedeni'}
+                title={tr("Opažanje")}
+                body={observation.symptoms || observation.notes || tr('Simptomi nisu navedeni')}
               />
             ))}
-          {item.resolved_on ? <TimelineLine date={item.resolved_on} title="Označeno kao rešeno" /> : null}
+          {item.resolved_on ? <TimelineLine date={item.resolved_on} title={tr("Označeno kao rešeno")} /> : null}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Opažanja</CardTitle>
+          <CardTitle>{tr('Opažanja')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
           {item.observations.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Još nema naknadnih opažanja.</p>
+            <p className="text-sm text-muted-foreground">{tr('Još nema naknadnih opažanja.')}</p>
           ) : (
             item.observations.map((observation) => (
               <div key={observation.id} className="space-y-2 border-b border-border pb-4 last:border-0">
@@ -150,7 +151,7 @@ export function DiseaseDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Fotografije</CardTitle>
+          <CardTitle>{tr('Fotografije')}</CardTitle>
         </CardHeader>
         <CardContent>
           <PhotoGallery photos={item.photos} />
@@ -197,25 +198,25 @@ function AddObservationForm({ caseId }: { caseId: string }) {
 
   return (
     <form className="space-y-3 border border-border p-4" onSubmit={onSubmit}>
-      <p className="text-sm font-medium">Dodaj opažanje</p>
+      <p className="text-sm font-medium">{tr('Dodaj opažanje')}</p>
       <div className="space-y-1.5">
         <Label>Datum</Label>
         <Input type="date" value={observedOn} onChange={(event) => setObservedOn(event.target.value)} />
       </div>
       <div className="space-y-1.5">
-        <Label>Fotografije</Label>
+        <Label>{tr('Fotografije')}</Label>
         <PhotoPicker files={files} onChange={setFiles} />
       </div>
       <div className="space-y-1.5">
-        <Label>Simptomi</Label>
+        <Label>{tr('Simptomi')}</Label>
         <Textarea rows={3} value={symptoms} onChange={(event) => setSymptoms(event.target.value)} />
       </div>
       <div className="space-y-1.5">
-        <Label>Beleške</Label>
+        <Label>{tr('Beleške')}</Label>
         <Textarea rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} />
       </div>
       <Button type="submit" size="sm" disabled={mutation.isPending}>
-        {mutation.isPending ? 'Čuvanje…' : 'Sačuvaj opažanje'}
+        {mutation.isPending ? tr('Čuvanje…') : tr('Sačuvaj opažanje')}
       </Button>
     </form>
   )

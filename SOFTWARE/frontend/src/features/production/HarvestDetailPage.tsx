@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 import { PhotoGallery } from '@/features/health/PhotoGallery'
 import { deleteHarvest, getHarvest } from '@/features/production/api'
@@ -10,8 +11,11 @@ import { formatDate, formatKg, scopeLabel } from '@/shared/lib/format'
 import { BackLink } from '@/shared/ui/back-button'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
+import { tr } from '@/shared/i18n/i18n'
 
 export function HarvestDetailPage() {
+  const { i18n } = useTranslation()
+  void i18n.language
   const { parcelId, harvestId } = useParams()
   const [params] = useSearchParams()
   const year = Number(params.get('year') || '') || undefined
@@ -34,8 +38,8 @@ export function HarvestDetailPage() {
   })
 
   if (!parcelId || !harvestId) return null
-  if (harvestQuery.isLoading) return <p className="text-sm text-muted-foreground">Učitavanje berbe…</p>
-  if (!harvest) return <p className="text-sm text-danger">Berba nije pronađena.</p>
+  if (harvestQuery.isLoading) return <p className="text-sm text-muted-foreground">{tr('Učitavanje berbe…')}</p>
+  if (!harvest) return <p className="text-sm text-danger">{tr('Berba nije pronađena.')}</p>
 
   const harvestYear = year || Number(harvest.harvested_on.slice(0, 4))
   const backHref = `/orchard/${parcelId}/production?year=${harvestYear}`
@@ -44,25 +48,26 @@ export function HarvestDetailPage() {
     <div className="w-full space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="kicker">Proizvodnja</p>
+          <p className="kicker">{tr('Proizvodnja')}</p>
           <h1 className="mt-1 text-xl font-semibold sm:text-2xl">{formatDate(harvest.harvested_on)}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {scopeLabel(harvest.scope_type)} · {harvest.location_label} · {formatKg(harvest.net_kg ?? harvest.net_quantity)} neto
+            {scopeLabel(harvest.scope_type)} · {harvest.location_label} · {formatKg(harvest.net_kg ?? harvest.net_quantity)}{' '}
+            {tr('neto')}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => setEditing((value) => !value)}>
-            {editing ? 'Pregled' : 'Izmeni'}
+            {editing ? tr('Pregled') : tr('Izmeni')}
           </Button>
           <Button
             variant="outline"
             disabled={deleteMutation.isPending}
             onClick={() => {
-              if (!window.confirm('Obrisati ovu berbu? Prinos parcele biće ponovo izračunat.')) return
+              if (!window.confirm(tr('Obrisati ovu berbu? Prinos parcele biće ponovo izračunat.'))) return
               deleteMutation.mutate()
             }}
           >
-            Obriši
+            {tr('Obriši')}
           </Button>
         </div>
       </div>
@@ -74,28 +79,30 @@ export function HarvestDetailPage() {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Detalj berbe</CardTitle>
+            <CardTitle>{tr('Detalj berbe')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
             <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <Item label="Datum" value={formatDate(harvest.harvested_on)} />
-              <Item label="Obuhvat" value={scopeLabel(harvest.scope_type)} />
-              <Item label="Lokacija" value={harvest.location_label} />
-              <Item label="Bruto" value={formatKg(harvest.gross_kg ?? harvest.gross_quantity)} />
-              <Item label="Gubitak" value={formatKg(harvest.loss_kg ?? harvest.loss_quantity)} />
-              <Item label="Neto" value={formatKg(harvest.net_kg ?? harvest.net_quantity)} />
-              <Item label="Jedinica" value={harvest.unit} />
-              <Item label="Vlažnost" value={percent(harvest.moisture_percent)} />
-              <Item label="Kvalitet" value={qualityLabel(harvest.quality_category)} />
-              <Item label="Oštećeni plodovi" value={percent(harvest.damaged_percent)} />
-              <Item label="Prazni plodovi" value={percent(harvest.empty_nuts_percent)} />
-              <Item label="Strane materije" value={percent(harvest.foreign_material_percent)} />
-              <Item label="Krupnoća" value={harvest.size_or_caliber || '—'} />
+              <Item label={tr('Datum')} value={formatDate(harvest.harvested_on)} />
+              <Item label={tr('Obuhvat')} value={scopeLabel(harvest.scope_type)} />
+              <Item label={tr('Lokacija')} value={harvest.location_label} />
+              <Item label={tr('Bruto')} value={formatKg(harvest.gross_kg ?? harvest.gross_quantity)} />
+              <Item label={tr('Gubitak')} value={formatKg(harvest.loss_kg ?? harvest.loss_quantity)} />
+              <Item label={tr('Neto')} value={formatKg(harvest.net_kg ?? harvest.net_quantity)} />
+              <Item label={tr('Jedinica')} value={harvest.unit} />
+              <Item label={tr('Vlažnost')} value={percent(harvest.moisture_percent)} />
+              <Item label={tr('Kvalitet')} value={qualityLabel(harvest.quality_category)} />
+              <Item label={tr('Oštećeni plodovi')} value={percent(harvest.damaged_percent)} />
+              <Item label={tr('Prazni plodovi')} value={percent(harvest.empty_nuts_percent)} />
+              <Item label={tr('Strane materije')} value={percent(harvest.foreign_material_percent)} />
+              <Item label={tr('Krupnoća')} value={harvest.size_or_caliber || '—'} />
             </dl>
             {harvest.notes ? <p>{harvest.notes}</p> : null}
             <p className="text-xs text-muted-foreground">
-              Unos: {harvest.created_by_name || '—'} · {formatDateTime(harvest.created_at)}
-              {harvest.updated_at !== harvest.created_at ? ` · izmenjeno ${formatDateTime(harvest.updated_at)}` : ''}
+              {tr('Unos')}: {harvest.created_by_name || '—'} · {formatDateTime(harvest.created_at)}
+              {harvest.updated_at !== harvest.created_at
+                ? ` · ${tr('izmenjeno {{date}}', { date: formatDateTime(harvest.updated_at) })}`
+                : ''}
             </p>
             {harvest.photos.length > 0 ? <PhotoGallery photos={harvest.photos} /> : null}
           </CardContent>
@@ -104,11 +111,11 @@ export function HarvestDetailPage() {
 
       {deleteMutation.error ? (
         <p className="text-sm text-danger">
-          {deleteMutation.error instanceof Error ? deleteMutation.error.message : 'Brisanje nije uspelo'}
+          {deleteMutation.error instanceof Error ? deleteMutation.error.message : tr('Brisanje nije uspelo')}
         </p>
       ) : null}
 
-      <BackLink fallback={backHref}>Nazad na proizvodnju</BackLink>
+      <BackLink fallback={backHref}>{tr('Nazad na proizvodnju')}</BackLink>
     </div>
   )
 }

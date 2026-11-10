@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 import { deleteParcel, getOrchardTwin, updateParcel } from '@/features/orchard/api'
 import { PlantingLayoutEditor, gapKey, type PlantingPlan } from '@/features/orchard/PlantingLayoutEditor'
@@ -15,6 +16,7 @@ import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
+import { tr } from '@/shared/i18n/i18n'
 
 const currentYear = new Date().getFullYear()
 
@@ -47,6 +49,8 @@ function planFromTwin(twin: OrchardTwin, varieties: VarietyValues[]): PlantingPl
 }
 
 export function EditParcelPage() {
+  const { i18n } = useTranslation()
+  void i18n.language
   const { parcelId } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -96,7 +100,7 @@ export function EditParcelPage() {
 
   const saveMutation = useMutation({
     mutationFn: (values: EditParcelValues) => {
-      if (!parcelId || !plan) throw new Error('Parcela nije učitana')
+      if (!parcelId || !plan) throw new Error(tr('Parcela nije učitana'))
       return updateParcel(parcelId, {
         name: values.name,
         area_hectares: values.area_hectares,
@@ -130,20 +134,22 @@ export function EditParcelPage() {
 
   if (!parcelId) return null
   if (twinQuery.isLoading || !twin || !plan) {
-    return <div className="p-6 text-sm text-muted-foreground">Učitavanje parcele…</div>
+    return <div className="p-6 text-sm text-muted-foreground">{tr('Učitavanje parcele…')}</div>
   }
 
   return (
     <div className="w-full space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="kicker">Zasadi</p>
-          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Izmena: {twin.parcel.name}</h1>
+          <p className="kicker">{tr("Zasadi")}</p>
+          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">
+            {tr('Izmena')}: {twin.parcel.name}
+          </h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Izmenite naziv, sorte, boje redova i prazna mesta. Veličina mreže ostaje ista.
+            {tr('Izmenite naziv, sorte, boje redova i prazna mesta. Veličina mreže ostaje ista.')}
           </p>
         </div>
-        <BackLink fallback={`/orchard/${parcelId}`}>Nazad na mapu</BackLink>
+        <BackLink fallback={`/orchard/${parcelId}`}>{tr('Nazad na mapu')}</BackLink>
       </div>
 
       <form
@@ -151,27 +157,27 @@ export function EditParcelPage() {
         onSubmit={form.handleSubmit((values) => saveMutation.mutate(values))}
       >
         <div className="grid gap-5 md:grid-cols-2">
-          <Field label="Naziv parcele" error={form.formState.errors.name?.message}>
+          <Field label={tr('Naziv parcele')} error={form.formState.errors.name?.message}>
             <Input {...form.register('name')} />
           </Field>
-          <Field label="Površina (ha)" error={form.formState.errors.area_hectares?.message}>
+          <Field label={tr('Površina (ha)')} error={form.formState.errors.area_hectares?.message}>
             <Input type="number" step="0.0001" {...form.register('area_hectares')} />
           </Field>
           <Field
             className="md:col-span-2"
-            label="Google Maps link"
+            label={tr('Google Maps link')}
             error={form.formState.errors.maps_url?.message}
-            hint="U Google Maps otvorite zasad, zatim Deli → Kopiraj link."
+            hint={tr('U Google Maps otvorite zasad, zatim Deli → Kopiraj link.')}
           >
             <Input type="url" placeholder="https://maps.app.goo.gl/…" {...form.register('maps_url')} />
           </Field>
-          <Field label="Godina sadnje" error={form.formState.errors.planting_year?.message}>
+          <Field label={tr('Godina sadnje')} error={form.formState.errors.planting_year?.message}>
             <Input type="number" min={1900} max={currentYear + 1} {...form.register('planting_year')} />
           </Field>
           <div className="space-y-2">
-            <Label>Struktura</Label>
+            <Label>{tr('Struktura')}</Label>
             <p className="pt-2 font-mono text-sm text-muted-foreground">
-              {rowCount} redova × {treesPerRow} mesta
+              {tr('{{rows}} redova × {{trees}} mesta', { rows: rowCount, trees: treesPerRow })}
             </p>
           </div>
         </div>
@@ -179,8 +185,10 @@ export function EditParcelPage() {
         <div className="space-y-3 border-t border-border pt-5">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-medium">Zasađene sorte</h2>
-              <p className="text-sm text-muted-foreground">Preimenujte, promenite boju ili dodajte sorte, zatim obojite redove.</p>
+              <h2 className="text-lg font-medium">{tr('Zasađene sorte')}</h2>
+              <p className="text-sm text-muted-foreground">
+                {tr('Preimenujte, promenite boju ili dodajte sorte, zatim obojite redove.')}
+              </p>
             </div>
             <Button
               type="button"
@@ -194,7 +202,7 @@ export function EditParcelPage() {
                 )
               }}
             >
-              Dodaj sortu
+              {tr('Dodaj sortu')}
             </Button>
           </div>
           {form.formState.errors.varieties?.message ? (
@@ -203,7 +211,7 @@ export function EditParcelPage() {
           <div className="space-y-3">
             {varieties.map((item, index) => (
               <div key={`${item.color}-${index}`} className="grid gap-3 border border-border p-3 md:grid-cols-[1fr_10rem_6rem_auto]">
-                <Field label="Sorta" error={form.formState.errors.varieties?.[index]?.name?.message}>
+                <Field label={tr('Sorta')} error={form.formState.errors.varieties?.[index]?.name?.message}>
                   <Input
                     value={item.name}
                     onChange={(event) => {
@@ -217,7 +225,7 @@ export function EditParcelPage() {
                     }}
                   />
                 </Field>
-                <Field label="Uloga">
+                <Field label={tr('Uloga')}>
                   <Select
                     value={item.role}
                     onChange={(event) => {
@@ -237,7 +245,7 @@ export function EditParcelPage() {
                     <option value="other">{roleLabel('other')}</option>
                   </Select>
                 </Field>
-                <Field label="Boja">
+                <Field label={tr('Boja')}>
                   <Input
                     type="color"
                     value={item.color}
@@ -266,7 +274,7 @@ export function EditParcelPage() {
                       )
                     }}
                   >
-                    Ukloni
+                    {tr('Ukloni')}
                   </Button>
                 </div>
               </div>
@@ -292,31 +300,37 @@ export function EditParcelPage() {
             variant="outline"
             disabled={deleteMutation.isPending}
             onClick={() => {
-              if (!window.confirm(`Obrisati ${twin.parcel.name}? Stabla, dnevnik i zapažanja na ovoj parceli biće uklonjeni.`)) {
+              if (
+                !window.confirm(
+                  tr('Obrisati {{name}}? Stabla, dnevnik i zapažanja na ovoj parceli biće uklonjeni.', {
+                    name: twin.parcel.name,
+                  }),
+                )
+              ) {
                 return
               }
               deleteMutation.mutate()
             }}
           >
-            {deleteMutation.isPending ? 'Brisanje…' : 'Obriši parcelu'}
+            {deleteMutation.isPending ? tr('Brisanje…') : tr('Obriši parcelu')}
           </Button>
           <div className="flex items-center gap-4">
             <p className="font-mono text-sm text-muted-foreground">
-              {formatNumber(planted)} stabala nakon čuvanja
+              {tr('{{count}} stabala nakon čuvanja', { count: formatNumber(planted) })}
             </p>
             <Button type="submit" disabled={saveMutation.isPending || planted < 1}>
-              {saveMutation.isPending ? 'Čuvanje…' : 'Sačuvaj izmene'}
+              {saveMutation.isPending ? tr('Čuvanje…') : tr('Sačuvaj izmene')}
             </Button>
           </div>
         </div>
         {saveMutation.error ? (
           <p className="text-sm text-danger">
-            {saveMutation.error instanceof Error ? saveMutation.error.message : 'Čuvanje nije uspelo'}
+            {saveMutation.error instanceof Error ? saveMutation.error.message : tr('Čuvanje nije uspelo')}
           </p>
         ) : null}
         {deleteMutation.error ? (
           <p className="text-sm text-danger">
-            {deleteMutation.error instanceof Error ? deleteMutation.error.message : 'Brisanje nije uspelo'}
+            {deleteMutation.error instanceof Error ? deleteMutation.error.message : tr('Brisanje nije uspelo')}
           </p>
         ) : null}
       </form>

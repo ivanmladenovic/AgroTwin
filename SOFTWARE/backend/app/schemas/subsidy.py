@@ -43,4 +43,5 @@ class SubsidyRead(IDSchema):
     currency: str
     received_on: date
     notes: str | None
+    activity_id: UUID | None = None
     created_by_id: UUID | None

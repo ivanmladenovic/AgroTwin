@@ -1,3 +1,4 @@
+import { getAppLocale, tr } from '@/shared/i18n/i18n'
 import { expireAccessToken, getAccessToken } from '@/shared/lib/auth'
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') || '/api/v1'
@@ -21,9 +22,9 @@ type RequestOptions = RequestInit & {
 async function parseError(response: Response): Promise<ApiError> {
   try {
     const body = (await response.json()) as { detail?: string; code?: string }
-    return new ApiError(body.detail ?? 'Zahtev nije uspeo', response.status, body.code)
+    return new ApiError(body.detail ?? tr('Zahtev nije uspeo'), response.status, body.code)
   } catch {
-    return new ApiError(response.statusText || 'Zahtev nije uspeo', response.status)
+    return new ApiError(response.statusText || tr('Zahtev nije uspeo'), response.status)
   }
 }
 
@@ -43,6 +44,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     headers: {
       ...(hasJsonBody ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...localeHeaders(),
       ...headers,
     },
   })
@@ -62,11 +64,22 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   return (await response.json()) as T
 }
 
+function localeHeaders(): Record<string, string> {
+  const locale = getAppLocale()
+  return {
+    'Accept-Language': locale === 'en' ? 'en' : 'sr',
+    'X-Locale': locale,
+  }
+}
+
 export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
   const token = getAccessToken()
   const response = await fetch(`${API_URL}${path}`, {
     method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...localeHeaders(),
+    },
     body: formData,
   })
   if (response.status === 401) {
@@ -83,10 +96,13 @@ export async function fetchObjectUrl(path: string): Promise<string> {
   let response: Response
   try {
     response = await fetch(`${API_URL}${path}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...localeHeaders(),
+      },
     })
   } catch {
-    throw new ApiError('Veza sa serverom nije uspela. Proverite mrežu i pokušajte ponovo.', 0)
+    throw new ApiError(tr('Veza sa serverom nije uspela. Proverite mrežu i pokušajte ponovo.'), 0)
   }
   if (response.status === 401) {
     handleUnauthorized(token)

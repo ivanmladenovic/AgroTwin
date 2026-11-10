@@ -18,21 +18,22 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 import { Textarea } from '@/shared/ui/textarea'
+import { tr } from '@/shared/i18n/i18n'
 
 const categories: Array<{ value: KnowledgeCategory; label: string }> = [
-  { value: 'plant_protection', label: 'Zaštita' },
+  { value: 'plant_protection', label: tr("Zaštita") },
   { value: 'nutrition_guide', label: 'Prihrana' },
-  { value: 'other', label: 'Uopšteno' },
+  { value: 'other', label: tr("Uopšteno") },
 ]
 
 function categoryLabel(value: string) {
-  if (value === 'plant_protection' || value === 'disease_guide' || value === 'pest_guide') return 'Zaštita'
+  if (value === 'plant_protection' || value === 'disease_guide' || value === 'pest_guide') return tr('Zaštita')
   if (value === 'nutrition_guide') return 'Prihrana'
-  return 'Uopšteno'
+  return tr('Uopšteno')
 }
 
 const documentStatusLabels: Record<string, string> = {
-  pending: 'na čekanju',
+  pending: tr('na čekanju'),
   processing: 'obrada',
   ready: 'indeksirano',
   failed: 'neuspelo',
@@ -104,14 +105,14 @@ export function KnowledgePage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="kicker">Baza znanja</p>
-          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Priručnici voćnjaka</h1>
+          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">{tr('Priručnici voćnjaka')}</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Pregledajte i preuzmite priručnike, ili pretražite odlomke. Ovo je referentni materijal, a ne dijagnoza.
+            {tr('Pregledajte i preuzmite priručnike, ili pretražite odlomke. Ovo je referentni materijal, a ne dijagnoza.')}
           </p>
         </div>
         <Button type="button" onClick={() => setAdding(true)}>
           <Plus className="h-4 w-4" />
-          Dodaj priručnik
+          {tr('Dodaj priručnik')}
         </Button>
       </div>
 
@@ -131,13 +132,13 @@ export function KnowledgePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Priručnici</CardTitle>
+          <CardTitle>{tr("Priručnici")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {docsQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Učitavanje priručnika…</p>
+            <p className="text-sm text-muted-foreground">{tr('Učitavanje priručnika…')}</p>
           ) : (docsQuery.data ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">Još nema priručnika.</p>
+            <p className="text-sm text-muted-foreground">{tr('Još nema priručnika.')}</p>
           ) : (
             (docsQuery.data ?? []).map((doc) => (
               <ManualRow key={doc.id} document={doc} onOpen={setViewer} />
@@ -148,25 +149,25 @@ export function KnowledgePage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Pretraga priručnika</CardTitle>
+          <CardTitle>{tr('Pretraga priručnika')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <form className="flex flex-col gap-2 sm:flex-row" onSubmit={runSearch}>
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="npr. magnezijum, rezidba, suša"
-              aria-label="Pojam za pretragu"
+              placeholder={tr("npr. magnezijum, rezidba, suša")}
+              aria-label={tr('Pojam za pretragu')}
             />
             <Button type="submit" variant="outline" disabled={!query.trim() || searchQuery.isFetching}>
               <Search className="h-4 w-4" />
-              {searchQuery.isFetching ? 'Pretraga…' : 'Pretraži'}
+              {searchQuery.isFetching ? tr('Pretraga…') : tr('Pretraži')}
             </Button>
           </form>
 
           {searchQuery.isError ? (
             <p className="text-sm text-danger">
-              {searchQuery.error instanceof Error ? searchQuery.error.message : 'Pretraga nije uspela'}
+              {searchQuery.error instanceof Error ? searchQuery.error.message : tr('Pretraga nije uspela')}
             </p>
           ) : null}
 
@@ -239,7 +240,7 @@ function ManualRow({
           variant="ghost"
           disabled={deleteMutation.isPending}
           onClick={() => {
-            if (window.confirm('Ukloniti ovaj priručnik iz baze znanja?')) {
+            if (window.confirm(tr('Ukloniti ovaj priručnik iz baze znanja?'))) {
               deleteMutation.mutate()
             }
           }}
@@ -271,7 +272,7 @@ function SearchHitCard({
         <div className="min-w-0">
           <p className="text-sm font-medium">{hit.document_title}</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {location || 'Lokacija u priručniku nije navedena'}
+            {location || tr('Lokacija u priručniku nije navedena')}
           </p>
         </div>
         <Button
@@ -333,7 +334,7 @@ function KnowledgePdfViewer({
           <button
             type="button"
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg hover:bg-muted"
-            aria-label="Zatvori"
+            aria-label={tr('Zatvori')}
             onClick={onClose}
           >
             <X className="h-5 w-5" />
@@ -361,7 +362,7 @@ function UploadManualForm({ onClose }: { onClose: () => void }) {
   const [file, setFile] = useState<File | null>(null)
   const uploadMutation = useMutation({
     mutationFn: () => {
-      if (!file) throw new Error('Izaberite PDF')
+      if (!file) throw new Error(tr('Izaberite PDF'))
       return uploadKnowledgeDocument(file, title || file.name, category, description || undefined)
     },
     onSuccess: async () => {
@@ -380,10 +381,10 @@ function UploadManualForm({ onClose }: { onClose: () => void }) {
       <Card className="w-full max-w-lg rounded-t-2xl sm:rounded-2xl">
         <CardHeader className="flex flex-row items-start justify-between gap-3">
           <div>
-            <CardTitle>Novi priručnik</CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">Otpremite PDF. AgroTwin izvlači tekst za pretragu i agronoma.</p>
+            <CardTitle>{tr('Novi priručnik')}</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">{tr('Otpremite PDF. AgroTwin izvlači tekst za pretragu i agronoma.')}</p>
           </div>
-          <button type="button" className="inline-flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted" aria-label="Zatvori" onClick={onClose}>
+          <button type="button" className="inline-flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted" aria-label={tr('Zatvori')} onClick={onClose}>
             <X className="h-4 w-4" />
           </button>
         </CardHeader>
@@ -391,7 +392,7 @@ function UploadManualForm({ onClose }: { onClose: () => void }) {
           <form className="grid gap-3" onSubmit={onUpload}>
             <div className="space-y-1.5">
               <Label>Naslov</Label>
-              <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Priručnik za lesnik" />
+              <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={tr("Priručnik za lesnik")} />
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
@@ -414,20 +415,20 @@ function UploadManualForm({ onClose }: { onClose: () => void }) {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Opis (opciono)</Label>
+              <Label>{tr('Opis (opciono)')}</Label>
               <Textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} />
             </div>
             {uploadMutation.error ? (
               <p className="text-sm text-danger">
-                {uploadMutation.error instanceof Error ? uploadMutation.error.message : 'Otpremanje nije uspelo'}
+                {uploadMutation.error instanceof Error ? uploadMutation.error.message : tr('Otpremanje nije uspelo')}
               </p>
             ) : null}
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={onClose}>
-                Otkaži
+                {tr('Otkaži')}
               </Button>
               <Button type="submit" disabled={!file || uploadMutation.isPending}>
-                {uploadMutation.isPending ? 'Otpremanje…' : 'Sačuvaj'}
+                {uploadMutation.isPending ? 'Otpremanje…' : tr('Sačuvaj')}
               </Button>
             </div>
           </form>

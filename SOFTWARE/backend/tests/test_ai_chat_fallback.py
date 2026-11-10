@@ -88,7 +88,7 @@ class StickyFallbackTests(TestCase):
 
         calls: list[str] = []
 
-        def fake_post(base_url, api_key, path, payload):
+        def fake_post(base_url, api_key, path, payload, timeout=None):
             calls.append(f"{base_url}|{payload['model']}")
             if "generativelanguage" in base_url:
                 raise AppError("AI provajder je vratio 503: high demand", status_code=502, code="ai_unavailable")
@@ -106,3 +106,115 @@ class StickyFallbackTests(TestCase):
         openai_calls = [c for c in calls if "api.openai.com" in c]
         self.assertEqual(len(gemini_calls), 1)
         self.assertEqual(len(openai_calls), 1)
+
+    def test_multimodal_prefers_vision_model(self) -> None:
+        settings = MagicMock(spec=Settings)
+        settings.ai_api_key = "gemini-key"
+        settings.ai_base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+        settings.ai_chat_model = "gemini-3.1-flash-lite"
+        settings.ai_embedding_model = "gemini-embedding-001"
+        settings.ai_vision_model = "gemini-3.8-flash"
+        settings.ai_embedding_dim = 1536
+        settings.openai_api_key = None
+        settings.ai_openai_base_url = "https://api.openai.com/v1"
+        settings.ai_openai_fallback_models = "gpt-4.1-mini"
+        provider = mod.OpenAICompatibleProvider(settings)
+        targets = provider._chat_targets(primary_model=provider.vision_model)
+        self.assertEqual(targets[0].model, "gemini-3.8-flash")
+        self.assertIn("gemini-3.1-flash-lite", [t.model for t in targets])
+
+        calls: list[str] = []
+
+        def fake_post(base_url, api_key, path, payload, timeout=None):
+            calls.append(payload["model"])
+            raise AppError(
+                'AI provajder je vratio 503: high demand UNAVAILABLE',
+                status_code=502,
+                code="ai_unavailable",
+            )
+
+        with patch.object(provider, "_post", side_effect=fake_post):
+            with self.assertRaises(AppError) as raised:
+                provider.chat(
+                    [
+                        ChatMessage(
+                            role="user",
+                            content=[
+                                {"type": "text", "text": "Šta piše?"},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {"url": "data:image/jpeg;base64,abc"},
+                                },
+                            ],
+                        )
+                    ]
+                )
+        self.assertEqual(calls[0], "gemini-3.8-flash")
+        self.assertIn("opterećenja", raised.exception.message.lower())
+
+    def test_multimodal_timeout_skips_remaining_gemini(self) -> None:
+        settings = MagicMock(spec=Settings)
+        settings.ai_api_key = "gemini-key"
+        settings.ai_base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+        settings.ai_chat_model = "gemini-3.1-flash-lite"
+        settings.ai_embedding_model = "gemini-embedding-001"
+        settings.ai_vision_model = "gemini-3.8-flash"
+        settings.ai_embedding_dim = 1536
+        settings.openai_api_key = "openai-key"
+        settings.ai_openai_base_url = "https://api.openai.com/v1"
+        settings.ai_openai_fallback_models = "gpt-4.1-mini,gpt-4o"
+        provider = mod.OpenAICompatibleProvider(settings)
+        calls: list[str] = []
+
+        def fake_post(base_url, api_key, path, payload, timeout=None):
+            calls.append(f"{base_url}|{payload['model']}|{timeout}")
+            if "generativelanguage" in base_url:
+                raise AppError(
+                    "Zahtev ka AI provajderu nije uspeo: The read operation timed out",
+                    status_code=502,
+                    code="ai_unavailable",
+                )
+            return {
+                "model": payload["model"],
+                "choices": [{"message": {"role": "assistant", "content": "{\"parameters\": []}"}}],
+            }
+
+        image_turn = [
+            ChatMessage(
+                role="user",
+                content=[
+                    {"type": "text", "text": "Pročitaj analizu"},
+                    {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,abc"}},
+                ],
+            )
+        ]
+        with patch.object(provider, "_post", side_effect=fake_post):
+            result = provider.chat(image_turn, json_mode=True)
+        self.assertEqual(result.model, "gpt-4.1-mini")
+        gemini_calls = [item for item in calls if "generativelanguage" in item]
+        self.assertEqual(len(gemini_calls), 1)
+        self.assertIn("|50.0", gemini_calls[0])
+
+    def test_without_openai_key_still_tries_gemini_fallbacks(self) -> None:
+        settings = MagicMock(spec=Settings)
+        settings.ai_api_key = "gemini-key"
+        settings.ai_base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+        settings.ai_chat_model = "gemini-3.1-flash-lite"
+        settings.ai_embedding_model = "gemini-embedding-001"
+        settings.ai_vision_model = "gemini-3.1-flash-lite"
+        settings.ai_embedding_dim = 1536
+        settings.openai_api_key = ""
+        settings.ai_openai_base_url = "https://api.openai.com/v1"
+        settings.ai_openai_fallback_models = "gpt-4.1-mini"
+        provider = mod.OpenAICompatibleProvider(settings)
+        calls: list[str] = []
+
+        def fake_post(base_url, api_key, path, payload, timeout=None):
+            calls.append(payload["model"])
+            raise AppError("AI provajder je vratio 503: high demand", status_code=502, code="ai_unavailable")
+
+        with patch.object(provider, "_post", side_effect=fake_post):
+            with self.assertRaises(AppError):
+                provider.chat([ChatMessage(role="user", content="Zdravo")])
+        self.assertGreaterEqual(len(calls), 2)
+        self.assertNotIn("gpt-4.1-mini", calls)

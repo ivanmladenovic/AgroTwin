@@ -4,10 +4,18 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.models.enums import ActivityStatus, ScopeType
+from app.models.enums import (
+    ActivitySemanticType,
+    ActivityStatus,
+    DiseaseSeverity,
+    ObservationCategory,
+    ObservationStatus,
+    ScopeType,
+)
 from app.schemas.catalog import CatalogItemRead
 from app.schemas.common import IDSchema
 from app.schemas.cost import CostItemRead
+from app.schemas.disease import PhotoRead
 from app.schemas.soil_lab import SoilLabAnalysisRead
 
 
@@ -36,6 +44,13 @@ class ActivityCreate(BaseModel):
     cost_amount: Decimal | None = Field(default=None, ge=0)
     notes: str | None = None
     status: ActivityStatus | None = None
+    semantic_type: ActivitySemanticType | None = None
+    observation_category: ObservationCategory | None = None
+    observation_severity: DiseaseSeverity | None = None
+    observation_status: ObservationStatus | None = None
+    observation_id: UUID | None = None
+    plan_item_id: UUID | None = None
+    follow_up_of_id: UUID | None = None
 
     @model_validator(mode="after")
     def validate_scope(self) -> "ActivityCreate":
@@ -53,12 +68,88 @@ class ActivityCreate(BaseModel):
             raise ValueError("Aktivnosti stabla zahtevaju i red i stablo.")
         return self
 
+    @model_validator(mode="after")
+    def validate_observation_fields(self) -> "ActivityCreate":
+        semantic = self.semantic_type
+        is_observation_like = semantic in {
+            ActivitySemanticType.OBSERVATION,
+            ActivitySemanticType.PROBLEM,
+            ActivitySemanticType.MONITORING,
+        }
+        if is_observation_like:
+            if self.observation_status is None:
+                self.observation_status = ObservationStatus.NEW
+            if self.observation_category is None:
+                self.observation_category = ObservationCategory.UNKNOWN
+        if self.observation_status == ObservationStatus.CONFIRMED and semantic is None:
+            # CONFIRMED is user-only; presence is fine on create from UI, blocked for AI elsewhere.
+            pass
+        return self
+
 
 class ActivityUpdate(BaseModel):
     status: ActivityStatus | None = None
     performed_on: date | None = None
     notes: str | None = None
     description: str | None = None
+    semantic_type: ActivitySemanticType | None = None
+    observation_category: ObservationCategory | None = None
+    observation_severity: DiseaseSeverity | None = None
+    observation_status: ObservationStatus | None = None
+    observation_id: UUID | None = None
+    plan_item_id: UUID | None = None
+    follow_up_of_id: UUID | None = None
+
+
+class ActivityHarvestSnippet(BaseModel):
+    id: UUID
+    parcel_id: UUID | None = None
+    harvested_on: date
+    location_label: str
+    gross_quantity: Decimal | None = None
+    loss_quantity: Decimal = Decimal("0")
+    net_quantity: Decimal | None = None
+    unit: str
+    quality_category: str | None = None
+    notes: str | None = None
+
+
+class ActivityPlanItemSnippet(BaseModel):
+    id: UUID
+    plan_id: UUID
+    plan_type: str
+    parcel_id: UUID | None = None
+    year: int | None = None
+    title: str
+    planned_date_from: date | None = None
+    planned_date_to: date | None = None
+    status: str
+    description: str | None = None
+    products: list[dict] = Field(default_factory=list)
+
+
+class ActivityDiseaseSnippet(BaseModel):
+    id: UUID
+    parcel_id: UUID | None = None
+    title: str
+    category: str
+    severity: str
+    status: str
+    detected_on: date
+    location_label: str
+    notes: str | None = None
+
+
+class ActivitySubsidySnippet(BaseModel):
+    id: UUID
+    parcel_id: UUID | None = None
+    title: str
+    total_cost: Decimal
+    subsidy_amount: Decimal
+    subsidy_percent: Decimal | None = None
+    currency: str
+    received_on: date
+    notes: str | None = None
 
 
 class ActivityRead(IDSchema):
@@ -83,5 +174,17 @@ class ActivityRead(IDSchema):
     tree_public_id: str | None = None
     costs: list[CostItemRead] = Field(default_factory=list)
     soil_analyses: list[SoilLabAnalysisRead] = Field(default_factory=list)
+    photos: list[PhotoRead] = Field(default_factory=list)
+    harvest: ActivityHarvestSnippet | None = None
+    plan_item: ActivityPlanItemSnippet | None = None
+    disease_case: ActivityDiseaseSnippet | None = None
+    subsidy: ActivitySubsidySnippet | None = None
     total_cost: Decimal
     currency: str = "EUR"
+    semantic_type: ActivitySemanticType = ActivitySemanticType.OTHER
+    observation_category: ObservationCategory | None = None
+    observation_severity: DiseaseSeverity | None = None
+    observation_status: ObservationStatus | None = None
+    observation_id: UUID | None = None
+    plan_item_id: UUID | None = None
+    follow_up_of_id: UUID | None = None

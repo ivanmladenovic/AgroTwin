@@ -14,6 +14,8 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Temporary credentials (e.g. invited Enterprise users) require a password change.
+    must_change_password: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     farms: Mapped[list[Farm]] = relationship("Farm", back_populates="owner")
     conversations: Mapped[list[AIConversation]] = relationship(

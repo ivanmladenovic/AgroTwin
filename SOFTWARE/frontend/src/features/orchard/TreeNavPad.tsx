@@ -2,6 +2,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from 'lucide-react'
 
 import type { TreeNavDirection } from '@/features/orchard/treeNavigation'
 import { cn } from '@/shared/lib/utils'
+import { tr } from '@/shared/i18n/i18n'
 
 export function TreeNavPad({
   enabled,
@@ -36,7 +37,7 @@ export function TreeNavPad({
         <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/50" />
       </span>
       <NavButton
-        label="Sledeća sadnica"
+        label={tr("Sledeća sadnica")}
         direction="right"
         enabled={enabled.right}
         onNavigate={onNavigate}
@@ -44,7 +45,7 @@ export function TreeNavPad({
       />
       <span />
       <NavButton
-        label="Sledeći red"
+        label={tr("Sledeći red")}
         direction="down"
         enabled={enabled.down}
         onNavigate={onNavigate}

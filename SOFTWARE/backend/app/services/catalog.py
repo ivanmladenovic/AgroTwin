@@ -43,3 +43,4 @@ class CatalogService:
                 current.description = description
                 current.sort_order = index
         self.db.flush()
+

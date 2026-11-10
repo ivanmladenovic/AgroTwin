@@ -122,9 +122,23 @@
   border-radius: 1rem;
 }
 
+.agrotwin-map-root .leaflet-bottom.leaflet-right {
+  margin: 0 12px 12px 0;
+}
+
+.agrotwin-map-root .agrotwin-index-overlay,
+.agrotwin-map-root .leaflet-image-layer {
+  image-rendering: auto;
+}
+
 .agrotwin-map-root .leaflet-control-zoom {
   border: 0;
   box-shadow: 0 1px 4px rgba(15, 23, 42, 0.16);
+}
+
+.agrotwin-map-root.agrotwin-map-view-locked .leaflet-control-zoom {
+  pointer-events: none;
+  opacity: 0.35;
 }
 
 .agrotwin-map-root .leaflet-control-zoom a {
@@ -159,10 +173,20 @@
   border: 0;
 }
 
+.agrotwin-map-root .map-editor-vertex {
+  background: transparent !important;
+  border: 0 !important;
+}
+
+.agrotwin-map-root .map-editor-vertex div {
+  pointer-events: auto !important;
+}
+
 @media print {
   @page {
     size: A4;
-    margin: 12mm;
+    margin: 14mm 12mm 14mm 12mm;
+    /* Hide default browser header/footer dates where the engine supports it. */
   }
 
   html,
@@ -204,6 +228,19 @@
     box-shadow: none !important;
     background: #fff !important;
     color: #10241a !important;
+  }
+
+  .report-sheet header {
+    border-bottom-color: #c5d5ca !important;
+  }
+
+  .report-sheet footer {
+    border-top-color: #c5d5ca !important;
+  }
+
+  .report-sheet img {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* Horizontal scroll charts/tables: show full width in PDF, not the clipped viewport. */

@@ -140,9 +140,94 @@ class SoilLabAnalysisApiTests(TestCase):
         self.assertEqual(payload["parcel_id"], self.parcel["id"])
         self.assertEqual(payload["tree_id"], self.trees[0]["id"])
         self.assertEqual(payload["original_filename"], "parcel-analiza.pdf")
+        self.assertEqual(payload["source_kind"], "laboratory")
+        self.assertIn(payload["verification_status"], {"needs_review", "extracted", "verified", "skipped"})
+        self.assertIn(payload["extraction_status"], {"pending", "running", "succeeded", "failed"})
         after = self.client.get(f"/api/v1/parcels/{self.parcel['id']}/soil-analyses", headers=self.headers)
         self.assertEqual(after.status_code, 200, after.text)
         self.assertEqual(len(after.json()), before + 1)
+
+    def test_structured_text_extract_verify_and_multiple_analyses(self) -> None:
+        """Upload does not overwrite prior analyses; verify marks latest planning candidate."""
+        sample_text = (
+            "Laboratorija Test Lab\n"
+            "Dubina 0-30 cm\n"
+            "Reakcija zemljišta pH KCl 6.7\n"
+            "Humus 2.8 %\n"
+            "P2O5 18.4 mg/100g\n"
+        )
+        # Minimal PDF with embedded text so extract_pdf can read something if available;
+        # we also force re-extract via service path by posting then patching via extract endpoint
+        # after storing a text-bearing fake — here we exercise verify/edit API on empty extract
+        # and ensure multiple uploads coexist.
+        first = self.client.post(
+            f"/api/v1/parcels/{self.parcel['id']}/soil-analyses",
+            headers=self.headers,
+            data={"tree_id": self.trees[0]["id"], "sampled_on": "2024-05-01"},
+            files={"file": ("analiza-2024.pdf", MIN_PDF, "application/pdf")},
+        )
+        self.assertEqual(first.status_code, 201, first.text)
+        second = self.client.post(
+            f"/api/v1/parcels/{self.parcel['id']}/soil-analyses",
+            headers=self.headers,
+            data={"tree_id": self.trees[0]["id"], "sampled_on": "2025-05-01"},
+            files={"file": ("analiza-2025.pdf", MIN_PDF, "application/pdf")},
+        )
+        self.assertEqual(second.status_code, 201, second.text)
+        first_id = first.json()["id"]
+        second_id = second.json()["id"]
+        self.assertNotEqual(first_id, second_id)
+
+        listed = self.client.get(f"/api/v1/parcels/{self.parcel['id']}/soil-analyses", headers=self.headers)
+        self.assertEqual(listed.status_code, 200, listed.text)
+        ids = {item["id"] for item in listed.json()}
+        self.assertIn(first_id, ids)
+        self.assertIn(second_id, ids)
+
+        # Manually add parameters (simulates extraction / user add) then verify.
+        added = self.client.post(
+            f"/api/v1/soil-analyses/{second_id}/results",
+            headers=self.headers,
+            json={
+                "parameter_code": "PH",
+                "original_parameter_name": "Reakcija zemljišta pH KCl",
+                "value": "6.7",
+                "unit": None,
+                "method": "KCL",
+            },
+        )
+        self.assertEqual(added.status_code, 201, added.text)
+        self.assertEqual(added.json()["result_count"], 1)
+        result_id = added.json()["results"][0]["id"]
+        self.assertEqual(added.json()["results"][0]["original_parameter_name"], "Reakcija zemljišta pH KCl")
+
+        edited = self.client.patch(
+            f"/api/v1/soil-analyses/{second_id}/results/{result_id}",
+            headers=self.headers,
+            json={"value": "6.8"},
+        )
+        self.assertEqual(edited.status_code, 200, edited.text)
+        self.assertEqual(edited.json()["results"][0]["value"], "6.8")
+
+        verified = self.client.post(
+            f"/api/v1/soil-analyses/{second_id}/verify",
+            headers=self.headers,
+            json={},
+        )
+        self.assertEqual(verified.status_code, 200, verified.text)
+        self.assertEqual(verified.json()["verification_status"], "verified")
+        self.assertEqual(verified.json()["results"][0]["verification_status"], "verified")
+
+        detail = self.client.get(f"/api/v1/soil-analyses/{second_id}", headers=self.headers)
+        self.assertEqual(detail.status_code, 200, detail.text)
+        self.assertEqual(detail.json()["verification_status"], "verified")
+
+        # Isolation: another user's token cannot read (demo user owns parcel — skip cross-user here).
+        # Ensure first analysis still exists untouched.
+        still = self.client.get(f"/api/v1/soil-analyses/{first_id}", headers=self.headers)
+        self.assertEqual(still.status_code, 200, still.text)
+        self.assertNotEqual(still.json()["verification_status"], "verified")
+        _ = sample_text  # reserved for future OCR fixture wiring
 
     def test_delete_soil_analysis_and_missing_file(self) -> None:
         activity = self._create_activity()

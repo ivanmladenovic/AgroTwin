@@ -1,3 +1,4 @@
+import { tr } from '@/shared/i18n/i18n'
 import {
   Cloud,
   CloudDrizzle,
@@ -62,15 +63,15 @@ export function weatherIcon(symbolCode: string | null | undefined): LucideIcon {
 }
 
 export function weatherIconLabel(symbolCode: string | null | undefined) {
-  if (!symbolCode) return 'Oblacno'
+  if (!symbolCode) return tr('Oblačno')
   const base = symbolCode.replace(/_day$|_night$|_polartwilight$/, '')
-  if (base.includes('thunder')) return 'Grmljavina'
-  if (base.includes('snow')) return 'Sneg'
-  if (base.includes('sleet')) return 'Sušnežica'
-  if (base.includes('rain')) return 'Kiša'
-  if (base.includes('fog')) return 'Magla'
-  if (base === 'cloudy') return 'Oblačno'
-  if (base === 'partlycloudy' || base === 'fair') return 'Delimično oblačno'
-  if (base === 'clearsky') return 'Vedro'
-  return 'Prognoza'
+  if (base.includes('thunder')) return tr('Grmljavina')
+  if (base.includes('snow')) return tr('Sneg')
+  if (base.includes('sleet')) return tr('Sušnežica')
+  if (base.includes('rain')) return tr('Kiša')
+  if (base.includes('fog')) return tr('Magla')
+  if (base === 'cloudy') return tr('Oblačno')
+  if (base === 'partlycloudy' || base === 'fair') return tr('Delimično oblačno')
+  if (base === 'clearsky') return tr('Vedro')
+  return tr('Prognoza')
 }

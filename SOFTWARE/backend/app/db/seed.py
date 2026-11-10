@@ -154,8 +154,7 @@ def seed_demo_data(db: Session) -> None:
     db.flush()
 
     CatalogService(db).upsert_defaults()
-    _seed_demo_journal(db, user, farm)
-    _seed_demo_health(db, user, farm)
+    # Journal history and tree health cases are grower-entered — do not seed them.
     _seed_demo_knowledge(db, user, farm)
     from app.db.seed_kusiljevo import seed_kusiljevo_presentation
 

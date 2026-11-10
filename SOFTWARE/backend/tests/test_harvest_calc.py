@@ -46,6 +46,14 @@ class QuantityTests(TestCase):
         with self.assertRaises(ValueError):
             validate_quantities(Decimal("0"), Decimal("0"))
 
+    def test_draft_without_gross_is_allowed(self) -> None:
+        self.assertIsNone(validate_quantities(None, None))
+        self.assertIsNone(validate_quantities(None, Decimal("0")))
+
+    def test_loss_without_gross_is_rejected(self) -> None:
+        with self.assertRaises(ValueError):
+            validate_quantities(None, Decimal("5"))
+
 
 class AggregationTests(TestCase):
     def test_multiple_parcel_harvests_sum_net(self) -> None:
@@ -93,6 +101,7 @@ class AggregationTests(TestCase):
         self.assertEqual(points[0]["net_kg"], Decimal("500"))
         self.assertEqual(points[1]["net_kg"], Decimal("700"))
         self.assertEqual(points[1]["event_count"], 2)
+        self.assertEqual(points[1]["cumulative_gross_kg"], Decimal("1200"))
         self.assertEqual(points[1]["cumulative_net_kg"], Decimal("1200"))
 
 

@@ -35,6 +35,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 import { Textarea } from '@/shared/ui/textarea'
+import { tr } from '@/shared/i18n/i18n'
 
 type Prefill = {
   scope_type?: ActivityScope
@@ -261,9 +262,9 @@ export function ActivityForm({ prefill }: { prefill: Prefill }) {
       })}
     >
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Tip aktivnosti" error={form.formState.errors.activity_type_id?.message}>
+        <Field label={tr('Tip aktivnosti')} error={form.formState.errors.activity_type_id?.message}>
           <Select {...form.register('activity_type_id')}>
-            <option value="">Izaberite tip</option>
+            <option value="">{tr('Izaberite tip')}</option>
             {(typesQuery.data ?? []).map((item) => (
               <option key={item.id} value={item.id}>
                 {item.name}
@@ -282,33 +283,35 @@ export function ActivityForm({ prefill }: { prefill: Prefill }) {
               },
             })}
           >
-            <option value="completed">Urađeno</option>
-            <option value="planned">Planirano</option>
-            <option value="in_progress">U toku</option>
+            <option value="completed">{tr("Urađeno")}</option>
+            <option value="planned">{tr("Planirano")}</option>
+            <option value="in_progress">{tr("U toku")}</option>
           </Select>
         </Field>
         <Field label="Obuhvat">
           <Select {...form.register('scope_type')} disabled={lineKind === 'soil_analysis'}>
-            <option value="parcel">Parcela</option>
-            <option value="row">Red</option>
-            <option value="tree">Stablo</option>
+            <option value="parcel">{tr("Parcela")}</option>
+            <option value="row">{tr("Red")}</option>
+            <option value="tree">{tr("Stablo")}</option>
           </Select>
         </Field>
       </div>
 
-      {parcelName ? <p className="text-sm text-muted-foreground">Zasad: {parcelName}</p> : null}
+      {parcelName ? (
+        <p className="text-sm text-muted-foreground">{tr('Zasad: {{name}}', { name: parcelName })}</p>
+      ) : null}
 
       {scope === 'row' && lineKind !== 'soil_analysis' ? (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <Label>Redovi</Label>
+            <Label>{tr('Redovi')}</Label>
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="outline" size="sm" onClick={setAllRows} disabled={!rows.length}>
-                Svi redovi
+                {tr('Svi redovi')}
               </Button>
               <Button type="button" variant="outline" size="sm" onClick={() => setPickerOpen(true)} disabled={!parcelId}>
                 <MapPinned className="h-4 w-4" />
-                Pregled zasada
+                {tr('Pregled zasada')}
               </Button>
             </div>
           </div>
@@ -336,7 +339,7 @@ export function ActivityForm({ prefill }: { prefill: Prefill }) {
 
       {scope === 'tree' && lineKind !== 'soil_analysis' ? (
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Red" error={form.formState.errors.row_id?.message}>
+          <Field label={tr("Red")} error={form.formState.errors.row_id?.message}>
             <Select
               value={rowId}
               onChange={(event) => {
@@ -345,7 +348,7 @@ export function ActivityForm({ prefill }: { prefill: Prefill }) {
                 form.setValue('tree_id', '')
               }}
             >
-              <option value="">Izaberite red</option>
+              <option value="">{tr('Izaberite red')}</option>
               {rows.map((row) => (
                 <option key={row.id} value={row.id}>
                   {rowLabel(row.row_number)}
@@ -353,10 +356,10 @@ export function ActivityForm({ prefill }: { prefill: Prefill }) {
               ))}
             </Select>
           </Field>
-          <Field label="Stablo" error={form.formState.errors.tree_id?.message}>
+          <Field label={tr("Stablo")} error={form.formState.errors.tree_id?.message}>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Select {...form.register('tree_id')} className="flex-1">
-                <option value="">{rowId ? 'Izaberite stablo' : 'Prvo izaberite red'}</option>
+                <option value="">{rowId ? tr('Izaberite stablo') : tr('Prvo izaberite red')}</option>
                 {(treesQuery.data ?? []).map((tree) => (
                   <option key={tree.id} value={tree.id}>
                     {tree.public_id}
@@ -365,11 +368,13 @@ export function ActivityForm({ prefill }: { prefill: Prefill }) {
               </Select>
               <Button type="button" variant="outline" onClick={() => setPickerOpen(true)} disabled={!parcelId}>
                 <MapPinned className="h-4 w-4" />
-                Pregled
+                {tr("Pregled")}
               </Button>
             </div>
             {selectedTree ? (
-              <p className="text-xs text-muted-foreground">Izabrano: {selectedTree.public_id}</p>
+              <p className="text-xs text-muted-foreground">
+                {tr('Izabrano: {{id}}', { id: selectedTree.public_id })}
+              </p>
             ) : null}
           </Field>
         </div>
@@ -408,7 +413,7 @@ export function ActivityForm({ prefill }: { prefill: Prefill }) {
                 onClick={() => items.append(emptyIrrigationEquipmentItem())}
               >
                 <Plus className="h-4 w-4" />
-                Dodaj opremu
+                {tr('Dodaj opremu')}
               </Button>
             </div>
             {items.fields.slice(1).map((field, offset) => {
@@ -451,13 +456,13 @@ export function ActivityForm({ prefill }: { prefill: Prefill }) {
         <Textarea rows={3} {...form.register('description')} />
       </Field>
       {mutation.isError ? (
-        <p className="text-sm text-danger">{mutation.error instanceof Error ? mutation.error.message : 'Čuvanje nije uspelo'}</p>
+        <p className="text-sm text-danger">{mutation.error instanceof Error ? mutation.error.message : tr('Čuvanje nije uspelo')}</p>
       ) : null}
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? 'Čuvanje…' : 'Sačuvaj'}
+          {mutation.isPending ? tr('Čuvanje…') : tr('Sačuvaj')}
         </Button>
-        <BackLink fallback={prefill.return_to || '/journal'}>Otkaži</BackLink>
+        <BackLink fallback={prefill.return_to || '/journal'}>{tr('Otkaži')}</BackLink>
       </div>
 
       {pickerOpen && parcelId ? (
@@ -506,7 +511,7 @@ function ActivityLineRow({
     <div className="flex flex-col gap-2 rounded-xl border border-border p-3 sm:flex-row sm:flex-wrap sm:items-end">
       {irrigationFuel ? (
         <>
-          <LineField label="Količina nafte">
+          <LineField label={tr("Količina nafte")}>
             <div className="flex items-center gap-2">
               <Input type="number" step="0.001" min="0" placeholder="0" {...register(`line_items.${index}.quantity`)} />
               <span className="text-xs text-muted-foreground">L</span>
@@ -522,10 +527,10 @@ function ActivityLineRow({
       ) : null}
       {irrigationEquipment ? (
         <>
-          <LineField label="Naziv opreme" className="min-w-0 flex-1 basis-40">
-            <Input placeholder="Naziv opreme" {...register(`line_items.${index}.name`)} />
+          <LineField label={tr('Naziv opreme')} className="min-w-0 flex-1 basis-40">
+            <Input placeholder={tr('Naziv opreme')} {...register(`line_items.${index}.name`)} />
           </LineField>
-          <LineField label="Količina" className="sm:w-56">
+          <LineField label={tr("Količina")} className="sm:w-56">
             <div className="flex gap-2">
               <Input type="number" step="0.001" min="0" placeholder="0" className="min-w-0 flex-1" {...register(`line_items.${index}.quantity`)} />
               <Select className="w-24 flex-none" {...register(`line_items.${index}.unit`)}>
@@ -547,9 +552,9 @@ function ActivityLineRow({
       {kind === 'spraying' ? (
         <>
           <LineField label="Preparat" className="min-w-0 flex-1 basis-40">
-            <Input placeholder="Naziv preparata" {...register(`line_items.${index}.name`)} />
+            <Input placeholder={tr('Naziv preparata')} {...register(`line_items.${index}.name`)} />
           </LineField>
-          <LineField label="Litraža / težina" className="sm:w-56">
+          <LineField label={tr("Litraža / težina")} className="sm:w-56">
             <div className="flex gap-2">
               <Input type="number" step="0.001" min="0" placeholder="0" className="min-w-0 flex-1" {...register(`line_items.${index}.quantity`)} />
               <Select className="w-20 flex-none" {...register(`line_items.${index}.unit`)}>
@@ -569,9 +574,9 @@ function ActivityLineRow({
       {kind === 'fertilization' ? (
         <>
           <LineField label="Preparat" className="min-w-0 flex-1 basis-40">
-            <Input placeholder="Naziv preparata" {...register(`line_items.${index}.name`)} />
+            <Input placeholder={tr('Naziv preparata')} {...register(`line_items.${index}.name`)} />
           </LineField>
-          <LineField label="Težina" className="sm:w-36">
+          <LineField label={tr("Težina")} className="sm:w-36">
             <div className="flex items-center gap-2">
               <Input type="number" step="0.001" min="0" placeholder="0" {...register(`line_items.${index}.quantity`)} />
               <span className="text-xs text-muted-foreground">kg</span>
@@ -588,9 +593,9 @@ function ActivityLineRow({
       {kind === 'other' ? (
         <>
           <LineField label="Naziv" className="min-w-0 flex-1 basis-40">
-            <Input placeholder="Naziv stavke" {...register(`line_items.${index}.name`)} />
+            <Input placeholder={tr('Naziv stavke')} {...register(`line_items.${index}.name`)} />
           </LineField>
-          <LineField label="Količina" className="sm:w-56">
+          <LineField label={tr("Količina")} className="sm:w-56">
             <div className="flex gap-2">
               <Input type="number" step="0.001" min="0" placeholder="0" className="min-w-0 flex-1" {...register(`line_items.${index}.quantity`)} />
               <Select className="w-24 flex-none" {...register(`line_items.${index}.unit`)}>
@@ -619,7 +624,7 @@ function ActivityLineRow({
             </Button>
           ) : null}
           {isLast ? (
-            <Button type="button" variant="outline" size="sm" aria-label="Dodaj stavku" onClick={onAdd}>
+            <Button type="button" variant="outline" size="sm" aria-label={tr("Dodaj stavku")} onClick={onAdd}>
               <Plus className="h-4 w-4" />
             </Button>
           ) : null}

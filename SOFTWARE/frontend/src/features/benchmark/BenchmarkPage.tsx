@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Textarea } from '@/shared/ui/textarea'
+import { tr } from '@/shared/i18n/i18n'
 
 const MODE_OPTIONS: Array<{ value: BenchmarkMode; label: string }> = [
   { value: 'text', label: 'Text only' },
@@ -81,7 +82,7 @@ export function BenchmarkPage() {
       setFormError(null)
     },
     onError: (error) => {
-      setFormError(error instanceof ApiError ? error.message : 'Pokretanje nije uspelo')
+      setFormError(error instanceof ApiError ? error.message : tr('Pokretanje nije uspelo'))
     },
   })
 
@@ -110,7 +111,7 @@ export function BenchmarkPage() {
     if (useGemini) providers.push('gemini')
     if (useOpenAI) providers.push('openai')
     if (!providers.length) {
-      setFormError('Izaberite bar jedan model')
+      setFormError(tr('Izaberite bar jedan model'))
       return
     }
     if (!prompt.trim()) {
@@ -142,8 +143,8 @@ export function BenchmarkPage() {
         <p className="kicker">Razvoj</p>
         <h1 className="mt-1 text-xl font-semibold sm:text-2xl">AI Model Benchmark</h1>
         <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-          Interni alat za upoređivanje Gemini 3.8 Flash i GPT-5 na istom ulazu. Nema automatskog
-          pobednika — rezultate ocenjujete ručno.
+          {tr('Interni alat za upoređivanje Gemini 3.8 Flash i GPT-5 na istom ulazu. Nema automatskog')}
+          {tr('pobednika — rezultate ocenjujete ručno.')}
         </p>
       </div>
 
@@ -152,14 +153,14 @@ export function BenchmarkPage() {
           <CardContent className="pt-6 text-sm text-destructive">
             {configQuery.error instanceof ApiError
               ? configQuery.error.message
-              : 'Učitavanje konfiguracije nije uspelo'}
+              : tr('Učitavanje konfiguracije nije uspelo')}
           </CardContent>
         </Card>
       ) : null}
 
       <Card>
         <CardHeader>
-          <CardTitle>Unapred definisani testovi</CardTitle>
+          <CardTitle>{tr('Unapred definisani testovi')}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           {(config?.test_cases ?? []).map((item) => (
@@ -206,7 +207,7 @@ export function BenchmarkPage() {
                   id="bench-photo"
                   value={photoId}
                   onChange={(e) => setPhotoId(e.target.value)}
-                  placeholder="UUID postojeće fotografije"
+                  placeholder={tr("UUID postojeće fotografije")}
                 />
               </div>
             </div>
@@ -390,7 +391,7 @@ function ResultCard({ result }: { result: ProviderResult }) {
         ) : (
           <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-destructive">
             <p className="font-medium">{result.error_code || 'error'}</p>
-            <p className="mt-1">{result.error_message || 'Nepoznata greška'}</p>
+            <p className="mt-1">{result.error_message || tr('Nepoznata greška')}</p>
           </div>
         )}
 

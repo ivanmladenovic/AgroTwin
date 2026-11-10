@@ -17,10 +17,36 @@ from app.models.user import User
 from app.models.analysis import DiseaseAnalysis
 from app.models.harvest import HarvestEvent
 from app.models.soil import SoilProfileSnapshot
-from app.models.soil_lab import SoilLabAnalysis
+from app.models.soil_lab import SoilLabAnalysis, SoilLabResult
 from app.models.subsidy import Subsidy
 from app.models.schedule import OrchardSeason, TaskSchedule
+from app.models.planning import ExpertReview, PlanningPlan, PlanningPlanItem, PlanningSeason
+from app.models.planting import PlantingBatch
 from app.models.weather import WeatherForecastCache
+from app.models.satellite import SatelliteAnomaly, SatelliteObservation, SatelliteZoneMetric
+from app.models.intelligence import (
+    ParcelAlert,
+    ParcelAnalysisEvent,
+    ParcelAnalysisRun,
+    UserNotification,
+)
+from app.models.workforce import WorkTask, WorkTaskType, Worker
+from app.models.passport import HarvestLot, HarvestLotSequence, PassportSnapshot
+from app.models.compliance import ComplianceReportDefinition, ComplianceReportRun
+from app.models.enterprise import (
+    EnterpriseAlertReview,
+    EnterpriseAuditEvent,
+    EnterpriseFollowUp,
+    EnterpriseMembership,
+    EnterpriseOrganization,
+    EnterpriseParcelAssignment,
+    EnterprisePlanningSeason,
+    EnterprisePurchase,
+    EnterpriseSupplierLink,
+    EnterpriseSupplierPrice,
+    EnterpriseYieldPlan,
+    EnterpriseYieldPlanItem,
+)
 import app.models.activity as activity_module
 import app.models.ai as ai_module
 import app.models.cost as cost_module
@@ -66,6 +92,7 @@ __all__ = [
     "DiseaseCase",
     "DiseaseObservation",
     "Document",
+    "ExpertReview",
     "Farm",
     "HarvestEvent",
     "Invoice",
@@ -76,12 +103,42 @@ __all__ = [
     "OrchardSeason",
     "Parcel",
     "Photo",
+    "PlanningPlan",
+    "PlanningPlanItem",
+    "PlanningSeason",
+    "PlantingBatch",
     "Row",
     "SoilLabAnalysis",
+    "SoilLabResult",
     "SoilProfileSnapshot",
     "Subsidy",
+    "SatelliteAnomaly",
+    "SatelliteObservation",
+    "SatelliteZoneMetric",
+    "ParcelAlert",
+    "ParcelAnalysisEvent",
+    "ParcelAnalysisRun",
+    "UserNotification",
     "TaskSchedule",
     "Tree",
     "User",
     "WeatherForecastCache",
+    "WorkTaskType",
+    "Worker",
+    "WorkTask",
+    "HarvestLot",
+    "HarvestLotSequence",
+    "PassportSnapshot",
+    "ComplianceReportDefinition",
+    "ComplianceReportRun",
+    "EnterpriseOrganization",
+    "EnterpriseMembership",
+    "EnterpriseSupplierLink",
+    "EnterpriseParcelAssignment",
+    "EnterprisePlanningSeason",
+    "EnterpriseYieldPlan",
+    "EnterpriseYieldPlanItem",
+    "EnterpriseAuditEvent",
+    "EnterpriseAlertReview",
+    "EnterpriseFollowUp",
 ]

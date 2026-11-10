@@ -14,6 +14,7 @@ ACTIVITY_TYPES: list[tuple[str, str, str]] = [
     ("harvesting", "Berba", "Sakupljanje plodova i radovi u berbi."),
     ("maintenance", "Održavanje", "Infrastruktura ili održavanje voćnjaka."),
     ("inspection", "Pregled", "Terenski pregled bez tretmana."),
+    ("observation", "Zapažanje", "Zapažanje ili problem u voćnjaku (može biti bez dijagnoze)."),
     ("disease_treatment", "Tretman bolesti", "Tretman zabeleženog zdravstvenog problema."),
     ("tree_removal", "Uklanjanje stabla", "Uklanjanje uginulog ili neproduktivnog stabla."),
     ("tree_replacement", "Zamena stabla", "Zamena uklonjenog stabla."),
@@ -34,4 +35,16 @@ COST_CATEGORIES: list[tuple[str, str, str]] = [
     ("harvesting", "Berba", "Materijal i usluge vezani za berbu."),
     ("transport", "Prevoz", "Transport i prevoz."),
     ("other", "Ostalo", "Nerazvrstani trošak voćnjaka."),
+]
+
+# Seed/upsert source for workforce task types (DB-backed, not hardcoded in UI).
+WORK_TASK_TYPES: list[tuple[str, str, str]] = [
+    ("pruning", "Rezidba", "Rezidba krošnje ili izdanaka."),
+    ("mowing", "Košenje", "Košenje trave i pokrovnih biljaka."),
+    ("fertilization", "Đubrenje", "Unošenje hraniva."),
+    ("plant_protection", "Zaštita bilja", "Prskanje i zaštita bilja."),
+    ("irrigation", "Navodnjavanje", "Radovi na navodnjavanju."),
+    ("harvesting", "Berba", "Sakupljanje plodova."),
+    ("maintenance", "Održavanje", "Održavanje infrastrukture voćnjaka."),
+    ("other", "Ostalo", "Ostali radovi na farmi."),
 ]

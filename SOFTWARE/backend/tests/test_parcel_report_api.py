@@ -96,10 +96,12 @@ class ParcelReportApiTests(TestCase):
         report = self._report(2026)
         health = report["health_summary"]
         counted = health["healthy"] + health["monitoring"] + health["issue"] + health["unknown"]
-        self.assertEqual(counted, health["total_trees"])
+        # Health statuses cover live (active) trees only — not replaced/removed.
+        self.assertEqual(counted, health["active_trees"])
         self.assertEqual(health["attention_count"], health["issue"] + health["monitoring"])
         self.assertGreaterEqual(health["total_trees"], 1800)
         self.assertEqual(health["active_trees"] + health["removed"] + health["replaced"], health["total_trees"])
+        self.assertLessEqual(health["healthy"], health["active_trees"])
 
     def test_problem_aggregation_and_rows(self) -> None:
         report = self._report(2026)

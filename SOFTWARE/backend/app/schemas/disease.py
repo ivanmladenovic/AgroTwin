@@ -74,6 +74,7 @@ class DiseaseCaseRead(IDSchema):
     detected_on: date
     resolved_on: date | None
     notes: str | None
+    activity_id: UUID | None = None
     created_by_id: UUID | None
     parcel_name: str | None = None
     row_number: int | None = None

@@ -9,6 +9,7 @@ import { formatDate, formatMoney, rowLabel, scopeLabel } from '@/shared/lib/form
 import { BackButton } from '@/shared/ui/back-button'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
+import { tr } from '@/shared/i18n/i18n'
 
 export function TreeJournalPage() {
   const { parcelId, treeId } = useParams()
@@ -21,10 +22,10 @@ export function TreeJournalPage() {
   const tree = journal?.tree
 
   if (journalQuery.isLoading) {
-    return <div className="p-6 text-sm text-muted-foreground">Učitavanje dnevnika stabla…</div>
+    return <div className="p-6 text-sm text-muted-foreground">{tr('Učitavanje dnevnika stabla…')}</div>
   }
   if (!journal || !tree || !parcelId) {
-    return <div className="p-6 text-sm text-danger">Stablo nije pronađeno.</div>
+    return <div className="p-6 text-sm text-danger">{tr('Stablo nije pronađeno.')}</div>
   }
 
   const mapHref = `/orchard/${parcelId}?tree=${tree.id}`
@@ -38,7 +39,7 @@ export function TreeJournalPage() {
     <div className="w-full space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="kicker">Dnevnik stabla</p>
+          <p className="kicker">{tr('Dnevnik stabla')}</p>
           <h1 className="mt-1 font-mono text-xl sm:text-2xl">{tree.public_id}</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {rowLabel(tree.row_number)} · pozicija {tree.position_in_row}
@@ -46,48 +47,48 @@ export function TreeJournalPage() {
         </div>
         <div className="flex gap-2">
           <Link to={reportProblemTo}>
-            <Button size="sm">+ Prijavi problem</Button>
+            <Button size="sm">{tr('+ Prijavi problem')}</Button>
           </Link>
           <Link to={addActivityTo}>
             <Button variant="outline" size="sm">
               + Dodaj aktivnost
             </Button>
           </Link>
-          <BackButton fallback={mapHref}>Nazad na mapu</BackButton>
+          <BackButton fallback={mapHref}>{tr('Nazad na mapu')}</BackButton>
         </div>
       </div>
 
       <section className="grid gap-4 md:grid-cols-4">
         <Fact label="Sorta" value={tree.variety ?? '—'} />
-        <Fact label="Godina sadnje" value={tree.planting_year ? String(tree.planting_year) : '—'} />
+        <Fact label={tr('Godina sadnje')} value={tree.planting_year ? String(tree.planting_year) : '—'} />
         <Fact label="Stanje" value={statusLabel(tree.status)} />
-        <Fact label="Zdravlje" value={healthLabel(tree.health_status)} />
+        <Fact label={tr("Zdravlje")} value={healthLabel(tree.health_status)} />
       </section>
 
       <p className="text-sm text-muted-foreground">
-        Status zdravlja se izvodi iz otvorenih opažanja. Zapisi ovde nisu potvrđena dijagnoza.
+        {tr('Status zdravlja se izvodi iz otvorenih opažanja. Zapisi ovde nisu potvrđena dijagnoza.')}
       </p>
 
       <section className="grid gap-4 md:grid-cols-2">
         <Fact
-          label="Direktni trošak stabla"
+          label={tr("Direktni trošak stabla")}
           value={formatMoney(journal.direct_cost_total, journal.currency)}
-          hint="Troškovi evidentirani samo na ovom stablu"
+          hint={tr('Troškovi evidentirani samo na ovom stablu')}
         />
         <Fact
-          label="Povezani troškovi voćnjaka"
+          label={tr("Povezani troškovi voćnjaka")}
           value={formatMoney(journal.orchard_cost_total, journal.currency)}
-          hint="Aktivnosti reda i parcele još nisu raspoređene na ovo stablo"
+          hint={tr('Aktivnosti reda i parcele još nisu raspoređene na ovo stablo')}
         />
       </section>
 
       <Card>
         <CardHeader>
-          <CardTitle>Otvoreni slučajevi</CardTitle>
+          <CardTitle>{tr("Otvoreni slučajevi")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {journal.open_cases.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nema otvorenih opažanja za ovo stablo.</p>
+            <p className="text-sm text-muted-foreground">{tr('Nema otvorenih opažanja za ovo stablo.')}</p>
           ) : (
             journal.open_cases.map((item) => (
               <Link
@@ -112,7 +113,7 @@ export function TreeJournalPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {journal.timeline.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Još nema događaja za ovo stablo.</p>
+            <p className="text-sm text-muted-foreground">{tr('Još nema događaja za ovo stablo.')}</p>
           ) : (
             journal.timeline.map((event) => {
               const href =
@@ -152,11 +153,11 @@ export function TreeJournalPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Najnovija opažanja</CardTitle>
+            <CardTitle>{tr('Najnovija opažanja')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {latestObservations.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Još nema zabeleženih opažanja.</p>
+              <p className="text-sm text-muted-foreground">{tr('Još nema zabeleženih opažanja.')}</p>
             ) : (
               latestObservations.map((observation) => (
                 <Link
@@ -165,7 +166,7 @@ export function TreeJournalPage() {
                   className="block text-sm hover:underline"
                 >
                   <p className="font-mono text-xs text-muted-foreground">{formatDate(observation.observed_on)}</p>
-                  <p className="mt-1">{observation.symptoms || observation.notes || 'Opažanje'}</p>
+                  <p className="mt-1">{observation.symptoms || observation.notes || tr('Opažanje')}</p>
                 </Link>
               ))
             )}
@@ -173,7 +174,7 @@ export function TreeJournalPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Najnovije fotografije</CardTitle>
+            <CardTitle>{tr('Najnovije fotografije')}</CardTitle>
           </CardHeader>
           <CardContent>
             <PhotoGallery photos={journal.photos.slice(0, 6)} />
@@ -181,11 +182,11 @@ export function TreeJournalPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Aktivnosti</CardTitle>
+            <CardTitle>{tr("Aktivnosti")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {journal.activities.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Još nema aktivnosti na nivou stabla.</p>
+              <p className="text-sm text-muted-foreground">{tr('Još nema aktivnosti na nivou stabla.')}</p>
             ) : (
               journal.activities.map((activity) => (
                 <Link
@@ -204,11 +205,11 @@ export function TreeJournalPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Svi zabeleženi slučajevi</CardTitle>
+            <CardTitle>{tr('Svi zabeleženi slučajevi')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {journal.diseases.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nema zabeleženih slučajeva.</p>
+              <p className="text-sm text-muted-foreground">{tr('Nema zabeleženih slučajeva.')}</p>
             ) : (
               journal.diseases.map((item) => (
                 <Link
@@ -227,11 +228,11 @@ export function TreeJournalPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Troškovi</CardTitle>
+            <CardTitle>{tr("Troškovi")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {journal.costs.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Još nema direktnih troškova stabla.</p>
+              <p className="text-sm text-muted-foreground">{tr('Još nema direktnih troškova stabla.')}</p>
             ) : (
               journal.costs.map((cost) => (
                 <div key={cost.id} className="flex items-center justify-between text-sm">
@@ -244,8 +245,13 @@ export function TreeJournalPage() {
             )}
             {journal.related_costs.length > 0 ? (
               <p className="pt-2 text-xs text-muted-foreground">
-                Povezani troškovi voćnjaka ({scopeLabel('parcel')} / red) ukupno{' '}
-                {formatMoney(journal.orchard_cost_total, journal.currency)} i nisu raspoređeni na ovo stablo.
+                {tr(
+                  'Povezani troškovi voćnjaka ({{scope}} / red) ukupno {{amount}} i nisu raspoređeni na ovo stablo.',
+                  {
+                    scope: scopeLabel('parcel'),
+                    amount: formatMoney(journal.orchard_cost_total, journal.currency),
+                  },
+                )}
               </p>
             ) : null}
           </CardContent>

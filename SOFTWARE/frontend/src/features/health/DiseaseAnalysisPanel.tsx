@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 import { Textarea } from '@/shared/ui/textarea'
+import { tr } from '@/shared/i18n/i18n'
 
 export function DiseaseAnalysisPanel({ caseId, photos }: { caseId: string; photos: PhotoRecord[] }) {
   const queryClient = useQueryClient()
@@ -32,18 +33,18 @@ export function DiseaseAnalysisPanel({ caseId, photos }: { caseId: string; photo
   return (
     <Card>
       <CardHeader>
-        <CardTitle>AI čitanje</CardTitle>
+        <CardTitle>{tr('AI čitanje')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Pomoćnik može da komentariše fotografiju na osnovu istorije stabla i priručnika. Neće potvrditi dijagnozu niti
+          {tr('Pomoćnik može da komentariše fotografiju na osnovu istorije stabla i priručnika. Neće potvrditi dijagnozu niti')}
           izmisliti nazive proizvoda.
         </p>
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1.5">
-            <Label>Fotografija</Label>
+            <Label>{tr('Fotografija')}</Label>
             <Select value={photoId} onChange={(event) => setPhotoId(event.target.value)}>
-              <option value="">Koristi poslednju fotografiju stabla</option>
+              <option value="">{tr('Koristi poslednju fotografiju stabla')}</option>
               {photos.map((photo) => (
                 <option key={photo.id} value={photo.id}>
                   {photo.caption || photo.original_filename}
@@ -52,30 +53,30 @@ export function DiseaseAnalysisPanel({ caseId, photos }: { caseId: string; photo
             </Select>
           </div>
           <div className="space-y-1.5 md:col-span-2">
-            <Label>Dodatne beleške za pomoćnika</Label>
+            <Label>{tr('Dodatne beleške za pomoćnika')}</Label>
             <Textarea rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} />
           </div>
         </div>
         <Button type="button" size="sm" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
-          {mutation.isPending ? 'Čitanje fotografije…' : 'Zatraži AI analizu'}
+          {mutation.isPending ? tr('Čitanje fotografije…') : tr('Zatraži AI analizu')}
         </Button>
         {mutation.isError ? (
           <p className="text-sm text-danger">
-            {mutation.error instanceof Error ? mutation.error.message : 'Analiza nije uspela'}
+            {mutation.error instanceof Error ? mutation.error.message : tr('Analiza nije uspela')}
           </p>
         ) : null}
         {latest ? (
           <div className="space-y-3 border border-border bg-muted/30 p-4 text-sm">
-            <p className="text-xs uppercase tracking-wide text-muted-foreground">Mogući problem — nije potvrđeno</p>
+            <p className="text-xs uppercase tracking-wide text-muted-foreground">{tr('Mogući problem — nije potvrđeno')}</p>
             <p className="text-lg font-medium">{latest.likely_issue}</p>
             <p className="text-muted-foreground">Pouzdanost {Math.round(latest.confidence * 100)}%</p>
             <section>
-              <p className="font-medium">Uočene činjenice</p>
+              <p className="font-medium">{tr('Uočene činjenice')}</p>
               <p className="mt-1 text-muted-foreground">{latest.observed_facts}</p>
             </section>
             {latest.observed_symptoms.length > 0 ? (
               <section>
-                <p className="font-medium">Zabeleženi simptomi</p>
+                <p className="font-medium">{tr('Zabeleženi simptomi')}</p>
                 <ul className="mt-1 list-disc pl-5 text-muted-foreground">
                   {latest.observed_symptoms.map((item) => (
                     <li key={item}>{item}</li>
@@ -88,15 +89,15 @@ export function DiseaseAnalysisPanel({ caseId, photos }: { caseId: string; photo
               <p className="mt-1 text-muted-foreground">{latest.uncertainty_notes}</p>
             </section>
             <section>
-              <p className="font-medium">Druge mogućnosti</p>
+              <p className="font-medium">{tr('Druge mogućnosti')}</p>
               <p className="mt-1 text-muted-foreground">{latest.possible_alternatives.join(' · ') || '—'}</p>
             </section>
             <section>
-              <p className="font-medium">Preporučeni pregled</p>
+              <p className="font-medium">{tr('Preporučeni pregled')}</p>
               <p className="mt-1">{latest.recommended_inspection}</p>
             </section>
             <section>
-              <p className="font-medium">Sledeći korak</p>
+              <p className="font-medium">{tr('Sledeći korak')}</p>
               <p className="mt-1">{latest.recommended_next_step}</p>
             </section>
             {latest.supporting_sources.length > 0 ? (
@@ -112,7 +113,7 @@ export function DiseaseAnalysisPanel({ caseId, photos }: { caseId: string; photo
                 </ul>
               </section>
             ) : (
-              <p className="text-muted-foreground">Nijedan odlomak iz priručnika nije bio dovoljno jak za citiranje.</p>
+              <p className="text-muted-foreground">{tr('Nijedan odlomak iz priručnika nije bio dovoljno jak za citiranje.')}</p>
             )}
             <p className="text-xs text-muted-foreground">{latest.disclaimer}</p>
           </div>

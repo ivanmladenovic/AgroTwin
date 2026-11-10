@@ -1,3 +1,4 @@
+import { tr } from '@/shared/i18n/i18n'
 export function dateKey(year: number, month: number, day: number) {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
@@ -63,7 +64,7 @@ export function monthBounds(year: number, month: number) {
   }
 }
 
-export const WEEKDAYS = ['P', 'U', 'S', 'Č', 'P', 'S', 'N']
+export const WEEKDAYS = ['P', 'U', 'S', tr('Č'), 'P', 'S', 'N']
 
 export type CalendarCell = {
   key: string

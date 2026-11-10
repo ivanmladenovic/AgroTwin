@@ -1,37 +1,44 @@
 import type { DiseaseCategory, DiseaseSeverity, DiseaseStatus } from '@/shared/api/types'
+import { tr } from '@/shared/i18n/i18n'
 
-export const diseaseCategories: Array<{ value: DiseaseCategory; label: string }> = [
-  { value: 'disease', label: 'Bolest' },
-  { value: 'pest', label: 'Štetočina' },
-  { value: 'nutrient_deficiency', label: 'Nedostatak hraniva' },
-  { value: 'water_stress', label: 'Vodni stres' },
-  { value: 'physical_damage', label: 'Fizičko oštećenje' },
-  { value: 'unknown', label: 'Nepoznato' },
-  { value: 'other', label: 'Drugo' },
-]
+export function diseaseCategories(): Array<{ value: DiseaseCategory; label: string }> {
+  return [
+    { value: 'disease', label: tr('Bolest') },
+    { value: 'pest', label: tr('Štetočina') },
+    { value: 'nutrient_deficiency', label: tr('Nedostatak hraniva') },
+    { value: 'water_stress', label: tr('Vodni stres') },
+    { value: 'physical_damage', label: tr('Fizičko oštećenje') },
+    { value: 'unknown', label: tr('Nepoznato') },
+    { value: 'other', label: tr('Drugo') },
+  ]
+}
 
-export const diseaseStatuses: Array<{ value: DiseaseStatus; label: string }> = [
-  { value: 'open', label: 'Otvoreno' },
-  { value: 'monitoring', label: 'Praćenje' },
-  { value: 'resolved', label: 'Rešeno' },
-  { value: 'unknown', label: 'Nepoznato' },
-]
+export function diseaseStatuses(): Array<{ value: DiseaseStatus; label: string }> {
+  return [
+    { value: 'open', label: tr('Otvoreno') },
+    { value: 'monitoring', label: tr('Praćenje') },
+    { value: 'resolved', label: tr('Rešeno') },
+    { value: 'unknown', label: tr('Nepoznato') },
+  ]
+}
 
-export const diseaseSeverities: Array<{ value: DiseaseSeverity; label: string }> = [
-  { value: 'low', label: 'Nisko' },
-  { value: 'medium', label: 'Srednje' },
-  { value: 'high', label: 'Visoko' },
-  { value: 'critical', label: 'Kritično' },
-]
+export function diseaseSeverities(): Array<{ value: DiseaseSeverity; label: string }> {
+  return [
+    { value: 'low', label: tr('Nisko') },
+    { value: 'medium', label: tr('Srednje') },
+    { value: 'high', label: tr('Visoko') },
+    { value: 'critical', label: tr('Kritično') },
+  ]
+}
 
 export function categoryLabel(value: string) {
-  return diseaseCategories.find((item) => item.value === value)?.label ?? value
+  return diseaseCategories().find((item) => item.value === value)?.label ?? value
 }
 
 export function statusLabel(value: string) {
-  return diseaseStatuses.find((item) => item.value === value)?.label ?? value
+  return diseaseStatuses().find((item) => item.value === value)?.label ?? value
 }
 
 export function severityLabel(value: string) {
-  return diseaseSeverities.find((item) => item.value === value)?.label ?? value
+  return diseaseSeverities().find((item) => item.value === value)?.label ?? value
 }

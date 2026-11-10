@@ -2,6 +2,7 @@ import type { ParcelVariety } from '@/shared/api/types'
 import { cn } from '@/shared/lib/utils'
 import { formatNumber, rowLabel } from '@/shared/lib/format'
 import { varietyColorMap } from '@/features/orchard/varieties'
+import { tr } from '@/shared/i18n/i18n'
 
 export type PlantingPlan = {
   rowVarieties: string[]
@@ -70,10 +71,10 @@ export function PlantingLayoutEditor({
         ))}
       </div>
       <p className="text-sm text-muted-foreground">
-        Izaberite sortu, zatim kliknite broj reda da obojite red. Klik na sadnicu ostavlja prazno mesto.
+        {tr('Izaberite sortu, zatim kliknite broj reda da obojite red. Klik na sadnicu ostavlja prazno mesto.')}
       </p>
       <p className="font-mono text-xs text-muted-foreground">
-        Ostaje {formatNumber(planted)} od {formatNumber(totalSlots)} sadnica
+        {tr('Ostaje {{planted}} od {{total}} sadnica', { planted: formatNumber(planted), total: formatNumber(totalSlots) })}
       </p>
       <div className="max-h-[32rem] overflow-auto border border-border bg-[var(--color-map-soil)] p-3">
         <div className="min-w-max space-y-0">
@@ -104,8 +105,12 @@ export function PlantingLayoutEditor({
                         tabIndex={0}
                         aria-label={
                           missing
-                            ? `Praznina na redu ${rowNumber}, pozicija ${position}`
-                            : `${variety} na redu ${rowNumber}, pozicija ${position}`
+                            ? tr('Praznina na redu {{row}}, pozicija {{position}}', { row: rowNumber, position })
+                            : tr('{{variety}} na redu {{row}}, pozicija {{position}}', {
+                                variety,
+                                row: rowNumber,
+                                position,
+                              })
                         }
                         fill={missing ? 'transparent' : color}
                         stroke={missing ? '#7a7468' : color}

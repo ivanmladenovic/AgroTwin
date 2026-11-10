@@ -1,4 +1,5 @@
 import { apiRequest, apiUpload } from '@/shared/lib/api'
+import { tr } from '@/shared/i18n/i18n'
 import type {
   DiseaseCase,
   DiseaseCaseCreatePayload,
@@ -44,6 +45,10 @@ export function updateDiseaseCase(caseId: string, payload: DiseaseCaseUpdatePayl
   })
 }
 
+export function resolveDiseaseCase(caseId: string) {
+  return updateDiseaseCase(caseId, { status: 'resolved' })
+}
+
 export function addObservation(caseId: string, payload: ObservationCreatePayload) {
   return apiRequest<Observation>(`/disease-cases/${caseId}/observations`, {
     method: 'POST',
@@ -70,7 +75,7 @@ export async function saveReportedProblem(values: ReportProblemParsed, files: Fi
     description: values.description || null,
     severity: values.severity,
     notes: values.notes || null,
-    symptoms: values.symptoms || (files.length ? 'Uz prijavu je priložena fotografija.' : null),
+    symptoms: values.symptoms || (files.length ? tr('Uz prijavu je priložena fotografija.') : null),
   })
   const observationId = created.observations[0]?.id
   if (observationId) {

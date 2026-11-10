@@ -19,6 +19,30 @@ INSUFFICIENT_EVIDENCE_MESSAGE = (
     "Preporučujem da se proveri sa stručnim agronomom."
 )
 OUT_OF_SCOPE_MESSAGE = "To nije informacija koja se nalazi u dostupnoj AgroTwin bazi znanja."
+
+INSUFFICIENT_EVIDENCE_MESSAGE_EN = (
+    "Based on the available Agriser manuals I cannot reliably determine the answer. "
+    "I recommend checking with a qualified agronomist."
+)
+OUT_OF_SCOPE_MESSAGE_EN = "That information is not in the available AgroTwin knowledge base."
+PRODUCT_GUESS_MESSAGE_EN = (
+    "I did not find sufficiently reliable information for this recommendation in the available Agriser manuals. "
+    "I recommend checking with a qualified agronomist."
+)
+
+
+def insufficient_evidence_message(locale: str = "sr") -> str:
+    return INSUFFICIENT_EVIDENCE_MESSAGE_EN if locale == "en" else INSUFFICIENT_EVIDENCE_MESSAGE
+
+
+def out_of_scope_message(locale: str = "sr") -> str:
+    return OUT_OF_SCOPE_MESSAGE_EN if locale == "en" else OUT_OF_SCOPE_MESSAGE
+
+
+def product_guess_message(locale: str = "sr") -> str:
+    return PRODUCT_GUESS_MESSAGE_EN if locale == "en" else PRODUCT_GUESS_MESSAGE
+
+
 PRODUCT_GUESS_MESSAGE = (
     "U dostupnim Agriser priručnicima nisam pronašao dovoljno pouzdanu informaciju za ovu preporuku. "
     "Preporučujem da se proveri sa stručnim agronomom."

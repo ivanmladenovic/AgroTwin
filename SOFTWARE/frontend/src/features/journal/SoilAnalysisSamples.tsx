@@ -9,6 +9,7 @@ import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
+import { tr } from '@/shared/i18n/i18n'
 
 export type SoilSampleDraft = {
   key: string
@@ -29,9 +30,9 @@ export function emptySoilSample(sampledOn: string): SoilSampleDraft {
 }
 
 export function soilSamplesError(samples: SoilSampleDraft[]) {
-  if (samples.length === 0) return 'Dodajte bar jedan uzorak'
+  if (samples.length === 0) return tr('Dodajte bar jedan uzorak')
   if (samples.some((sample) => !sample.file || !sample.sampled_on || !sample.tree_id)) {
-    return 'Svaki uzorak treba PDF/fotografiju, datum i najbližu sadnicu'
+    return tr('Svaki uzorak treba PDF/fotografiju, datum i najbližu sadnicu')
   }
   return null
 }
@@ -68,15 +69,14 @@ export function SoilAnalysisSamples({
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <Label>Uzorci analize</Label>
+          <Label>{tr('Uzorci analize')}</Label>
           <p className="mt-1 text-xs text-muted-foreground">
-            Za svaki uzorak dodajte PDF ili fotografiju, datum uzorkovanja i najbližu sadnicu.
-            Veliki PDF (npr. sken) se automatski kompresuje pri otpremi.
+            {tr('Za svaki uzorak dodajte PDF ili fotografiju, datum uzorkovanja i najbližu sadnicu. Veliki PDF (npr. sken) se automatski kompresuje pri otpremi.')}
           </p>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={() => onChange([...samples, emptySoilSample(samples[0]?.sampled_on || '')])}>
           <Plus className="h-4 w-4" />
-          Dodaj uzorak
+          {tr('Dodaj uzorak')}
         </Button>
       </div>
       {samples.map((sample, index) => {
@@ -85,13 +85,13 @@ export function SoilAnalysisSamples({
         return (
           <div key={sample.key} className="space-y-3 rounded-xl border border-border p-3">
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-medium">Uzorak {index + 1}</p>
+              <p className="text-sm font-medium">{tr('Uzorak {{index}}', { index: index + 1 })}</p>
               {samples.length > 1 ? (
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  aria-label="Ukloni uzorak"
+                  aria-label={tr('Ukloni uzorak')}
                   onClick={() => onChange(samples.filter((item) => item.key !== sample.key))}
                 >
                   <X className="h-4 w-4" />
@@ -100,10 +100,10 @@ export function SoilAnalysisSamples({
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <p className="text-[11px] font-medium text-muted-foreground">PDF ili fotografija</p>
+                <p className="text-[11px] font-medium text-muted-foreground">{tr('PDF ili fotografija')}</p>
                 <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-border px-3 py-2 text-sm">
                   <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="truncate">{sample.file ? sample.file.name : 'Izaberite datoteku'}</span>
+                  <span className="truncate">{sample.file ? sample.file.name : tr('Izaberite datoteku')}</span>
                   <input
                     type="file"
                     accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
@@ -116,18 +116,18 @@ export function SoilAnalysisSamples({
                 </label>
               </div>
               <div className="space-y-1.5">
-                <p className="text-[11px] font-medium text-muted-foreground">Datum uzorkovanja</p>
+                <p className="text-[11px] font-medium text-muted-foreground">{tr('Datum uzorkovanja')}</p>
                 <Input type="date" value={sample.sampled_on} onChange={(event) => update(sample.key, { sampled_on: event.target.value })} />
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <p className="text-[11px] font-medium text-muted-foreground">Red</p>
+                <p className="text-[11px] font-medium text-muted-foreground">{tr("Red")}</p>
                 <Select
                   value={sample.row_id}
                   onChange={(event) => update(sample.key, { row_id: event.target.value, tree_id: '' })}
                 >
-                  <option value="">Izaberite red</option>
+                  <option value="">{tr('Izaberite red')}</option>
                   {rows.map((row) => (
                     <option key={row.id} value={row.id}>
                       {rowLabel(row.row_number)}
@@ -136,7 +136,7 @@ export function SoilAnalysisSamples({
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <p className="text-[11px] font-medium text-muted-foreground">Najbliža sadnica</p>
+                <p className="text-[11px] font-medium text-muted-foreground">{tr('Najbliža sadnica')}</p>
                 <div className="flex items-center gap-2">
                   <Select
                     className="min-w-0 flex-1"
@@ -146,7 +146,7 @@ export function SoilAnalysisSamples({
                       update(sample.key, { tree_id: event.target.value, row_id: tree?.row_id || sample.row_id })
                     }}
                   >
-                    <option value="">{sample.row_id ? 'Izaberite sadnicu' : 'Prvo izaberite red'}</option>
+                    <option value="">{sample.row_id ? tr('Izaberite sadnicu') : tr('Prvo izaberite red')}</option>
                     {rowTrees.map((tree) => (
                       <option key={tree.id} value={tree.id}>
                         {tree.public_id}
@@ -161,7 +161,7 @@ export function SoilAnalysisSamples({
                     onClick={() => setPickingKey(sample.key)}
                   >
                     <MapPinned className="h-4 w-4" />
-                    Mapa
+                    {tr('Mapa')}
                   </Button>
                 </div>
                 {selectedTree ? (

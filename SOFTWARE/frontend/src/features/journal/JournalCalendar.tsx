@@ -18,6 +18,7 @@ import { activityTarget, formatDate, formatMoney, formatWorkQuantities, scopeLab
 import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui/button'
 import { Select } from '@/shared/ui/select'
+import { tr } from '@/shared/i18n/i18n'
 
 const KIND_DOT: Record<CalendarKind, string> = {
   done: 'bg-ok',
@@ -169,12 +170,12 @@ export function JournalCalendar({
               onClick={() => scrollToMonth(shiftMonth(visible.year, visible.month, -1))}
               disabled={!canGoPrev}
               className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-              aria-label="Prethodni mesec"
+              aria-label={tr('Prethodni mesec')}
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <Select
-              aria-label="Mesec"
+              aria-label={tr('Mesec')}
               className="h-11 w-[9.5rem] bg-background lg:h-11"
               value={String(visible.month)}
               onChange={(event) => scrollToMonth({ year: visible.year, month: Number(event.target.value) })}
@@ -189,7 +190,7 @@ export function JournalCalendar({
               })}
             </Select>
             <Select
-              aria-label="Godina"
+              aria-label={tr('Godina')}
               className="h-11 w-[5.5rem] bg-background lg:h-11"
               value={String(visible.year)}
               onChange={(event) => scrollToMonth({ year: Number(event.target.value), month: visible.month })}
@@ -205,7 +206,7 @@ export function JournalCalendar({
               onClick={() => scrollToMonth(shiftMonth(visible.year, visible.month, 1))}
               disabled={!canGoNext}
               className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-              aria-label="Sledeći mesec"
+              aria-label={tr("Sledeći mesec")}
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -215,14 +216,14 @@ export function JournalCalendar({
                 onClick={() => scrollToMonth(now)}
                 className="h-11 rounded-lg border border-border px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
               >
-                Danas
+                {tr('Danas')}
               </button>
             ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            <Legend color={KIND_DOT.done} label={`Urađeno ${visibleCounts.done}`} />
-            <Legend color={KIND_DOT.planned} label={`Planirano ${visibleCounts.planned}`} />
-            <Legend color={KIND_DOT.overdue} label={`Kasni ${visibleCounts.overdue}`} />
+            <Legend color={KIND_DOT.done} label={tr('Urađeno {{count}}', { count: visibleCounts.done })} />
+            <Legend color={KIND_DOT.planned} label={tr('Planirano {{count}}', { count: visibleCounts.planned })} />
+            <Legend color={KIND_DOT.overdue} label={tr('Kasni {{count}}', { count: visibleCounts.overdue })} />
           </div>
         </div>
 
@@ -258,16 +259,18 @@ export function JournalCalendar({
           <>
             <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
               <div>
-                <p className="kicker">Dan</p>
+                <p className="kicker">{tr('Dan')}</p>
                 <h2 className="mt-1 text-lg font-semibold">{formatDate(selectedDay)}</h2>
               </div>
               <Link to={createPath(selectedDay, today, returnTo)}>
-                <Button size="sm">{selectedDay > today ? 'Planiraj za ovaj dan' : 'Dodaj za ovaj dan'}</Button>
+                <Button size="sm">
+                  {selectedDay > today ? tr('Planiraj za ovaj dan') : tr('Dodaj za ovaj dan')}
+                </Button>
               </Link>
             </div>
             {selected.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                Ništa nije zabeleženo. Unesite urađeni rad ili planirajte šta treba uraditi.
+                {tr('Ništa nije zabeleženo. Unesite urađeni rad ili planirajte šta treba uraditi.')}
               </p>
             ) : (
               <div className="min-h-0 space-y-2 overflow-y-auto">
@@ -278,7 +281,7 @@ export function JournalCalendar({
             )}
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">Izaberite dan u kalendaru.</p>
+          <p className="text-sm text-muted-foreground">{tr('Izaberite dan u kalendaru.')}</p>
         )}
       </section>
     </div>

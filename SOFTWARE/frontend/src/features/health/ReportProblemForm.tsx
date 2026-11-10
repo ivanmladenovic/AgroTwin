@@ -19,6 +19,7 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 import { Textarea } from '@/shared/ui/textarea'
+import { tr } from '@/shared/i18n/i18n'
 
 export function ReportProblemForm({
   variant = 'health',
@@ -98,7 +99,7 @@ export function ReportProblemForm({
   const mutation = useMutation({
     mutationFn: async ({ values, sendToAgronomist }: { values: ReportProblemParsed; sendToAgronomist: boolean }) => {
       if (sendToAgronomist && files.length === 0) {
-        throw new Error('Dodajte bar jednu fotografiju pre slanja agronomu.')
+        throw new Error(tr('Dodajte bar jednu fotografiju pre slanja agronomu.'))
       }
       const created = await saveReportedProblem(values, files)
       if (!sendToAgronomist) return { created, conversationId: null as string | null }
@@ -144,13 +145,13 @@ export function ReportProblemForm({
         mutation.mutate({ values, sendToAgronomist: false })
       })}
     >
-      <Field label="Naslov (opciono)">
-        <Input {...form.register('title')} placeholder="Ako ostane prazno, koristi se opis simptoma" />
+      <Field label={tr('Naslov (opciono)')}>
+        <Input {...form.register('title')} placeholder={tr('Ako ostane prazno, koristi se opis simptoma')} />
       </Field>
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Kategorija">
           <Select {...form.register('category')}>
-            {diseaseCategories.map((item) => (
+            {diseaseCategories().map((item) => (
               <option key={item.value} value={item.value}>
                 {item.label}
               </option>
@@ -159,7 +160,7 @@ export function ReportProblemForm({
         </Field>
         <Field label="Ozbiljnost">
           <Select {...form.register('severity')}>
-            {diseaseSeverities.map((item) => (
+            {diseaseSeverities().map((item) => (
               <option key={item.value} value={item.value}>
                 {item.label}
               </option>
@@ -168,19 +169,19 @@ export function ReportProblemForm({
         </Field>
         <Field label="Status">
           <Select {...form.register('status')}>
-            {diseaseStatuses.map((item) => (
+            {diseaseStatuses().map((item) => (
               <option key={item.value} value={item.value}>
                 {item.label}
               </option>
             ))}
           </Select>
         </Field>
-        <Field label="Datum uočavanja">
+        <Field label={tr("Datum uočavanja")}>
           <Input type="date" {...form.register('detected_on')} />
         </Field>
-        <Field label="Parcela" error={form.formState.errors.parcel_id?.message}>
+        <Field label={tr("Parcela")} error={form.formState.errors.parcel_id?.message}>
           <Select {...form.register('parcel_id')}>
-            <option value="">Izaberite parcelu</option>
+            <option value="">{tr('Izaberite parcelu')}</option>
             {(parcelsQuery.data ?? []).map((parcel) => (
               <option key={parcel.id} value={parcel.id}>
                 {parcel.name}
@@ -203,12 +204,12 @@ export function ReportProblemForm({
               }
             }}
           >
-            <option value="tree">Jedna sadnica</option>
-            <option value="trees">Više sadnica</option>
-            <option value="row">Ceo red</option>
+            <option value="tree">{tr('Jedna sadnica')}</option>
+            <option value="trees">{tr('Više sadnica')}</option>
+            <option value="row">{tr('Ceo red')}</option>
           </Select>
         </Field>
-        <Field label={scope === 'trees' ? 'Red (opciono)' : 'Red'} error={form.formState.errors.row_id?.message}>
+        <Field label={scope === 'trees' ? tr('Red (opciono)') : 'Red'} error={form.formState.errors.row_id?.message}>
           <Select
             {...form.register('row_id')}
             onChange={(event) => {
@@ -217,7 +218,7 @@ export function ReportProblemForm({
               form.setValue('tree_ids', [])
             }}
           >
-            <option value="">{scope === 'trees' ? 'Svi redovi' : 'Izaberite red'}</option>
+            <option value="">{scope === 'trees' ? tr('Svi redovi') : tr('Izaberite red')}</option>
             {(rowsQuery.data ?? []).map((row) => (
               <option key={row.id} value={row.id}>
                 {row.name ?? rowLabel(row.row_number)}
@@ -226,7 +227,7 @@ export function ReportProblemForm({
           </Select>
         </Field>
         {scope === 'tree' ? (
-          <Field label="Sadnica" error={form.formState.errors.tree_id?.message}>
+          <Field label={tr("Sadnica")} error={form.formState.errors.tree_id?.message}>
             <Select
               {...form.register('tree_id')}
               disabled={!rowId}
@@ -235,7 +236,7 @@ export function ReportProblemForm({
                 form.setValue('tree_ids', event.target.value ? [event.target.value] : [])
               }}
             >
-              <option value="">Izaberite sadnicu</option>
+              <option value="">{tr('Izaberite sadnicu')}</option>
               {(treesQuery.data ?? []).map((tree) => (
                 <option key={tree.id} value={tree.id}>
                   {tree.public_id}
@@ -245,46 +246,50 @@ export function ReportProblemForm({
           </Field>
         ) : null}
         <div className="md:col-span-2">
-          <Field label={scope === 'row' ? 'Red na mapi' : 'Sadnice na mapi'} error={form.formState.errors.tree_ids?.message}>
+          <Field label={scope === 'row' ? tr('Red na mapi') : tr('Sadnice na mapi')} error={form.formState.errors.tree_ids?.message}>
             <div className="space-y-2">
               <Button type="button" variant="outline" size="sm" disabled={!parcelId} onClick={() => setPickerOpen(true)}>
                 <MapPinned className="h-4 w-4" />
-                Označi na mapi
+                {tr('Označi na mapi')}
               </Button>
               <p className="text-xs text-muted-foreground">
                 {scope === 'row'
                   ? selectedRow
-                    ? `Izabran red: ${selectedRow.name ?? rowLabel(selectedRow.row_number)}`
-                    : 'Nijedan red nije izabran'
+                    ? tr('Izabran red: {{name}}', {
+                        name: selectedRow.name ?? rowLabel(selectedRow.row_number),
+                      })
+                    : tr('Nijedan red nije izabran')
                   : selectedTrees.length
-                    ? `Izabrano: ${selectedTrees.map((tree) => tree.public_id).join(', ')}`
-                    : 'Nijedna sadnica nije izabrana'}
+                    ? tr('Izabrano: {{trees}}', {
+                        trees: selectedTrees.map((tree) => tree.public_id).join(', '),
+                      })
+                    : tr('Nijedna sadnica nije izabrana')}
               </p>
             </div>
           </Field>
         </div>
       </div>
-      <Field label="Opišite simptome" error={form.formState.errors.symptoms?.message}>
+      <Field label={tr("Opišite simptome")} error={form.formState.errors.symptoms?.message}>
         <Textarea
           rows={4}
-          placeholder="Šta ste primetili na biljci, listu, plodu ili stablu…"
+          placeholder={tr("Šta ste primetili na biljci, listu, plodu ili stablu…")}
           {...form.register('symptoms')}
         />
       </Field>
-      <Field label="Fotografije">
+      <Field label={tr('Fotografije')}>
         <PhotoPicker
           files={files}
           onChange={setFiles}
           description={
             variant === 'agronomist'
-              ? 'Uslikajte simptom ili dodajte fotografije iz galerije. Za slanje agronomu potrebna je bar jedna fotografija.'
+              ? tr('Uslikajte simptom ili dodajte fotografije iz galerije. Za slanje agronomu potrebna je bar jedna fotografija.')
               : undefined
           }
         />
         {photoError ? <p className="text-xs text-danger">{photoError}</p> : null}
       </Field>
       {mutation.isError ? (
-        <p className="text-sm text-danger">{mutation.error instanceof Error ? mutation.error.message : 'Čuvanje nije uspelo'}</p>
+        <p className="text-sm text-danger">{mutation.error instanceof Error ? mutation.error.message : tr('Čuvanje nije uspelo')}</p>
       ) : null}
       <div className="flex flex-wrap gap-3">
         <Button
@@ -292,28 +297,28 @@ export function ReportProblemForm({
           variant={variant === 'agronomist' ? 'outline' : 'default'}
           disabled={mutation.isPending}
         >
-          {mutation.isPending && !mutation.variables?.sendToAgronomist ? 'Čuvanje…' : 'Sačuvaj opažanje'}
+          {mutation.isPending && !mutation.variables?.sendToAgronomist ? tr('Čuvanje…') : tr('Sačuvaj opažanje')}
         </Button>
         <Button
           type="button"
           disabled={mutation.isPending}
           onClick={() => {
             if (files.length === 0) {
-              setPhotoError('Uslikajte ili izaberite bar jednu fotografiju.')
+              setPhotoError(tr('Uslikajte ili izaberite bar jednu fotografiju.'))
               return
             }
             setPhotoError(null)
             void form.handleSubmit((values) => mutation.mutate({ values, sendToAgronomist: true }))()
           }}
         >
-          {mutation.isPending && mutation.variables?.sendToAgronomist ? 'Slanje agronomu…' : 'Pošalji agronomu'}
+          {mutation.isPending && mutation.variables?.sendToAgronomist ? tr('Slanje agronomu…') : tr('Pošalji agronomu')}
         </Button>
         {onCancel ? (
           <Button type="button" variant="ghost" disabled={mutation.isPending} onClick={onCancel}>
-            Otkaži
+            {tr('Otkaži')}
           </Button>
         ) : (
-          <BackLink fallback={returnTo}>Otkaži</BackLink>
+          <BackLink fallback={returnTo}>{tr('Otkaži')}</BackLink>
         )}
       </div>
       {pickerOpen && parcelId ? (
@@ -359,20 +364,22 @@ function formatProblemChatMessage(
 ) {
   const scopeLine =
     values.scope === 'row'
-      ? `Ceo red: ${options.rowName || 'red'}`
+      ? tr('Ceo red: {{name}}', { name: options.rowName || tr('red') })
       : options.treeLabels.length
-        ? `Sadnice: ${options.treeLabels.join(', ')}`
-        : 'Lokacija nije precizirana'
+        ? tr('Sadnice: {{trees}}', { trees: options.treeLabels.join(', ') })
+        : tr('Lokacija nije precizirana')
   return [
-    `Prijavljen je problem: ${values.title}.`,
-    `Parcela: ${options.parcelName || '-'}`,
+    tr('Prijavljen je problem: {{title}}.', { title: values.title }),
+    tr('Parcela: {{name}}', { name: options.parcelName || '-' }),
     scopeLine,
-    `Kategorija: ${categoryLabel(values.category)}`,
-    `Ozbiljnost: ${severityLabel(values.severity)}`,
-    `Datum: ${values.detected_on}`,
-    values.symptoms ? `Simptomi: ${values.symptoms}` : null,
-    options.photoCount ? `Priloženo fotografija: ${options.photoCount}.` : 'Nema priloženih fotografija.',
-    'Pregledajte opažanje i predložite sledeći korak. Ovo nije zahtev za potvrđenu dijagnozu.',
+    tr('Kategorija: {{category}}', { category: categoryLabel(values.category) }),
+    tr('Ozbiljnost: {{severity}}', { severity: severityLabel(values.severity) }),
+    tr('Datum: {{date}}', { date: values.detected_on }),
+    values.symptoms ? tr('Simptomi: {{symptoms}}', { symptoms: values.symptoms }) : null,
+    options.photoCount
+      ? tr('Priloženo fotografija: {{count}}.', { count: options.photoCount })
+      : tr('Nema priloženih fotografija.'),
+    tr('Pregledajte opažanje i predložite sledeći korak. Ovo nije zahtev za potvrđenu dijagnozu.'),
   ]
     .filter(Boolean)
     .join('\n')

@@ -72,6 +72,12 @@ class SubsidyApiTests(TestCase):
         self.assertEqual(_money(created["subsidy_percent"]), Decimal("45.0"))
         self.assertEqual(created["parcel_id"], self.parcel["id"])
         self.assertEqual(created["parcel_name"], self.parcel["name"])
+        self.assertIsNotNone(created.get("activity_id"))
+        activity = self.client.get(f"/api/v1/activities/{created['activity_id']}", headers=self.headers)
+        self.assertEqual(activity.status_code, 200, activity.text)
+        body = activity.json()
+        self.assertIsNotNone(body.get("subsidy"))
+        self.assertEqual(body["subsidy"]["id"], created["id"])
 
     def test_rejects_amount_greater_than_total(self) -> None:
         response = self.client.post(
@@ -102,7 +108,8 @@ class SubsidyApiTests(TestCase):
         self.assertEqual(filtered.status_code, 200, filtered.text)
         filtered_ids = {item["id"] for item in filtered.json()}
         self.assertIn(parcel_one["id"], filtered_ids)
-        self.assertNotIn(farm_wide["id"], filtered_ids)
+        # Farm-wide subsidies stay visible when a parcel filter is active.
+        self.assertIn(farm_wide["id"], filtered_ids)
 
     def test_cost_summary_includes_subsidy_total(self) -> None:
         before = self.client.get("/api/v1/costs/summary", headers=self.headers)

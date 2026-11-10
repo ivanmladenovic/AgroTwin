@@ -1,4 +1,5 @@
 import { heicTo, isHeic } from 'heic-to'
+import { tr } from '@/shared/i18n/i18n'
 
 const MAX_EDGE = 1600
 const JPEG_QUALITY = 0.72
@@ -43,7 +44,7 @@ export async function compressPhoto(file: File): Promise<File> {
     if (fromHeic) {
       throw error instanceof Error
         ? error
-        : new Error('HEIC fotografija nije mogla da se konvertuje. Probajte JPEG ili PNG.')
+        : new Error(tr('HEIC fotografija nije mogla da se konvertuje. Probajte JPEG ili PNG.'))
     }
     return file
   }
@@ -58,14 +59,14 @@ async function convertHeicToPng(file: File): Promise<File> {
     const converted = await heicTo({ blob: file, type: 'image/png' })
     const blob = Array.isArray(converted) ? converted[0] : converted
     if (!blob) {
-      throw new Error('HEIC fotografija nije mogla da se konvertuje.')
+      throw new Error(tr('HEIC fotografija nije mogla da se konvertuje.'))
     }
     return new File([blob], `${stem(file.name)}.png`, {
       type: 'image/png',
       lastModified: file.lastModified || Date.now(),
     })
   } catch {
-    throw new Error('HEIC fotografija nije mogla da se konvertuje. Probajte JPEG ili PNG.')
+    throw new Error(tr('HEIC fotografija nije mogla da se konvertuje. Probajte JPEG ili PNG.'))
   }
 }
 

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.models.activity import ActivityType
 from app.models.cost import CostCategory
+from app.models.workforce import WorkTaskType
 
 
 class CatalogRepository:
@@ -29,3 +30,12 @@ class CatalogRepository:
 
     def get_cost_category_by_slug(self, slug: str) -> CostCategory | None:
         return next((item for item in self.list_cost_categories() if item.slug == slug), None)
+
+    def list_work_task_types(self) -> list[WorkTaskType]:
+        stmt = select(WorkTaskType).order_by(WorkTaskType.sort_order, WorkTaskType.name)
+        return list(self.db.scalars(stmt).all())
+
+    def get_work_task_type_by_slug(self, slug: str) -> WorkTaskType | None:
+        stmt = select(WorkTaskType).where(WorkTaskType.slug == slug)
+        return self.db.scalars(stmt).first()
+

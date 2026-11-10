@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { tr } from '@/shared/i18n/i18n'
 
 export const activityLineItemSchema = z.object({
   name: z.string().optional(),
@@ -11,10 +12,10 @@ export const activityLineItemSchema = z.object({
 
 export const activityFormSchema = z
   .object({
-    activity_type_id: z.string().min(1, 'Izaberite tip aktivnosti'),
-    performed_on: z.string().min(1, 'Izaberite datum'),
+    activity_type_id: z.string().min(1, tr('Izaberite tip aktivnosti')),
+    performed_on: z.string().min(1, tr('Izaberite datum')),
     scope_type: z.enum(['parcel', 'row', 'tree']),
-    parcel_id: z.string().min(1, 'Parcela nije izabrana'),
+    parcel_id: z.string().min(1, tr('Parcela nije izabrana')),
     row_id: z.string().optional(),
     row_ids: z.array(z.string()),
     tree_id: z.string().optional(),
@@ -24,11 +25,11 @@ export const activityFormSchema = z
   })
   .superRefine((values, context) => {
     if (values.scope_type === 'row' && values.row_ids.length === 0) {
-      context.addIssue({ code: 'custom', path: ['row_ids'], message: 'Izaberite bar jedan red' })
+      context.addIssue({ code: 'custom', path: ['row_ids'], message: tr('Izaberite bar jedan red') })
     }
     if (values.scope_type === 'tree') {
-      if (!values.row_id) context.addIssue({ code: 'custom', path: ['row_id'], message: 'Izaberite red' })
-      if (!values.tree_id) context.addIssue({ code: 'custom', path: ['tree_id'], message: 'Izaberite stablo' })
+      if (!values.row_id) context.addIssue({ code: 'custom', path: ['row_id'], message: tr('Izaberite red') })
+      if (!values.tree_id) context.addIssue({ code: 'custom', path: ['tree_id'], message: tr('Izaberite stablo') })
     }
   })
 
@@ -36,9 +37,9 @@ export type ActivityFormValues = z.infer<typeof activityFormSchema>
 export type ActivityLineItemValues = z.infer<typeof activityLineItemSchema>
 
 export const costFormSchema = z.object({
-  description: z.string().min(1, 'Unesite opis'),
-  cost_category_id: z.string().min(1, 'Izaberite kategoriju'),
-  amount: z.string().min(1, 'Unesite iznos'),
+  description: z.string().min(1, tr('Unesite opis')),
+  cost_category_id: z.string().min(1, tr('Izaberite kategoriju')),
+  amount: z.string().min(1, tr('Unesite iznos')),
   currency: z.string().min(3).max(3),
   incurred_on: z.string().optional(),
   notes: z.string().optional(),

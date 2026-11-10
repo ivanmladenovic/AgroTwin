@@ -1,11 +1,12 @@
 from typing import Annotated
 
 import jwt
-from fastapi import Depends
+from fastapi import Depends, Header
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from app.core.exceptions import ForbiddenError, UnauthorizedError
+from app.core.locale import AppLocale, parse_request_locale
 from app.core.security import decode_access_token
 from app.db.session import get_db
 from app.models.user import User
@@ -38,5 +39,13 @@ def get_current_superuser(current_user: Annotated[User, Depends(get_current_user
     return current_user
 
 
+def get_request_locale(
+    x_locale: Annotated[str | None, Header(alias="X-Locale")] = None,
+    accept_language: Annotated[str | None, Header(alias="Accept-Language")] = None,
+) -> AppLocale:
+    return parse_request_locale(accept_language, x_locale)
+
+
 CurrentUser = Annotated[User, Depends(get_current_user)]
 CurrentSuperuser = Annotated[User, Depends(get_current_superuser)]
+RequestLocale = Annotated[AppLocale, Depends(get_request_locale)]

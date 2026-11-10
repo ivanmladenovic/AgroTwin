@@ -3,6 +3,7 @@ import { getDocument, GlobalWorkerOptions, type PDFDocumentProxy } from 'pdfjs-d
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 
 import { fetchKnowledgeDocumentBytes } from '@/features/knowledge/api'
+import { tr } from '@/shared/i18n/i18n'
 
 GlobalWorkerOptions.workerSrc = pdfWorker
 
@@ -46,7 +47,7 @@ export function KnowledgePdfScrollViewer({ documentId, title, page, className }:
         setPageCount(doc.numPages)
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'PDF nije učitan')
+          setError(err instanceof Error ? err.message : tr('PDF nije učitan'))
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -72,10 +73,10 @@ export function KnowledgePdfScrollViewer({ documentId, title, page, className }:
   }, [pdf, pageCount, startPage])
 
   if (loading) {
-    return <p className="p-6 text-sm text-muted-foreground">Učitavanje PDF-a…</p>
+    return <p className="p-6 text-sm text-muted-foreground">{tr('Učitavanje PDF-a…')}</p>
   }
   if (error || !pdf) {
-    return <p className="p-6 text-sm text-danger">{error || 'PDF nije učitan'}</p>
+    return <p className="p-6 text-sm text-danger">{error || tr('PDF nije učitan')}</p>
   }
 
   return (

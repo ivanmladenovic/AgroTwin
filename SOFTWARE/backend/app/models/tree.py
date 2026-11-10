@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -34,6 +34,8 @@ class Tree(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     position_in_row: Mapped[int] = mapped_column(Integer, nullable=False)
     planting_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     variety: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # None = inherit from row / parcel organic policy
+    is_organic: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     status: Mapped[TreeStatus] = mapped_column(
         pg_enum(TreeStatus, "tree_status"),
         default=TreeStatus.ACTIVE,

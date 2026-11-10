@@ -15,6 +15,10 @@ class RowRead(IDSchema):
     tree_count: int
     name: str | None
     variety: str | None = None
+    planting_year: int | None = None
+    is_organic: bool = False
+    geometry: dict | None = None
+    segment_count: int = 1
 
 
 class TreeMapRead(IDSchema):
@@ -28,8 +32,11 @@ class TreeMapRead(IDSchema):
     status: TreeStatus
     health_status: HealthStatus
     has_severe_case: bool = False
+    is_organic: bool | None = None
     normalized_x: Decimal
     normalized_y: Decimal
+    latitude: Decimal | None = None
+    longitude: Decimal | None = None
 
 
 class TreeDetailRead(TreeMapRead):

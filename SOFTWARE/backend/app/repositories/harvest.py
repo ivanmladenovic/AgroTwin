@@ -47,6 +47,12 @@ class HarvestRepository:
         stmt = self._owned(owner_id).where(HarvestEvent.id == harvest_id)
         return self.db.scalars(stmt).unique().first()
 
+    def list_by_activity_ids(self, activity_ids: list[UUID]) -> list[HarvestEvent]:
+        if not activity_ids:
+            return []
+        stmt = select(HarvestEvent).where(HarvestEvent.activity_id.in_(activity_ids))
+        return list(self.db.scalars(stmt).all())
+
     def years_for_parcel(self, parcel_id: UUID) -> list[int]:
         stmt = (
             select(extract("year", HarvestEvent.harvested_on))

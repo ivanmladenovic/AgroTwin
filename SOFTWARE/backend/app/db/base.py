@@ -8,17 +8,28 @@ from app.models.document import Document
 from app.models.farm import Farm
 from app.models.harvest import HarvestEvent
 from app.models.weather import WeatherForecastCache
+from app.models.satellite import SatelliteAnomaly, SatelliteObservation, SatelliteZoneMetric
+from app.models.intelligence import (
+    ParcelAlert,
+    ParcelAnalysisEvent,
+    ParcelAnalysisRun,
+    UserNotification,
+)
 from app.models.invoice import Invoice
 from app.models.knowledge import KnowledgeBaseItem, KnowledgeChunk, KnowledgeAsset, KnowledgePage
 from app.models.parcel import Parcel
 from app.models.photo import Photo
 from app.models.row import Row
 from app.models.soil import SoilProfileSnapshot
-from app.models.soil_lab import SoilLabAnalysis
+from app.models.soil_lab import SoilLabAnalysis, SoilLabResult
 from app.models.subsidy import Subsidy
 from app.models.schedule import OrchardSeason, TaskSchedule
+from app.models.planning import ExpertReview, PlanningPlan, PlanningPlanItem, PlanningSeason
 from app.models.tree import Tree
 from app.models.user import User
+from app.models.workforce import WorkTask, WorkTaskType, Worker
+from app.models.passport import HarvestLot, HarvestLotSequence, PassportSnapshot
+from app.models.compliance import ComplianceReportDefinition, ComplianceReportRun
 
 __all__ = [
     "AIConversation",
@@ -28,6 +39,7 @@ __all__ = [
     "Cost",
     "DiseaseCase",
     "Document",
+    "ExpertReview",
     "Farm",
     "HarvestEvent",
     "Invoice",
@@ -38,12 +50,31 @@ __all__ = [
     "OrchardSeason",
     "Parcel",
     "Photo",
+    "PlanningPlan",
+    "PlanningPlanItem",
+    "PlanningSeason",
     "Row",
     "SoilLabAnalysis",
+    "SoilLabResult",
     "SoilProfileSnapshot",
     "Subsidy",
+    "SatelliteAnomaly",
+    "SatelliteObservation",
+    "SatelliteZoneMetric",
+    "ParcelAlert",
+    "ParcelAnalysisEvent",
+    "ParcelAnalysisRun",
+    "UserNotification",
     "TaskSchedule",
     "Tree",
     "User",
     "WeatherForecastCache",
+    "WorkTaskType",
+    "Worker",
+    "WorkTask",
+    "HarvestLot",
+    "HarvestLotSequence",
+    "PassportSnapshot",
+    "ComplianceReportDefinition",
+    "ComplianceReportRun",
 ]

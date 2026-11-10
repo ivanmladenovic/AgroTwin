@@ -67,6 +67,11 @@ def update_disease_case(
     return service.get_case_detail(case.id, current_user.id)
 
 
+@router.delete("/disease-cases/{case_id}", status_code=204)
+def delete_disease_case(case_id: UUID, current_user: CurrentUser, db: DBSession) -> None:
+    DiseaseService(db).delete_case(case_id, current_user.id)
+
+
 @router.post("/disease-cases/{case_id}/observations", response_model=ObservationRead, status_code=201)
 def add_observation(
     case_id: UUID,

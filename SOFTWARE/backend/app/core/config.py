@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     secret_key: str = Field(min_length=32)
     access_token_expire_minutes: int = 60 * 24
     cors_origins: str = "http://localhost:5174"
+    # Public Digital Product Passport (QR target + SEO base).
+    public_app_base_url: str = "http://localhost:5174"
+    passport_rate_limit_per_minute: int = 60
 
     storage_backend: str = "local"
     storage_local_path: str = "var/storage"
@@ -63,6 +66,32 @@ class Settings(BaseSettings):
     soilgrids_cache_days: int = 30
     soilgrids_min_interval_seconds: float = 12
     soilgrids_min_refresh_seconds: int = 3600
+
+    # Parcel intelligence (reuses get_ai_provider / AI_* settings).
+    ai_intelligence_enabled: bool = True
+    ai_analysis_min_interval_hours: float = 24.0
+    ai_intelligence_ndvi_change_threshold: float = 0.08
+
+    # Satellite monitoring (credentials stay server-side only).
+    satellite_provider: str = "copernicus"
+    satellite_enabled: bool = True
+    satellite_lookback_days: int = 21
+    satellite_cloud_thresholds: str = "20,30,40"
+    satellite_absolute_max_cloud: float = 40.0
+    satellite_zone_grid_size: int = 4
+    satellite_anomaly_below_mean_fraction: float = 0.15
+    satellite_anomaly_sudden_decline_fraction: float = 0.20
+    satellite_min_interval_seconds: float = 1.0
+    satellite_http_timeout_seconds: float = 120.0
+    satellite_ndre_nir_band: str = "B8A"
+    satellite_ndre_red_edge_band: str = "B05"
+    copernicus_stac_url: str = "https://stac.dataspace.copernicus.eu/v1/search"
+    copernicus_openeo_url: str = "https://openeo.dataspace.copernicus.eu/openeo/1.2"
+    copernicus_client_id: str | None = None
+    copernicus_client_secret: str | None = None
+    copernicus_username: str | None = None
+    copernicus_password: str | None = None
+    copernicus_refresh_token: str | None = None
 
     postgres_user: str = "agrotwin"
     postgres_password: str = "agrotwin"

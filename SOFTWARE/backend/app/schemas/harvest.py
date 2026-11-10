@@ -13,10 +13,10 @@ from app.schemas.report import OptionalAmount, YearChange
 
 class HarvestEventCreate(BaseModel):
     harvested_on: date
-    scope_type: ScopeType
+    scope_type: ScopeType = ScopeType.PARCEL
     row_id: UUID | None = None
     tree_id: UUID | None = None
-    gross_quantity: Decimal = Field(gt=0)
+    gross_quantity: Decimal | None = Field(default=None, gt=0)
     loss_quantity: Decimal = Field(default=Decimal("0"), ge=0)
     unit: str = Field(default="kg", min_length=1, max_length=32)
     moisture_percent: Decimal | None = Field(default=None, ge=0, le=100)
@@ -30,8 +30,10 @@ class HarvestEventCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_quantities_and_scope(self) -> "HarvestEventCreate":
-        if self.loss_quantity > self.gross_quantity:
+        if self.gross_quantity is not None and self.loss_quantity > self.gross_quantity:
             raise ValueError("Gubitak ne može biti veći od bruto količine.")
+        if self.gross_quantity is None and self.loss_quantity > 0:
+            raise ValueError("Gubitak zahteva bruto količinu.")
         if self.scope_type == ScopeType.FARM:
             raise ValueError("Berba na nivou gazdinstva se u ovoj fazi ne koristi.")
         if self.scope_type == ScopeType.PARCEL and (self.row_id is not None or self.tree_id is not None):
@@ -75,9 +77,9 @@ class HarvestEventRead(IDSchema):
     tree_public_id: str | None = None
     tree_status: str | None = None
     location_label: str
-    gross_quantity: Decimal
+    gross_quantity: Decimal | None = None
     loss_quantity: Decimal
-    net_quantity: Decimal
+    net_quantity: Decimal | None = None
     unit: str
     gross_kg: Decimal | None = None
     loss_kg: Decimal | None = None
@@ -101,6 +103,7 @@ class HarvestTimelinePoint(BaseModel):
     gross_kg: Decimal
     loss_kg: Decimal
     net_kg: Decimal
+    cumulative_gross_kg: Decimal
     cumulative_net_kg: Decimal
 
 
@@ -158,6 +161,85 @@ class ProductionComparison(BaseModel):
     message: str | None = None
 
 
+class ExpectedYieldCurvePoint(BaseModel):
+    age_year: int
+    pessimistic: Decimal
+    realistic: Decimal
+    optimistic: Decimal
+    is_current: bool = False
+
+
+class ExpectedYieldCohort(BaseModel):
+    planting_year: int
+    age_year: int
+    tree_count: int
+    pessimistic_kg_per_tree: Decimal
+    realistic_kg_per_tree: Decimal
+    optimistic_kg_per_tree: Decimal
+    pessimistic_kg: Decimal
+    realistic_kg: Decimal
+    optimistic_kg: Decimal
+
+
+class ExpectedYieldYearComparison(BaseModel):
+    year: int
+    expected_pessimistic_kg: OptionalAmount  # bruto (u ljusci)
+    expected_pessimistic_net_kg: OptionalAmount  # neto = 40% bruto
+    actual_net_kg: OptionalAmount
+    difference_kg: OptionalAmount
+    difference_percent: OptionalAmount
+    message: str | None = None
+
+
+class ExpectedYieldVarietyRow(BaseModel):
+    variety: str
+    tree_count: int = 0
+    share_of_trees_percent: float | None = None
+    pessimistic_kg: OptionalAmount
+    realistic_kg: OptionalAmount
+    optimistic_kg: OptionalAmount
+    realistic_net_kg: OptionalAmount
+
+
+class ExpectedYieldRead(BaseModel):
+    available: bool
+    unit: str = "kg"
+    known_tree_count: int = 0
+    unknown_tree_count: int = 0
+    active_tree_count: int = 0
+    mixed_ages: bool = False
+    age_years: list[int] = Field(default_factory=list)
+    age_label: str | None = None
+    message: str | None = None
+    precision_note: str | None = None
+    disclaimer: str | None = None
+    methodology_type: str = "REFERENCE_CURVE"
+    confidence: str = "INFORMATIVE"
+    source: str = "AgroTwin planning benchmark"
+    profile_version: str | None = None
+    # Curve / scenario totals are GROSS (in-shell / u ljusci).
+    shell_to_net_ratio: Decimal = Decimal("0.40")
+    pessimistic_kg: OptionalAmount
+    realistic_kg: OptionalAmount
+    optimistic_kg: OptionalAmount
+    expected_per_tree_realistic: OptionalAmount
+    expected_per_hectare_realistic: OptionalAmount
+    # Net = 40% of gross; used for comparison with harvest net quantity.
+    pessimistic_net_kg: OptionalAmount
+    realistic_net_kg: OptionalAmount
+    optimistic_net_kg: OptionalAmount
+    expected_per_tree_realistic_net: OptionalAmount
+    expected_per_hectare_realistic_net: OptionalAmount
+    actual_net_kg: OptionalAmount
+    difference_kg: OptionalAmount
+    difference_percent: OptionalAmount
+    comparison_message: str | None = None
+    cohorts: list[ExpectedYieldCohort] = Field(default_factory=list)
+    curve: list[ExpectedYieldCurvePoint] = Field(default_factory=list)
+    history: list[ExpectedYieldYearComparison] = Field(default_factory=list)
+    by_variety: list[ExpectedYieldVarietyRow] = Field(default_factory=list)
+
+
 class ParcelProductionRead(BaseModel):
     parcel_id: UUID
     parcel_name: str
@@ -185,4 +267,5 @@ class ParcelProductionRead(BaseModel):
     tree_summary: list[HarvestTreeSummary] = Field(default_factory=list)
     quality_summary: HarvestQualitySummary
     comparison: ProductionComparison
+    expected_yield: ExpectedYieldRead
     photos: list[PhotoRead] = Field(default_factory=list)

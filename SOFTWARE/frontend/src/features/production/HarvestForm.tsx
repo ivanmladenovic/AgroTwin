@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 
 import { uploadPhoto } from '@/features/health/cases'
 import { PhotoPicker } from '@/features/health/PhotoPicker'
@@ -19,12 +20,20 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 import { Textarea } from '@/shared/ui/textarea'
+import { tr } from '@/shared/i18n/i18n'
 
-const SCOPES: Array<{ value: HarvestScope; label: string; hint: string }> = [
-  { value: 'parcel', label: 'Cela parcela', hint: 'Ukupan urod parcele' },
-  { value: 'row', label: 'Određeni red', hint: 'Merenje jednog reda' },
-  { value: 'tree', label: 'Određeno stablo', hint: 'Merenje jednog stabla' },
-]
+function useHarvestScopes() {
+  const { i18n } = useTranslation()
+  void i18n.language
+  return useMemo(
+    (): Array<{ value: HarvestScope; label: string; hint: string }> => [
+      { value: 'parcel', label: tr('Cela parcela'), hint: tr('Ukupan urod parcele') },
+      { value: 'row', label: tr('Određeni red'), hint: tr('Merenje jednog reda') },
+      { value: 'tree', label: tr('Određeno stablo'), hint: tr('Merenje jednog stabla') },
+    ],
+    [i18n.language],
+  )
+}
 
 export function HarvestForm({
   parcelId,
@@ -35,6 +44,9 @@ export function HarvestForm({
   harvest?: HarvestEvent
   year?: number
 }) {
+  const { i18n } = useTranslation()
+  void i18n.language
+  const scopes = useHarvestScopes()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [files, setFiles] = useState<File[]>([])
@@ -110,10 +122,10 @@ export function HarvestForm({
   return (
     <form className="space-y-6" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Datum berbe" error={form.formState.errors.harvested_on?.message}>
+        <Field label={tr('Datum berbe')} error={form.formState.errors.harvested_on?.message}>
           <Input type="date" {...form.register('harvested_on')} />
         </Field>
-        <Field label="Jedinica">
+        <Field label={tr('Jedinica')}>
           <Select {...form.register('unit')}>
             <option value="kg">kg</option>
           </Select>
@@ -121,9 +133,9 @@ export function HarvestForm({
       </div>
 
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium">Obuhvat</legend>
+        <legend className="text-sm font-medium">{tr('Obuhvat')}</legend>
         <div className="grid gap-2 sm:grid-cols-3">
-          {SCOPES.map((item) => (
+          {scopes.map((item) => (
             <label
               key={item.value}
               className={`flex min-h-14 cursor-pointer items-start gap-3 rounded-lg border px-3 py-3 ${
@@ -145,14 +157,16 @@ export function HarvestForm({
           ))}
         </div>
         <p className="text-xs text-muted-foreground">
-          Ukupan prinos parcele računa se samo iz berbi cele parcele. Berbe redova i stabala ostaju posebna merenja.
+          {tr(
+            'Ukupan prinos parcele računa se samo iz berbi cele parcele. Berbe redova i stabala ostaju posebna merenja.',
+          )}
         </p>
       </fieldset>
 
       {scope === 'row' || scope === 'tree' ? (
-        <Field label="Red" error={form.formState.errors.row_id?.message}>
+        <Field label={tr('Red')} error={form.formState.errors.row_id?.message}>
           <Select {...form.register('row_id')}>
-            <option value="">Izaberite red</option>
+            <option value="">{tr('Izaberite red')}</option>
             {(rowsQuery.data ?? []).map((row) => (
               <option key={row.id} value={row.id}>
                 {rowLabel(row.row_number)}
@@ -163,9 +177,9 @@ export function HarvestForm({
       ) : null}
 
       {scope === 'tree' ? (
-        <Field label="Stablo" error={form.formState.errors.tree_id?.message}>
+        <Field label={tr('Stablo')} error={form.formState.errors.tree_id?.message}>
           <Select {...form.register('tree_id')} disabled={!rowId}>
-            <option value="">Izaberite stablo</option>
+            <option value="">{tr('Izaberite stablo')}</option>
             {(treesQuery.data ?? []).map((tree) => (
               <option key={tree.id} value={tree.id}>
                 {tree.public_id}
@@ -176,69 +190,71 @@ export function HarvestForm({
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Bruto količina" error={form.formState.errors.gross_quantity?.message}>
-          <Input inputMode="decimal" placeholder="npr. 650" {...form.register('gross_quantity')} />
+        <Field label={tr('Bruto količina')} error={form.formState.errors.gross_quantity?.message}>
+          <Input inputMode="decimal" placeholder={tr('npr. 650')} {...form.register('gross_quantity')} />
         </Field>
-        <Field label="Gubitak / otpad" error={form.formState.errors.loss_quantity?.message}>
+        <Field label={tr('Gubitak / otpad')} error={form.formState.errors.loss_quantity?.message}>
           <Input inputMode="decimal" placeholder="0" {...form.register('loss_quantity')} />
         </Field>
         <div className="space-y-1.5">
-          <Label>Neto količina</Label>
+          <Label>{tr('Neto količina')}</Label>
           <div className="flex h-11 items-center rounded-lg border border-border bg-muted px-3 text-base font-semibold lg:h-10 lg:text-sm">
             {net == null ? '—' : formatKg(net)}
           </div>
-          <p className="text-xs text-muted-foreground">Računa se kao bruto minus gubitak.</p>
+          <p className="text-xs text-muted-foreground">{tr('Računa se kao bruto minus gubitak.')}</p>
         </div>
       </div>
 
       <section className="space-y-4 rounded-xl border border-border p-4">
         <div>
-          <h2 className="text-sm font-semibold">Kvalitet</h2>
-          <p className="text-xs text-muted-foreground">Opciono. Popunite samo što je izmereno.</p>
+          <h2 className="text-sm font-semibold">{tr('Kvalitet')}</h2>
+          <p className="text-xs text-muted-foreground">{tr('Opciono. Popunite samo što je izmereno.')}</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Vlažnost %" error={form.formState.errors.moisture_percent?.message}>
-            <Input inputMode="decimal" placeholder="npr. 8.5" {...form.register('moisture_percent')} />
+          <Field label={tr('Vlažnost %')} error={form.formState.errors.moisture_percent?.message}>
+            <Input inputMode="decimal" placeholder={tr('npr. 8.5')} {...form.register('moisture_percent')} />
           </Field>
-          <Field label="Kategorija kvaliteta">
+          <Field label={tr('Kategorija kvaliteta')}>
             <Select {...form.register('quality_category')}>
-              {harvestQualityOptions.map((item) => (
+              {harvestQualityOptions().map((item) => (
                 <option key={item.value || 'none'} value={item.value}>
                   {item.label}
                 </option>
               ))}
             </Select>
           </Field>
-          <Field label="Oštećeni plodovi %" error={form.formState.errors.damaged_percent?.message}>
+          <Field label={tr('Oštećeni plodovi %')} error={form.formState.errors.damaged_percent?.message}>
             <Input inputMode="decimal" {...form.register('damaged_percent')} />
           </Field>
-          <Field label="Prazni plodovi %" error={form.formState.errors.empty_nuts_percent?.message}>
+          <Field label={tr('Prazni plodovi %')} error={form.formState.errors.empty_nuts_percent?.message}>
             <Input inputMode="decimal" {...form.register('empty_nuts_percent')} />
           </Field>
-          <Field label="Strane materije %" error={form.formState.errors.foreign_material_percent?.message}>
+          <Field label={tr('Strane materije %')} error={form.formState.errors.foreign_material_percent?.message}>
             <Input inputMode="decimal" {...form.register('foreign_material_percent')} />
           </Field>
-          <Field label="Krupnoća / kalibar">
-            <Input placeholder="npr. 13-15 mm" {...form.register('size_or_caliber')} />
+          <Field label={tr('Krupnoća / kalibar')}>
+            <Input placeholder={tr('npr. 13-15 mm')} {...form.register('size_or_caliber')} />
           </Field>
         </div>
       </section>
 
-      <Field label="Napomena">
-        <Textarea rows={3} placeholder="npr. Berba posle tri suva dana." {...form.register('notes')} />
+      <Field label={tr('Napomena')}>
+        <Textarea rows={3} placeholder={tr('npr. Berba posle tri suva dana.')} {...form.register('notes')} />
       </Field>
 
       <div className="space-y-2">
-        <Label>Fotografije / dokumentacija</Label>
+        <Label>{tr('Fotografije / dokumentacija')}</Label>
         <PhotoPicker
           files={files}
           onChange={setFiles}
-          description="Uslikajte vagu, vreće, izveštaj o kvalitetu ili dokumentaciju berbe."
+          description={tr('Uslikajte vagu, vreće, izveštaj o kvalitetu ili dokumentaciju berbe.')}
         />
       </div>
 
       {mutation.error ? (
-        <p className="text-sm text-danger">{mutation.error instanceof Error ? mutation.error.message : 'Čuvanje nije uspelo'}</p>
+        <p className="text-sm text-danger">
+          {mutation.error instanceof Error ? mutation.error.message : tr('Čuvanje nije uspelo')}
+        </p>
       ) : null}
 
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -246,10 +262,10 @@ export function HarvestForm({
           fallback={`/orchard/${parcelId}/production${year ? `?year=${year}` : ''}`}
           className="w-full sm:min-w-28"
         >
-          Otkaži
+          {tr('Otkaži')}
         </BackButton>
         <Button type="submit" disabled={mutation.isPending} className="sm:min-w-40">
-          {mutation.isPending ? 'Čuvanje…' : harvest ? 'Sačuvaj izmene' : 'Sačuvaj berbu'}
+          {mutation.isPending ? tr('Čuvanje…') : harvest ? tr('Sačuvaj izmene') : tr('Sačuvaj berbu')}
         </Button>
       </div>
     </form>
@@ -304,7 +320,7 @@ function valuesFromHarvest(harvest: HarvestEvent): HarvestFormValues {
     scope_type: harvest.scope_type,
     row_id: harvest.row_id ?? '',
     tree_id: harvest.tree_id ?? '',
-    gross_quantity: harvest.gross_quantity,
+    gross_quantity: harvest.gross_quantity ?? '',
     loss_quantity: harvest.loss_quantity,
     unit: harvest.unit || 'kg',
     moisture_percent: harvest.moisture_percent ?? '',

@@ -1,14 +1,17 @@
 import type { ActivityStatus } from '@/shared/api/types'
+import { tr } from '@/shared/i18n/i18n'
 
-export const activityStatuses: Array<{ value: ActivityStatus; label: string }> = [
-  { value: 'planned', label: 'Planirano' },
-  { value: 'in_progress', label: 'U toku' },
-  { value: 'completed', label: 'Urađeno' },
-  { value: 'cancelled', label: 'Otkazano' },
-]
+export function activityStatuses(): Array<{ value: ActivityStatus; label: string }> {
+  return [
+    { value: 'planned', label: tr('Planirano') },
+    { value: 'in_progress', label: tr('U toku') },
+    { value: 'completed', label: tr('Urađeno') },
+    { value: 'cancelled', label: tr('Otkazano') },
+  ]
+}
 
 export function activityStatusLabel(value: string) {
-  return activityStatuses.find((item) => item.value === value)?.label ?? value
+  return activityStatuses().find((item) => item.value === value)?.label ?? value
 }
 
 export type CalendarKind = 'done' | 'planned' | 'overdue'

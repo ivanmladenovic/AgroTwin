@@ -8,3 +8,4 @@ class UserRead(IDSchema):
     full_name: str
     is_active: bool
     is_superuser: bool = False
+    must_change_password: bool = False

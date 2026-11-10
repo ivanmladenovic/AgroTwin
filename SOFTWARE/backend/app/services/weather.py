@@ -9,7 +9,6 @@ from zoneinfo import ZoneInfo
 
 from sqlalchemy.orm import Session
 
-from app.core.maps import coordinates_as_decimal, resolve_maps_location
 from app.core.exceptions import NotFoundError
 from app.models.parcel import Parcel
 from app.models.weather import WeatherForecastCache
@@ -80,20 +79,9 @@ class WeatherService:
         return self._from_cache(parcel, cache, timezone_name, stale=False)
 
     def _ensure_coordinates(self, parcel: Parcel) -> str:
-        if parcel.latitude is not None and parcel.longitude is not None:
-            return "ok"
-        if not parcel.maps_url:
-            return "missing"
-        try:
-            location = resolve_maps_location(parcel.maps_url, fallback_query=parcel.name)
-        except Exception:
-            location = None
-        if location is None:
-            return "invalid"
-        parcel.latitude, parcel.longitude = coordinates_as_decimal(location)
-        self.db.commit()
-        self.db.refresh(parcel)
-        return "ok"
+        from app.services.orchard import OrchardService
+
+        return OrchardService(self.db).ensure_parcel_coordinates(parcel)
 
     def _cache_is_fresh(self, cache: WeatherForecastCache, parcel: Parcel, today) -> bool:
         if cache.forecast_date != today:

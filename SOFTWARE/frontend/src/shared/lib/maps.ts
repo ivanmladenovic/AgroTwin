@@ -1,3 +1,4 @@
+import { tr } from '@/shared/i18n/i18n'
 const ALLOWED_HOST_SUFFIXES = ['google.com', 'google.rs', 'goo.gl']
 
 export function normalizeMapsUrl(value: string | null | undefined) {
@@ -16,7 +17,7 @@ export function normalizeMapsUrl(value: string | null | undefined) {
 }
 
 export function mapsUrlSchemaMessage() {
-  return 'Unesite Google Maps link (maps.google.com ili maps.app.goo.gl)'
+  return tr('Unesite Google Maps link (maps.google.com ili maps.app.goo.gl)')
 }
 
 export function parcelCoordinates(parcel: { latitude: string | null; longitude: string | null }) {

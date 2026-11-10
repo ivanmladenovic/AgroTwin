@@ -5,7 +5,7 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
 from app.api.deps import CurrentUser, DBSession
-from app.schemas.cost import CostItemRead, CostSummaryRead
+from app.schemas.cost import CostItemRead, CostStandaloneCreate, CostSummaryRead
 from app.services.activity import ActivityService
 from app.services.export import ExportService
 
@@ -25,13 +25,27 @@ def list_costs(
     )
 
 
+@router.post("", response_model=CostItemRead, status_code=201)
+def create_cost(
+    payload: CostStandaloneCreate,
+    current_user: CurrentUser,
+    db: DBSession,
+) -> CostItemRead:
+    cost = ActivityService(db).create_standalone_cost(current_user.id, payload, current_user.id)
+    return ActivityService(db).to_cost_read(cost)
+
+
 @router.get("/summary", response_model=CostSummaryRead)
 def cost_summary(
     current_user: CurrentUser,
     db: DBSession,
     parcel_id: UUID | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
 ) -> CostSummaryRead:
-    return ActivityService(db).cost_summary(current_user.id, parcel_id)
+    return ActivityService(db).cost_summary(
+        current_user.id, parcel_id, date_from=date_from, date_to=date_to
+    )
 
 
 @router.get("/export.csv")

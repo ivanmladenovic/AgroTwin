@@ -19,9 +19,15 @@ class HarvestEvent(UUIDPrimaryKeyMixin, TimestampMixin, ScopedEntityMixin, Base)
     __tablename__ = "harvest_events"
     __table_args__ = (
         ScopedEntityMixin.scope_check_constraint("harvest_events"),
-        CheckConstraint("gross_quantity > 0", name="ck_harvest_events_gross_positive"),
+        CheckConstraint(
+            "gross_quantity IS NULL OR gross_quantity > 0",
+            name="ck_harvest_events_gross_positive",
+        ),
         CheckConstraint("loss_quantity >= 0", name="ck_harvest_events_loss_nonnegative"),
-        CheckConstraint("loss_quantity <= gross_quantity", name="ck_harvest_events_loss_lte_gross"),
+        CheckConstraint(
+            "gross_quantity IS NULL OR loss_quantity <= gross_quantity",
+            name="ck_harvest_events_loss_lte_gross",
+        ),
         CheckConstraint(
             "moisture_percent IS NULL OR (moisture_percent >= 0 AND moisture_percent <= 100)",
             name="ck_harvest_events_moisture",
@@ -41,12 +47,15 @@ class HarvestEvent(UUIDPrimaryKeyMixin, TimestampMixin, ScopedEntityMixin, Base)
     )
 
     harvested_on: Mapped[date] = mapped_column(Date, nullable=False, index=True)
-    gross_quantity: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False)
+    gross_quantity: Mapped[Decimal | None] = mapped_column(Numeric(12, 3), nullable=True)
     loss_quantity: Mapped[Decimal] = mapped_column(Numeric(12, 3), nullable=False, default=Decimal("0"))
-    net_quantity: Mapped[Decimal] = mapped_column(
+    net_quantity: Mapped[Decimal | None] = mapped_column(
         Numeric(12, 3),
-        Computed("gross_quantity - loss_quantity", persisted=True),
-        nullable=False,
+        Computed(
+            "CASE WHEN gross_quantity IS NULL THEN NULL ELSE gross_quantity - loss_quantity END",
+            persisted=True,
+        ),
+        nullable=True,
     )
     unit: Mapped[str] = mapped_column(String(32), nullable=False, default="kg")
     moisture_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)

@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 
 import { fetchObjectUrl } from '@/shared/lib/api'
 import type { PhotoRecord } from '@/shared/api/types'
+import { tr } from '@/shared/i18n/i18n'
 
 export function PhotoGallery({ photos }: { photos: PhotoRecord[] }) {
   const [active, setActive] = useState<PhotoRecord | null>(null)
 
   if (photos.length === 0) {
-    return <p className="text-sm text-muted-foreground">Još nema fotografija.</p>
+    return <p className="text-sm text-muted-foreground">{tr('Još nema fotografija.')}</p>
   }
 
   return (
@@ -33,7 +34,7 @@ function PhotoThumb({ photo, onOpen }: { photo: PhotoRecord; onOpen: () => void 
       {src ? (
         <img src={src} alt={photo.caption || photo.original_filename} className="h-28 w-full object-cover" />
       ) : (
-        <div className="flex h-28 items-center justify-center text-xs text-muted-foreground">Učitavanje…</div>
+        <div className="flex h-28 items-center justify-center text-xs text-muted-foreground">{tr('Učitavanje…')}</div>
       )}
       <p className="truncate px-2 py-1 text-xs text-muted-foreground">{photo.caption || photo.original_filename}</p>
     </button>
@@ -57,7 +58,7 @@ function PhotoViewer({ photo, onClose }: { photo: PhotoRecord; onClose: () => vo
         {src ? (
           <img src={src} alt={photo.caption || photo.original_filename} className="max-h-[75vh] w-full object-contain" />
         ) : (
-          <p className="text-sm text-muted-foreground">Učitavanje fotografije…</p>
+          <p className="text-sm text-muted-foreground">{tr('Učitavanje fotografije…')}</p>
         )}
         <div className="mt-3 flex items-start justify-between gap-4">
           <div>

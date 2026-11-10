@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.core.maps import normalize_maps_url
 from app.core.varieties import DEFAULT_VARIETIES, main_variety_name
-from app.models.enums import WellLocation
+from app.models.enums import IrrigationType, OrganicScope, ProductionMethod, WellLocation
 from app.core.geojson import InvalidParcelGeometry, validate_boundary_geojson
 from app.schemas.common import IDSchema
 from app.services.orchard_layout import MAX_TREES
@@ -40,6 +40,7 @@ class ParcelRead(IDSchema):
     longitude: Decimal | None
     altitude: Decimal | None = None
     boundary: dict | None = None
+    map_layout: dict | None = None
     notes: str | None
     maps_url: str | None = None
     row_count: int | None
@@ -50,9 +51,21 @@ class ParcelRead(IDSchema):
     varieties: list[VarietySpec] = Field(default_factory=list)
     default_planting_year: int | None
     starting_tree_number: int = 1
+    production_method: ProductionMethod = ProductionMethod.CONVENTIONAL
+    organic_scope: OrganicScope = OrganicScope.NONE
     well_location: WellLocation | None
     well_x: Decimal | None
     well_y: Decimal | None
+    has_irrigation: bool = False
+    irrigation_type: IrrigationType | None = None
+    water_source: str | None = None
+    emitter_flow_lph: Decimal | None = None
+    emitter_spacing_m: Decimal | None = None
+    line_count: int | None = None
+    irrigation_sections: int | None = None
+    irrigation_pressure_bar: Decimal | None = None
+    irrigation_efficiency: Decimal | None = None
+    irrigation_notes: str | None = None
     tree_count: int = 0
 
 
@@ -166,6 +179,18 @@ class ParcelUpdate(BaseModel):
     row_plan: list[RowPlanItem] | None = None
     altitude: Decimal | None = Field(default=None, ge=-500, le=9000)
     boundary: dict | None = None
+    production_method: ProductionMethod | None = None
+    organic_scope: OrganicScope | None = None
+    has_irrigation: bool | None = None
+    irrigation_type: IrrigationType | None = None
+    water_source: str | None = Field(default=None, max_length=128)
+    emitter_flow_lph: Decimal | None = Field(default=None, ge=0)
+    emitter_spacing_m: Decimal | None = Field(default=None, ge=0)
+    line_count: int | None = Field(default=None, ge=0)
+    irrigation_sections: int | None = Field(default=None, ge=0)
+    irrigation_pressure_bar: Decimal | None = Field(default=None, ge=0)
+    irrigation_efficiency: Decimal | None = Field(default=None, ge=0, le=100)
+    irrigation_notes: str | None = None
 
     @field_validator("maps_url", mode="before")
     @classmethod
@@ -176,3 +201,13 @@ class ParcelUpdate(BaseModel):
     @classmethod
     def validate_boundary(cls, value: dict | None) -> dict | None:
         return _validated_boundary(value)
+
+    @model_validator(mode="after")
+    def validate_organic_and_irrigation(self) -> Self:
+        method = self.production_method
+        scope = self.organic_scope
+        if method == ProductionMethod.CONVENTIONAL and scope not in (None, OrganicScope.NONE):
+            raise ValueError("Konvencionalna parcela ne može imati organski scope.")
+        if method == ProductionMethod.ORGANIC and scope == OrganicScope.NONE:
+            raise ValueError("Organska parcela mora imati organic_scope entire_parcel ili part_of_parcel.")
+        return self

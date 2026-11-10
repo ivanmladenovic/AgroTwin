@@ -1,3 +1,4 @@
+from datetime import date
 from uuid import UUID
 
 from fastapi import APIRouter
@@ -14,8 +15,12 @@ def list_subsidies(
     current_user: CurrentUser,
     db: DBSession,
     parcel_id: UUID | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
 ) -> list[SubsidyRead]:
-    return SubsidyService(db).list_subsidies(current_user.id, parcel_id)
+    return SubsidyService(db).list_subsidies(
+        current_user.id, parcel_id, date_from=date_from, date_to=date_to
+    )
 
 
 @router.post("", response_model=SubsidyRead, status_code=201)

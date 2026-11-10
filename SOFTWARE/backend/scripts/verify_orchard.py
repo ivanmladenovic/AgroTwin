@@ -25,17 +25,17 @@ def verify_layout_26x73() -> None:
     first = layout.rows[0].trees[0]
     last = layout.rows[-1].trees[-1]
     assert first.public_id == "R01-T0001", first.public_id
-    assert last.public_id == format_tree_public_id(26, 1898), last.public_id
-    assert last.public_id == "R26-T1898", last.public_id
+    assert last.public_id == format_tree_public_id(26, 73), last.public_id
+    assert last.public_id == "R26-T0073", last.public_id
     row_14 = layout.rows[13]
     assert row_14.row_number == 14
-    assert row_14.trees[0].public_id == "R14-T0950"
-    assert row_14.trees[-1].public_id == "R14-T1022"
+    assert row_14.trees[0].public_id == "R14-T0001"
+    assert row_14.trees[-1].public_id == "R14-T0073"
     assert first.normalized_x == Decimal("0")
     assert first.normalized_y == Decimal("0")
     assert last.normalized_x == Decimal("72") * Decimal("3.50")
     assert last.normalized_y == Decimal("25") * Decimal("5.00")
-    print("26 × 73 layout verified: 26 rows, 1,898 trees, IDs R01-T0001 … R26-T1898")
+    print("26 × 73 layout verified: 26 rows, 1,898 trees, IDs R01-T0001 … R26-T0073 (per row)")
 
 
 def verify_varieties_and_gaps() -> None:

@@ -78,9 +78,22 @@ class DiseaseRepository:
         stmt = self._owned(owner_id).where(DiseaseCase.id == case_id)
         return self.db.scalars(stmt).unique().first()
 
+    def list_by_activity_ids(self, activity_ids: list[UUID]) -> list[DiseaseCase]:
+        if not activity_ids:
+            return []
+        stmt = select(DiseaseCase).where(DiseaseCase.activity_id.in_(activity_ids))
+        return list(self.db.scalars(stmt).all())
+
+    def list_missing_activity(self, owner_id: UUID) -> list[DiseaseCase]:
+        stmt = self._owned(owner_id).where(DiseaseCase.activity_id.is_(None))
+        return list(self.db.scalars(stmt).unique().all())
+
     def add(self, case: DiseaseCase) -> DiseaseCase:
         self.db.add(case)
         return case
+
+    def delete(self, case: DiseaseCase) -> None:
+        self.db.delete(case)
 
 
 class ObservationRepository:

@@ -50,10 +50,12 @@ def _cors_headers(request: Request) -> dict[str, str]:
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
+        headers = _cors_headers(request)
+        headers["Cache-Control"] = "no-store"
         return JSONResponse(
             status_code=exc.status_code,
             content={"detail": exc.message, "code": exc.code},
-            headers=_cors_headers(request),
+            headers=headers,
         )
 
     @app.exception_handler(FileNotFoundError)

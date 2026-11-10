@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import { Plus } from 'lucide-react'
 
 import { listParcels } from '@/features/orchard/api'
@@ -16,17 +17,26 @@ import {
   scopeLabel,
 } from '@/shared/lib/format'
 import { cn } from '@/shared/lib/utils'
-import type { ParcelProduction, ReportOptionalAmount, ReportYearChange, TreeStatus } from '@/shared/api/types'
+import type {
+  ExpectedYield,
+  ParcelProduction,
+  ReportOptionalAmount,
+  ReportYearChange,
+  TreeStatus,
+} from '@/shared/api/types'
 import { Button } from '@/shared/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/ui/card'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
+import { tr } from '@/shared/i18n/i18n'
 
 type RowSort = 'number' | 'high' | 'low'
 type TreeSort = 'high' | 'low'
 type TreeStatusFilter = 'all' | TreeStatus
 
 export function ProductionPage() {
+  const { i18n } = useTranslation()
+  void i18n.language
   const { parcelId: routeParcelId } = useParams()
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
@@ -69,7 +79,7 @@ export function ProductionPage() {
   }
 
   if (!selectedParcelId && !parcelsQuery.isLoading) {
-    return <p className="text-sm text-muted-foreground">Nema parcele za proizvodnju. Prvo napravite zasad.</p>
+    return <p className="text-sm text-muted-foreground">{tr('Nema parcele za proizvodnju. Prvo napravite zasad.')}</p>
   }
 
   const addHref = selectedParcelId ? `/orchard/${selectedParcelId}/production/new?year=${year}` : ''
@@ -78,21 +88,21 @@ export function ProductionPage() {
     <div className="w-full space-y-6 pb-20 sm:pb-0">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="kicker">Proizvodnja</p>
-          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Proizvodnja</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Pregled berbe i prinosa parcele.</p>
+          <p className="kicker">{tr("Proizvodnja")}</p>
+          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">{tr("Proizvodnja")}</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{tr('Pregled berbe i prinosa parcele.')}</p>
         </div>
         <div className="hidden gap-2 sm:flex">
           {selectedParcelId ? (
             <Button variant="outline" onClick={() => void downloadProductionCsv(selectedParcelId, year)}>
-              Izvezi CSV
+              {tr('Izvezi CSV')}
             </Button>
           ) : null}
           {addHref ? (
             <Link to={addHref}>
               <Button>
                 <Plus className="h-4 w-4" />
-                Dodaj berbu
+                {tr('Dodaj berbu')}
               </Button>
             </Link>
           ) : null}
@@ -101,7 +111,7 @@ export function ProductionPage() {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_10rem]">
         <div className="space-y-1.5">
-          <Label>Parcela</Label>
+          <Label>{tr("Parcela")}</Label>
           <Select value={selectedParcelId} onChange={(event) => updateParcel(event.target.value)}>
             {parcels.map((parcel) => (
               <option key={parcel.id} value={parcel.id}>
@@ -111,7 +121,7 @@ export function ProductionPage() {
           </Select>
         </div>
         <div className="space-y-1.5">
-          <Label>Godina</Label>
+          <Label>{tr('Godina')}</Label>
           <Select value={String(year)} onChange={(event) => updateYear(Number(event.target.value))}>
             {years.map((item) => (
               <option key={item} value={item}>
@@ -123,13 +133,19 @@ export function ProductionPage() {
       </div>
 
       {productionQuery.isLoading ? (
-        <p className="text-sm text-muted-foreground">Učitavanje proizvodnje…</p>
+        <p className="text-sm text-muted-foreground">{tr('Učitavanje proizvodnje…')}</p>
       ) : productionQuery.isError || !production ? (
-        <p className="text-sm text-danger">Proizvodnja nije učitana. Osvežite stranicu.</p>
-      ) : !production.recorded ? (
-        <EmptyState year={year} href={addHref} />
+        <p className="text-sm text-danger">{tr('Proizvodnja nije učitana. Osvežite stranicu.')}</p>
       ) : (
-        <ProductionBody production={production} />
+        <div className="space-y-6">
+          <ExpectedYieldScenariosSection expected={production.expected_yield} year={production.year} />
+          <ExpectedYieldComparisonSection expected={production.expected_yield} year={production.year} />
+          {!production.recorded ? (
+            <EmptyState year={year} href={addHref} />
+          ) : (
+            <ProductionBody production={production} />
+          )}
+        </div>
       )}
 
       {addHref ? (
@@ -137,7 +153,7 @@ export function ProductionPage() {
           <Link to={addHref}>
             <Button className="h-12 w-full">
               <Plus className="h-4 w-4" />
-              Dodaj berbu
+              {tr('Dodaj berbu')}
             </Button>
           </Link>
         </div>
@@ -150,15 +166,17 @@ function EmptyState({ year, href }: { year: number; href: string }) {
   return (
     <Card>
       <CardContent className="space-y-4 py-10 text-center">
-        <p className="text-base font-medium">Nema zabeležene berbe za {year}.</p>
+        <p className="text-base font-medium">{tr('Nema zabeležene berbe za {{year}}.', { year })}</p>
         <p className="mx-auto max-w-md text-sm text-muted-foreground">
-          Kada unesete berbu, AgroTwin će izračunati ukupan prinos, prinos po hektaru i godišnje trendove proizvodnje.
+          {tr(
+            'Kada unesete berbu, AgroTwin će izračunati ukupan prinos, prinos po hektaru i godišnje trendove proizvodnje.',
+          )}
         </p>
         {href ? (
           <Link to={href}>
             <Button>
               <Plus className="h-4 w-4" />
-              Dodaj berbu
+              {tr('Dodaj berbu')}
             </Button>
           </Link>
         ) : null}
@@ -210,55 +228,62 @@ function ProductionBody({ production }: { production: ParcelProduction }) {
 
   return (
     <div className="space-y-6">
-      <p className="text-xs text-muted-foreground">{production.measurement_note}</p>
+      <p className="text-xs text-muted-foreground">{tr(production.measurement_note)}</p>
 
       {production.parcel_total_recorded ? (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
-          <Kpi label="Ukupan prinos" value={formatKg(production.total_net_yield.value)} hint="neto, nivo parcele" />
+          <Kpi label={tr('Ukupan prinos')} value={formatKg(production.total_net_yield.value)} hint={tr('neto, nivo parcele')} />
           <Kpi
-            label="Berbe"
+            label={tr('Berbe')}
             value={production.harvest_event_count != null ? formatNumber(production.harvest_event_count) : '—'}
           />
           <Kpi
-            label="Prinos / ha"
+            label={tr('Prinos / ha')}
             value={amountOrDash(production.yield_per_hectare, (value) => formatKg(value, { per: 'ha', digits: 0 }))}
           />
           <Kpi
-            label="Prinos / stablo"
+            label={tr('Prinos / stablo')}
             value={amountOrDash(production.yield_per_tree, (value) => formatKg(value, { per: 'stablo' }))}
-            hint={production.yield_per_tree_denominator === 'active_trees' ? `${formatNumber(production.active_trees)} aktivnih stabala` : undefined}
+            hint={
+              production.yield_per_tree_denominator === 'active_trees'
+                ? tr('{{count}} aktivnih stabala', { count: formatNumber(production.active_trees) })
+                : undefined
+            }
           />
           <Kpi
-            label="Prva berba"
-            value={production.first_harvest_date ? formatDate(production.first_harvest_date) : 'Nema zabeležene berbe'}
+            label={tr('Prva berba')}
+            value={production.first_harvest_date ? formatDate(production.first_harvest_date) : tr('Nema zabeležene berbe')}
           />
           <Kpi
-            label="Poslednja berba"
-            value={production.last_harvest_date ? formatDate(production.last_harvest_date) : 'Nema zabeležene berbe'}
+            label={tr('Poslednja berba')}
+            value={production.last_harvest_date ? formatDate(production.last_harvest_date) : tr('Nema zabeležene berbe')}
           />
         </div>
       ) : (
         <Card>
           <CardContent className="py-4 text-sm text-muted-foreground">
-            Nema berbe na nivou parcele za {year}. Uneti su samo zapisi redova ili stabala, pa se ukupan prinos parcele ne sabira.
+            {tr(
+              'Nema berbe na nivou parcele za {{year}}. Uneti su samo zapisi redova ili stabala, pa se ukupan prinos parcele ne sabira.',
+              { year },
+            )}
           </CardContent>
         </Card>
       )}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-3">
-          <CardTitle>Zapisi berbe</CardTitle>
+          <CardTitle>{tr('Zapisi berbe')}</CardTitle>
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <table className="w-full min-w-[36rem] text-left text-sm">
             <thead className="text-xs uppercase tracking-wide text-muted-foreground">
               <tr className="border-b border-border">
-                <th className="py-2 font-semibold">Datum</th>
-                <th className="py-2 font-semibold">Obuhvat</th>
-                <th className="py-2 font-semibold">Lokacija</th>
-                <th className="py-2 text-right font-semibold">Bruto</th>
-                <th className="py-2 text-right font-semibold">Gubitak</th>
-                <th className="py-2 text-right font-semibold">Neto</th>
+                <th className="py-2 font-semibold">{tr('Datum')}</th>
+                <th className="py-2 font-semibold">{tr('Obuhvat')}</th>
+                <th className="py-2 font-semibold">{tr('Lokacija')}</th>
+                <th className="py-2 text-right font-semibold">{tr('Bruto')}</th>
+                <th className="py-2 text-right font-semibold">{tr('Gubitak')}</th>
+                <th className="py-2 text-right font-semibold">{tr('Neto')}</th>
               </tr>
             </thead>
             <tbody>
@@ -285,7 +310,7 @@ function ProductionBody({ production }: { production: ParcelProduction }) {
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Tok berbe</CardTitle>
+              <CardTitle>{tr('Tok berbe')}</CardTitle>
             </CardHeader>
             <CardContent>
               <HarvestBars points={production.timeline} />
@@ -293,7 +318,7 @@ function ProductionBody({ production }: { production: ParcelProduction }) {
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>Kumulativni prinos</CardTitle>
+              <CardTitle>{tr('Kumulativni prinos')}</CardTitle>
             </CardHeader>
             <CardContent>
               <CumulativeChart points={production.timeline} />
@@ -309,21 +334,21 @@ function ProductionBody({ production }: { production: ParcelProduction }) {
       {rows.length > 0 ? (
         <Card>
           <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle>Prinos po redu</CardTitle>
+            <CardTitle>{tr('Prinos po redu')}</CardTitle>
             <Select value={rowSort} onChange={(event) => setRowSort(event.target.value as RowSort)} className="sm:w-48">
-              <option value="number">Po broju reda</option>
-              <option value="high">Najveći prinos</option>
-              <option value="low">Najmanji prinos</option>
+              <option value="number">{tr('Po broju reda')}</option>
+              <option value="high">{tr('Najveći prinos')}</option>
+              <option value="low">{tr('Najmanji prinos')}</option>
             </Select>
           </CardHeader>
           <CardContent className="overflow-x-auto">
             <table className="w-full min-w-[28rem] text-left text-sm">
               <thead className="text-xs uppercase tracking-wide text-muted-foreground">
                 <tr className="border-b border-border">
-                  <th className="py-2 font-semibold">Red</th>
-                  <th className="py-2 text-right font-semibold">Prinos</th>
-                  <th className="py-2 text-right font-semibold">Stabla</th>
-                  <th className="py-2 text-right font-semibold">kg/stablo</th>
+                  <th className="py-2 font-semibold">{tr("Red")}</th>
+                  <th className="py-2 text-right font-semibold">{tr('Prinos')}</th>
+                  <th className="py-2 text-right font-semibold">{tr('Stabla')}</th>
+                  <th className="py-2 text-right font-semibold">{tr('kg/stablo')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -350,10 +375,10 @@ function ProductionBody({ production }: { production: ParcelProduction }) {
       {production.tree_summary.length > 0 ? (
         <Card>
           <CardHeader className="space-y-3">
-            <CardTitle>Prinos po stablu</CardTitle>
+            <CardTitle>{tr('Prinos po stablu')}</CardTitle>
             <div className="grid gap-2 sm:grid-cols-3">
               <Select value={treeRow} onChange={(event) => setTreeRow(event.target.value)}>
-                <option value="">Svi redovi</option>
+                <option value="">{tr('Svi redovi')}</option>
                 {[...new Set(production.tree_summary.map((item) => item.row_number))]
                   .sort((a, b) => a - b)
                   .map((number) => (
@@ -363,14 +388,14 @@ function ProductionBody({ production }: { production: ParcelProduction }) {
                   ))}
               </Select>
               <Select value={treeSort} onChange={(event) => setTreeSort(event.target.value as TreeSort)}>
-                <option value="high">Najveći prinos</option>
-                <option value="low">Najmanji prinos</option>
+                <option value="high">{tr('Najveći prinos')}</option>
+                <option value="low">{tr('Najmanji prinos')}</option>
               </Select>
               <Select value={treeStatus} onChange={(event) => setTreeStatus(event.target.value as TreeStatusFilter)}>
-                <option value="all">Svi statusi</option>
-                <option value="active">Aktivno</option>
-                <option value="replaced">Zamenjeno</option>
-                <option value="removed">Uklonjeno</option>
+                <option value="all">{tr('Svi statusi')}</option>
+                <option value="active">{tr('Aktivno')}</option>
+                <option value="replaced">{tr('Zamenjeno')}</option>
+                <option value="removed">{tr('Uklonjeno')}</option>
               </Select>
             </div>
           </CardHeader>
@@ -378,9 +403,9 @@ function ProductionBody({ production }: { production: ParcelProduction }) {
             <table className="w-full min-w-[24rem] text-left text-sm">
               <thead className="text-xs uppercase tracking-wide text-muted-foreground">
                 <tr className="border-b border-border">
-                  <th className="py-2 font-semibold">Stablo</th>
-                  <th className="py-2 font-semibold">Red</th>
-                  <th className="py-2 text-right font-semibold">Prinos</th>
+                  <th className="py-2 font-semibold">{tr("Stablo")}</th>
+                  <th className="py-2 font-semibold">{tr("Red")}</th>
+                  <th className="py-2 text-right font-semibold">{tr('Prinos')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -404,7 +429,7 @@ function ProductionBody({ production }: { production: ParcelProduction }) {
       {production.photos.length > 0 ? (
         <Card>
           <CardHeader>
-            <CardTitle>Najnovije fotografije berbe</CardTitle>
+            <CardTitle>{tr('Najnovije fotografije berbe')}</CardTitle>
           </CardHeader>
           <CardContent>
             <PhotoGallery photos={production.photos} />
@@ -422,11 +447,13 @@ function ComparisonCard({ production }: { production: ParcelProduction }) {
       <Card>
         <CardHeader>
           <CardTitle>
-            {production.year}. naspram {comparison.previous_year}.
+            {tr('{{year}}. naspram {{previous}}.', { year: production.year, previous: comparison.previous_year })}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">{comparison.message || 'Nema podataka o berbi za prethodnu godinu.'}</p>
+          <p className="text-sm text-muted-foreground">
+            {comparison.message ? tr(comparison.message) : tr('Nema podataka o berbi za prethodnu godinu.')}
+          </p>
         </CardContent>
       </Card>
     )
@@ -435,26 +462,26 @@ function ComparisonCard({ production }: { production: ParcelProduction }) {
     <Card>
       <CardHeader>
         <CardTitle>
-          {production.year}. naspram {comparison.previous_year}.
+          {tr('{{year}}. naspram {{previous}}.', { year: production.year, previous: comparison.previous_year })}
         </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-3 sm:grid-cols-3">
         <CompareStat
-          label="Ukupan prinos"
+          label={tr('Ukupan prinos')}
           previous={formatKg(comparison.previous_net_yield.value)}
           current={formatKg(production.total_net_yield.value)}
           change={comparison.net_yield_change}
           previousYear={comparison.previous_year}
         />
         <CompareStat
-          label="Prinos / ha"
+          label={tr('Prinos / ha')}
           previous={amountOrDash(comparison.previous_yield_per_hectare, (value) => formatKg(value, { per: 'ha', digits: 0 }))}
           current={amountOrDash(production.yield_per_hectare, (value) => formatKg(value, { per: 'ha', digits: 0 }))}
           change={comparison.yield_per_hectare_change}
           previousYear={comparison.previous_year}
         />
         <CompareStat
-          label="Berbe"
+          label={tr('Berbe')}
           previous={comparison.previous_harvest_event_count != null ? formatNumber(comparison.previous_harvest_event_count) : '—'}
           current={production.harvest_event_count != null ? formatNumber(production.harvest_event_count) : '—'}
           change={comparison.harvest_event_count_change}
@@ -470,14 +497,14 @@ function QualityCard({ production }: { production: ParcelProduction }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Kvalitet berbe</CardTitle>
+        <CardTitle>{tr('Kvalitet berbe')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Mini label="Prosečna vlažnost" value={avgText(quality.moisture)} />
-          <Mini label="Oštećeni plodovi" value={avgText(quality.damaged)} />
-          <Mini label="Prazni plodovi" value={avgText(quality.empty_nuts)} />
-          <Mini label="Strane materije" value={avgText(quality.foreign_material)} />
+          <Mini label={tr("Prosečna vlažnost")} value={avgText(quality.moisture)} />
+          <Mini label={tr("Oštećeni plodovi")} value={avgText(quality.damaged)} />
+          <Mini label={tr('Prazni plodovi')} value={avgText(quality.empty_nuts)} />
+          <Mini label={tr('Strane materije')} value={avgText(quality.foreign_material)} />
         </div>
         {quality.categories.length > 0 ? (
           <div className="space-y-2">
@@ -489,7 +516,7 @@ function QualityCard({ production }: { production: ParcelProduction }) {
             ))}
           </div>
         ) : null}
-        <p className="text-xs text-muted-foreground">Proseci su ponderisani neto količinom berbe.</p>
+        <p className="text-xs text-muted-foreground">{tr('Proseci su ponderisani neto količinom berbe.')}</p>
       </CardContent>
     </Card>
   )
@@ -542,6 +569,377 @@ function CumulativeChart({ points }: { points: ParcelProduction['timeline'] }) {
   )
 }
 
+function shellToNetPercentLabel(ratio: string): string {
+  const numeric = Number(ratio)
+  if (Number.isNaN(numeric)) return '40%'
+  return `${Math.round(numeric * 100)}%`
+}
+
+function curveSeasonYear(ageYear: number, selectedYear: number, anchorAge: number | null) {
+  if (anchorAge == null) return null
+  return selectedYear - anchorAge + ageYear
+}
+
+function ExpectedYieldScenariosSection({ expected, year }: { expected: ExpectedYield; year: number }) {
+  if (!expected.available) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>{tr('Scenariji prinosa')}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          <p>
+            {expected.message
+              ? tr(expected.message)
+              : tr('Nema dovoljno podataka o starosti zasada za izračunavanje očekivanog prinosa.')}
+          </p>
+          {expected.precision_note ? <p>{tr(expected.precision_note)}</p> : null}
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const netShare = shellToNetPercentLabel(expected.shell_to_net_ratio)
+  const anchorAge =
+    expected.age_years.length === 1
+      ? expected.age_years[0]
+      : (expected.curve.find((row) => row.is_current)?.age_year ?? null)
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{tr('Scenariji prinosa')}</CardTitle>
+        {expected.age_label ? <p className="text-sm text-muted-foreground">{tr(expected.age_label)}</p> : null}
+        <p className="text-sm text-muted-foreground">
+          {tr('Vrednosti su bruto (kg ploda u ljusci). Neto za poređenje = {{share}} bruto.', {
+            share: netShare,
+          })}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Kpi
+            label={tr('Pesimistični')}
+            value={amountOrDash(expected.pessimistic_kg, formatKg)}
+            hint={tr('bruto u ljusci')}
+          />
+          <Kpi
+            label={tr('Realistični')}
+            value={amountOrDash(expected.realistic_kg, formatKg)}
+            hint={tr('bruto za {{year}}.', { year })}
+          />
+          <Kpi
+            label={tr('Optimistični')}
+            value={amountOrDash(expected.optimistic_kg, formatKg)}
+            hint={tr('bruto u ljusci')}
+          />
+          <Kpi
+            label={tr('Po stablu')}
+            value={amountOrDash(expected.expected_per_tree_realistic, (value) =>
+              formatKg(value, { per: 'stablo' }),
+            )}
+            hint={
+              expected.expected_per_hectare_realistic.available
+                ? amountOrDash(expected.expected_per_hectare_realistic, (value) =>
+                    formatKg(value, { per: 'ha', digits: 0 }),
+                  )
+                : tr('bruto / stablo')
+            }
+          />
+        </div>
+
+        {expected.precision_note ? (
+          <p className="text-xs text-muted-foreground">{tr(expected.precision_note)}</p>
+        ) : null}
+
+        <ExpectedYieldChart curve={expected.curve} />
+
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[32rem] text-left text-sm">
+            <thead className="text-xs uppercase tracking-wide text-muted-foreground">
+              <tr className="border-b border-border">
+                <th className="py-2 font-semibold">{tr('Sezona')}</th>
+                <th className="py-2 font-semibold">{tr('Starost')}</th>
+                <th className="py-2 text-right font-semibold">{tr('Pesimistični')}</th>
+                <th className="py-2 text-right font-semibold">{tr('Realistični')}</th>
+                <th className="py-2 text-right font-semibold">{tr('Optimistični')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {expected.curve.map((row) => {
+                const season = curveSeasonYear(row.age_year, year, anchorAge)
+                return (
+                  <tr
+                    key={row.age_year}
+                    className={cn(
+                      'border-b border-border/70 last:border-0',
+                      row.is_current ? 'bg-accent/10 font-medium' : undefined,
+                    )}
+                  >
+                    <td className="py-2 font-mono">{season ?? '—'}</td>
+                    <td className="py-2">{row.age_year}.</td>
+                    <td className="py-2 text-right font-mono">{formatKg(row.pessimistic)}</td>
+                    <td className="py-2 text-right font-mono">{formatKg(row.realistic)}</td>
+                    <td className="py-2 text-right font-mono">{formatKg(row.optimistic)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {tr('Jedinica: kg u ljusci / stablo (bruto)')}
+          </p>
+        </div>
+
+        {(expected.by_variety ?? []).length > 0 ? (
+          <div className="overflow-x-auto">
+            <p className="mb-2 text-sm font-medium">{tr('Očekivano po sortama (bruto)')}</p>
+            <table className="w-full min-w-[36rem] text-left text-sm">
+              <thead className="text-xs uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border">
+                  <th className="py-2 font-semibold">{tr('Sorta')}</th>
+                  <th className="py-2 text-right font-semibold">{tr('Stabla')}</th>
+                  <th className="py-2 text-right font-semibold">{tr('Udeo')}</th>
+                  <th className="py-2 text-right font-semibold">{tr('Pesimistični')}</th>
+                  <th className="py-2 text-right font-semibold">{tr('Realistični')}</th>
+                  <th className="py-2 text-right font-semibold">{tr('Optimistični')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {expected.by_variety.map((row) => (
+                  <tr key={row.variety} className="border-b border-border/70 last:border-0">
+                    <td className="py-2">{row.variety}</td>
+                    <td className="py-2 text-right font-mono">{formatNumber(row.tree_count)}</td>
+                    <td className="py-2 text-right font-mono">
+                      {row.share_of_trees_percent != null
+                        ? `${formatNumber(row.share_of_trees_percent)}%`
+                        : '—'}
+                    </td>
+                    <td className="py-2 text-right font-mono">
+                      {amountOrDash(row.pessimistic_kg, formatKg)}
+                    </td>
+                    <td className="py-2 text-right font-mono">
+                      {amountOrDash(row.realistic_kg, formatKg)}
+                    </td>
+                    <td className="py-2 text-right font-mono">
+                      {amountOrDash(row.optimistic_kg, formatKg)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+
+        {expected.cohorts.length > 1 ? (
+          <div className="overflow-x-auto">
+            <p className="mb-2 text-sm font-medium">{tr('Starosne grupe (bruto)')}</p>
+            <table className="w-full min-w-[32rem] text-left text-sm">
+              <thead className="text-xs uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border">
+                  <th className="py-2 font-semibold">{tr('Sadnja')}</th>
+                  <th className="py-2 font-semibold">{tr('Starost')}</th>
+                  <th className="py-2 text-right font-semibold">{tr('Stabla')}</th>
+                  <th className="py-2 text-right font-semibold">{tr('Realistično / stablo')}</th>
+                  <th className="py-2 text-right font-semibold">{tr('Ukupno')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {expected.cohorts.map((cohort) => (
+                  <tr
+                    key={`${cohort.planting_year}-${cohort.age_year}`}
+                    className="border-b border-border/70 last:border-0"
+                  >
+                    <td className="py-2">{cohort.planting_year}</td>
+                    <td className="py-2">{cohort.age_year}.</td>
+                    <td className="py-2 text-right font-mono">{formatNumber(cohort.tree_count)}</td>
+                    <td className="py-2 text-right font-mono">{formatKg(cohort.realistic_kg_per_tree)}</td>
+                    <td className="py-2 text-right font-mono">{formatKg(cohort.realistic_kg)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+
+        {expected.disclaimer ? (
+          <p className="text-xs leading-relaxed text-muted-foreground">{tr(expected.disclaimer)}</p>
+        ) : null}
+      </CardContent>
+    </Card>
+  )
+}
+
+function ExpectedYieldComparisonSection({ expected, year }: { expected: ExpectedYield; year: number }) {
+  if (!expected.available) return null
+
+  const netShare = shellToNetPercentLabel(expected.shell_to_net_ratio)
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{tr('Analitika i poređenje')}</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          {tr('Poređenje stvarne neto berbe sa očekivanim netom ({{share}} bruto krive).', {
+            share: netShare,
+          })}
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <Kpi
+            label={tr('Očekivano neto')}
+            value={amountOrDash(expected.realistic_net_kg, formatKg)}
+            hint={tr('realistični × {{share}}', { share: netShare })}
+          />
+          <Kpi
+            label={tr('Stvarna berba')}
+            value={amountOrDash(expected.actual_net_kg, formatKg)}
+            hint={tr('neto, nivo parcele')}
+          />
+          <Kpi
+            label={tr('Razlika')}
+            value={
+              expected.difference_kg.available && expected.difference_kg.value != null
+                ? formatKg(expected.difference_kg.value)
+                : '—'
+            }
+            hint={
+              expected.difference_percent.available && expected.difference_percent.value != null
+                ? formatPercentValue(expected.difference_percent.value)
+                : undefined
+            }
+          />
+          <Kpi
+            label={tr('Po stablu (neto)')}
+            value={amountOrDash(expected.expected_per_tree_realistic_net, (value) =>
+              formatKg(value, { per: 'stablo' }),
+            )}
+            hint={
+              expected.expected_per_hectare_realistic_net.available
+                ? amountOrDash(expected.expected_per_hectare_realistic_net, (value) =>
+                    formatKg(value, { per: 'ha', digits: 0 }),
+                  )
+                : undefined
+            }
+          />
+        </div>
+
+        {expected.comparison_message ? (
+          <p className="text-sm text-muted-foreground">{tr(expected.comparison_message)}</p>
+        ) : null}
+
+        {expected.history.length > 0 ? (
+          <div className="overflow-x-auto">
+            <p className="mb-2 text-sm font-medium">{tr('Poređenje po godinama (neto)')}</p>
+            <table className="w-full min-w-[32rem] text-left text-sm">
+              <thead className="text-xs uppercase tracking-wide text-muted-foreground">
+                <tr className="border-b border-border">
+                  <th className="py-2 font-semibold">{tr('Godina')}</th>
+                  <th className="py-2 text-right font-semibold">{tr('Očekivano neto')}</th>
+                  <th className="py-2 text-right font-semibold">{tr('Stvarno neto')}</th>
+                  <th className="py-2 text-right font-semibold">{tr('Odstupanje')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {expected.history.map((row) => (
+                  <tr
+                    key={row.year}
+                    className={cn(
+                      'border-b border-border/70 last:border-0',
+                      row.year === year ? 'bg-accent/10' : undefined,
+                    )}
+                  >
+                    <td className="py-2">{row.year}</td>
+                    <td className="py-2 text-right font-mono">
+                      {amountOrDash(row.expected_pessimistic_net_kg, formatKg)}
+                    </td>
+                    <td className="py-2 text-right font-mono">
+                      {amountOrDash(row.actual_net_kg, formatKg)}
+                    </td>
+                    <td className="py-2 text-right font-mono">
+                      {row.difference_percent.available && row.difference_percent.value != null
+                        ? formatPercentValue(row.difference_percent.value)
+                        : amountOrDash(row.difference_kg, formatKg)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  )
+}
+
+function ExpectedYieldChart({ curve }: { curve: ExpectedYield['curve'] }) {
+  const maxValue = Math.max(
+    ...curve.flatMap((row) => [Number(row.pessimistic), Number(row.realistic), Number(row.optimistic)]),
+    1,
+  )
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-muted-foreground/50" /> {tr('Pesimistični')}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-primary" /> {tr('Realistični')}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-accent" /> {tr('Optimistični')}
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <div className="flex h-44 min-w-[36rem] items-end gap-2 px-1">
+          {curve.map((row) => {
+            const pessimistic = (Number(row.pessimistic) / maxValue) * 100
+            const realistic = (Number(row.realistic) / maxValue) * 100
+            const optimistic = (Number(row.optimistic) / maxValue) * 100
+            return (
+              <div key={row.age_year} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+                <div className="flex h-32 w-full items-end justify-center gap-0.5">
+                  <div
+                    className="w-full max-w-[0.45rem] rounded-t bg-muted-foreground/40"
+                    style={{ height: `${Math.max(pessimistic, Number(row.pessimistic) > 0 ? 4 : 2)}%` }}
+                    title={`${tr('Pesimistični')}: ${row.pessimistic} kg`}
+                  />
+                  <div
+                    className={cn(
+                      'w-full max-w-[0.45rem] rounded-t',
+                      row.is_current ? 'bg-primary' : 'bg-primary/70',
+                    )}
+                    style={{ height: `${Math.max(realistic, Number(row.realistic) > 0 ? 4 : 2)}%` }}
+                    title={`${tr('Realistični')}: ${row.realistic} kg`}
+                  />
+                  <div
+                    className="w-full max-w-[0.45rem] rounded-t bg-accent/80"
+                    style={{ height: `${Math.max(optimistic, Number(row.optimistic) > 0 ? 4 : 2)}%` }}
+                    title={`${tr('Optimistični')}: ${row.optimistic} kg`}
+                  />
+                </div>
+                <span
+                  className={cn(
+                    'text-[10px] tabular-nums',
+                    row.is_current ? 'font-semibold text-foreground' : 'text-muted-foreground',
+                  )}
+                >
+                  {row.age_year}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {tr('X: godina od sadnje · Y: kg u ljusci / stablo (bruto)')}
+      </p>
+    </div>
+  )
+}
+
 function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <Card className="min-w-0">
@@ -590,7 +988,7 @@ function CompareStat({
       </p>
       <p className="text-sm font-semibold">{current}</p>
       <p className={cn('mt-1 text-xs', change.tone === 'positive' ? 'text-ok' : change.tone === 'negative' ? 'text-danger' : 'text-muted-foreground')}>
-        {change.available && change.percent != null ? formatPercentValue(change.percent) : 'Nema uporedive promene'}
+        {change.available && change.percent != null ? formatPercentValue(change.percent) : tr('Nema uporedive promene')}
       </p>
     </div>
   )
@@ -602,7 +1000,7 @@ function amountOrDash(amount: ReportOptionalAmount, format: (value: string) => s
 }
 
 function avgText(avg: ParcelProduction['quality_summary']['moisture']) {
-  if (!avg.available || avg.value == null) return 'Nije izračunato'
+  if (!avg.available || avg.value == null) return tr('Nije izračunato')
   return `${Number(avg.value).toLocaleString('sr-Latn-RS', { maximumFractionDigits: 1 })}%`
 }
 

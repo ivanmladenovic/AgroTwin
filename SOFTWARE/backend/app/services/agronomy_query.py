@@ -6,13 +6,14 @@ from sqlalchemy.orm import Session
 
 from app.ai import get_ai_provider
 from app.ai.base import ChatMessage
-from app.ai.prompts import AGRONOMY_SYSTEM_PROMPT, format_evidence_block
+from app.ai.prompts import format_evidence_block, get_agronomy_system_prompt
 from app.core.exceptions import NotFoundError
+from app.core.locale import effective_reply_locale
 from app.knowledge.retrieve import retrieve_evidence
 from app.knowledge.taxonomy import (
-    INSUFFICIENT_EVIDENCE_MESSAGE,
-    OUT_OF_SCOPE_MESSAGE,
-    PRODUCT_GUESS_MESSAGE,
+    insufficient_evidence_message,
+    out_of_scope_message,
+    product_guess_message,
 )
 from app.repositories.farm import FarmRepository
 from app.schemas.knowledge import AgronomyQueryResponse, EvidencePackage
@@ -32,6 +33,7 @@ class AgronomyQueryService:
         mode: str = "retrieve",
         include_images: bool = False,
         debug: bool = False,
+        locale: str = "sr",
     ) -> AgronomyQueryResponse:
         farm = self.farms.list_by_owner(owner_id)
         if not farm:
@@ -43,7 +45,7 @@ class AgronomyQueryService:
             agriser_only=True,
             include_images=include_images,
         )
-        answer = self._answer_from_evidence(question, evidence, mode=mode)
+        answer = self._answer_from_evidence(question, evidence, mode=mode, locale=locale)
         citations = _citations(evidence)
         return AgronomyQueryResponse(
             question=question,
@@ -56,19 +58,22 @@ class AgronomyQueryService:
             debug=evidence.debug if debug else None,
         )
 
-    def _answer_from_evidence(self, question: str, evidence: EvidencePackage, *, mode: str) -> str:
+    def _answer_from_evidence(
+        self, question: str, evidence: EvidencePackage, *, mode: str, locale: str = "sr"
+    ) -> str:
+        reply_locale = effective_reply_locale(locale, question)
         if evidence.out_of_scope:
-            return OUT_OF_SCOPE_MESSAGE
+            return out_of_scope_message(reply_locale)
         if evidence.commercial:
-            return PRODUCT_GUESS_MESSAGE
+            return product_guess_message(reply_locale)
         if not evidence.sufficient_evidence:
-            return INSUFFICIENT_EVIDENCE_MESSAGE
+            return insufficient_evidence_message(reply_locale)
         if mode == "retrieve":
-            return _retrieve_summary(evidence)
-        block = format_evidence_block(evidence)
+            return _retrieve_summary(evidence, locale=reply_locale)
+        block = format_evidence_block(evidence, locale=reply_locale)
         result = self.provider.chat(
             [
-                ChatMessage(role="system", content=AGRONOMY_SYSTEM_PROMPT),
+                ChatMessage(role="system", content=get_agronomy_system_prompt(reply_locale)),
                 ChatMessage(role="system", content=block),
                 ChatMessage(role="user", content=question),
             ]
@@ -86,14 +91,19 @@ def _citations(evidence: EvidencePackage) -> list[str]:
     return list(dict.fromkeys(rows))
 
 
-def _retrieve_summary(evidence: EvidencePackage) -> str:
+def _retrieve_summary(evidence: EvidencePackage, *, locale: str = "sr") -> str:
     if not evidence.sources and not evidence.tables:
-        return INSUFFICIENT_EVIDENCE_MESSAGE
-    lines = ["Pronađeni odlomci iz Agriser priručnika:", ""]
+        return insufficient_evidence_message(locale)
+    if locale == "en":
+        lines = ["Excerpts found in Agriser manuals:", ""]
+        source_label = "Source:"
+    else:
+        lines = ["Pronađeni odlomci iz Agriser priručnika:", ""]
+        source_label = "Izvor:"
     for item in (evidence.sources + evidence.tables)[:6]:
         pages = "-".join(str(page) for page in item.pages) if item.pages else "?"
         lines.append(f"- {item.document_title}, str. {pages}, {item.section or 'n/a'}")
         lines.append(item.content[:500])
         lines.append("")
-    lines.append("Izvor: " + "; ".join(_citations(evidence)[:4]))
+    lines.append(source_label + " " + "; ".join(_citations(evidence)[:4]))
     return "\n".join(lines).strip()

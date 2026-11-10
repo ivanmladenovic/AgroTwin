@@ -1,17 +1,23 @@
 import type { TreeHealthStatus, TreeStatus } from '@/shared/api/types'
+import { tr } from '@/shared/i18n/i18n'
 
 export type OrchardTreeFilter = TreeHealthStatus | 'all' | 'missing' | 'attention'
 
-export const orchardFilters: Array<{ value: OrchardTreeFilter; label: string }> = [
-  { value: 'all', label: 'Sva stabla' },
-  { value: 'healthy', label: 'Zdravo' },
-  { value: 'monitoring', label: 'Praćenje' },
-  { value: 'issue', label: 'Problem' },
-  { value: 'attention', label: 'Zahtevaju pažnju' },
-  { value: 'missing', label: 'Izostanak sadnice' },
-]
+export function getOrchardFilters(): Array<{ value: OrchardTreeFilter; label: string }> {
+  return [
+    { value: 'all', label: tr('Sva stabla') },
+    { value: 'healthy', label: tr('Zdravo') },
+    { value: 'monitoring', label: tr('Praćenje') },
+    { value: 'issue', label: tr('Problem') },
+    { value: 'attention', label: tr('Zahtevaju pažnju') },
+    { value: 'missing', label: tr('Izostanak sadnice') },
+  ]
+}
 
-export const healthFilters = orchardFilters
+/** @deprecated Use getOrchardFilters() for translated labels */
+export const orchardFilters = getOrchardFilters()
+
+export const healthFilters = getOrchardFilters
 
 export function treeMarkerClass(
   status: TreeStatus,
@@ -24,24 +30,22 @@ export function treeMarkerClass(
   return `tree-health-${health}`
 }
 
-const healthLabels: Record<TreeHealthStatus, string> = {
-  healthy: 'Zdravo',
-  monitoring: 'Praćenje',
-  issue: 'Problem',
-  unknown: 'Nepoznato',
-}
-
-const statusLabels: Record<TreeStatus, string> = {
-  active: 'Aktivno',
-  removed: 'Uklonjeno',
-  replaced: 'Zamenjeno',
-}
-
 export function healthLabel(health: TreeHealthStatus) {
+  const healthLabels: Record<TreeHealthStatus, string> = {
+    healthy: tr('Zdravo'),
+    monitoring: tr('Praćenje'),
+    issue: tr('Problem'),
+    unknown: tr('Nepoznato'),
+  }
   return healthLabels[health] ?? health
 }
 
 export function statusLabel(status: TreeStatus) {
+  const statusLabels: Record<TreeStatus, string> = {
+    active: tr('Aktivno'),
+    removed: tr('Uklonjeno'),
+    replaced: tr('Zamenjeno'),
+  }
   return statusLabels[status] ?? status
 }
 

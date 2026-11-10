@@ -8,8 +8,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.core.exceptions import AppError, NotFoundError
+from app.core.geojson import InvalidParcelGeometry, square_boundary_from_point
 from app.core.maps import coordinates_as_decimal, resolve_maps_location
-from app.models.enums import HealthStatus, TreeStatus
+from app.models.enums import HealthStatus, OrganicScope, ProductionMethod, TreeStatus
 from app.models.farm import Farm
 from app.models.parcel import Parcel
 from app.models.row import Row
@@ -120,6 +121,7 @@ class OrchardService:
             boundary=payload.boundary,
         )
         self._apply_maps_url(parcel, payload.maps_url)
+        self.ensure_approximate_boundary(parcel)
         self.parcels.add(parcel)
         self.db.flush()
         self._persist_layout(parcel, layout)
@@ -131,7 +133,7 @@ class OrchardService:
         parcel = self.get_parcel(parcel_id, owner_id)
         if payload.name is not None:
             parcel.name = payload.name.strip()
-            parcel.code = self._unique_code(farm.id, parcel.name, exclude_id=parcel.id)
+            parcel.code = self._unique_code(parcel.farm_id, parcel.name, exclude_id=parcel.id)
         if payload.area_hectares is not None:
             parcel.area_hectares = payload.area_hectares
         if payload.notes is not None:
@@ -142,8 +144,71 @@ class OrchardService:
             parcel.altitude = payload.altitude
         if "boundary" in payload.model_fields_set:
             parcel.boundary = payload.boundary
+        location_changed = payload.area_hectares is not None or "maps_url" in payload.model_fields_set
+        if location_changed and "boundary" not in payload.model_fields_set:
+            # Rebuild square when Maps pin / area change — but never overwrite a
+            # precise polygon from the geographic map editor (audit: Maps URL
+            # force-rebuild must not destroy hand-drawn boundaries).
+            if self._has_map_editor_boundary(parcel):
+                pass
+            else:
+                self.ensure_approximate_boundary(parcel, force=True)
+        elif parcel.boundary is None:
+            self.ensure_approximate_boundary(parcel)
         if payload.planting_year is not None:
             parcel.default_planting_year = payload.planting_year
+        if payload.production_method is not None:
+            parcel.production_method = payload.production_method
+            if payload.production_method == ProductionMethod.CONVENTIONAL:
+                parcel.organic_scope = OrganicScope.NONE
+                for row in self.rows.list_by_parcel(parcel.id):
+                    row.is_organic = False
+        if payload.organic_scope is not None:
+            if parcel.production_method == ProductionMethod.CONVENTIONAL and payload.organic_scope != OrganicScope.NONE:
+                raise AppError(
+                    "Konvencionalna parcela ne može imati organski scope.",
+                    status_code=422,
+                    code="invalid_organic_scope",
+                )
+            parcel.organic_scope = payload.organic_scope
+            if payload.organic_scope == OrganicScope.ENTIRE_PARCEL:
+                for row in self.rows.list_by_parcel(parcel.id):
+                    row.is_organic = True
+            elif payload.organic_scope == OrganicScope.NONE:
+                for row in self.rows.list_by_parcel(parcel.id):
+                    row.is_organic = False
+
+        if "has_irrigation" in payload.model_fields_set and payload.has_irrigation is not None:
+            parcel.has_irrigation = payload.has_irrigation
+            if not payload.has_irrigation:
+                parcel.irrigation_type = None
+                parcel.water_source = None
+                parcel.emitter_flow_lph = None
+                parcel.emitter_spacing_m = None
+                parcel.line_count = None
+                parcel.irrigation_sections = None
+                parcel.irrigation_pressure_bar = None
+                parcel.irrigation_efficiency = None
+                parcel.irrigation_notes = None
+        if parcel.has_irrigation:
+            if "irrigation_type" in payload.model_fields_set:
+                parcel.irrigation_type = payload.irrigation_type
+            if "water_source" in payload.model_fields_set:
+                parcel.water_source = payload.water_source
+            if "emitter_flow_lph" in payload.model_fields_set:
+                parcel.emitter_flow_lph = payload.emitter_flow_lph
+            if "emitter_spacing_m" in payload.model_fields_set:
+                parcel.emitter_spacing_m = payload.emitter_spacing_m
+            if "line_count" in payload.model_fields_set:
+                parcel.line_count = payload.line_count
+            if "irrigation_sections" in payload.model_fields_set:
+                parcel.irrigation_sections = payload.irrigation_sections
+            if "irrigation_pressure_bar" in payload.model_fields_set:
+                parcel.irrigation_pressure_bar = payload.irrigation_pressure_bar
+            if "irrigation_efficiency" in payload.model_fields_set:
+                parcel.irrigation_efficiency = payload.irrigation_efficiency
+            if "irrigation_notes" in payload.model_fields_set:
+                parcel.irrigation_notes = payload.irrigation_notes
 
         if payload.varieties is not None or payload.row_plan is not None:
             try:
@@ -152,9 +217,20 @@ class OrchardService:
                     if payload.varieties is not None
                     else [VarietySpec.model_validate(item) for item in (parcel.varieties or [])]
                 )
+                geo_parcel = self._has_map_editor_boundary(parcel) or (
+                    isinstance(parcel.map_layout, dict) and parcel.map_layout.get("source") == "map_editor"
+                )
+                # Geo layouts have variable trees/row — skip rectangular missing-slot validation.
+                trees_per_row = parcel.trees_per_row or 0
+                if geo_parcel and payload.row_plan is not None:
+                    trees_per_row = max(
+                        trees_per_row,
+                        max((row.tree_count or 0 for row in self.rows.list_by_parcel(parcel.id)), default=0),
+                        1,
+                    )
                 resolved, default_name, plan = normalize_varieties_and_plan(
                     row_count=parcel.row_count or 0,
-                    trees_per_row=parcel.trees_per_row or 0,
+                    trees_per_row=trees_per_row,
                     varieties=varieties,
                     row_plan=payload.row_plan or [],
                     default_variety=parcel.default_variety,
@@ -165,7 +241,12 @@ class OrchardService:
             parcel.default_variety = default_name
             flag_modified(parcel, "varieties")
             if payload.row_plan is not None:
-                self._apply_planting_plan(parcel, plan, planting_year=payload.planting_year or parcel.default_planting_year)
+                if geo_parcel:
+                    self._apply_row_varieties_only(parcel, plan)
+                else:
+                    self._apply_planting_plan(
+                        parcel, plan, planting_year=payload.planting_year or parcel.default_planting_year
+                    )
 
         self.db.commit()
         self.db.refresh(parcel)
@@ -179,6 +260,13 @@ class OrchardService:
 
     def get_twin(self, parcel_id: UUID, owner_id: UUID) -> OrchardTwinRead:
         parcel = self.get_parcel(parcel_id, owner_id)
+        # Map-editor parcels saved before normalized_x/y projection need a one-time repair.
+        from app.services.map_editor import MapEditorService
+
+        repaired = MapEditorService(self.db).repair_normalized_from_geo(parcel)
+        if repaired:
+            self.db.commit()
+            self.db.refresh(parcel)
         row_models = self.rows.list_by_parcel(parcel.id)
         tree_rows = self.trees.list_map_for_parcel(parcel.id)
         health = self.trees.health_counts(parcel.id)
@@ -199,22 +287,33 @@ class OrchardService:
                 status=tree.status,
                 health_status=tree.health_status,
                 has_severe_case=tree.id in severe_ids,
+                is_organic=tree.is_organic,
                 normalized_x=tree.normalized_x,
                 normalized_y=tree.normalized_y,
+                latitude=tree.latitude,
+                longitude=tree.longitude,
             )
             for tree, row_number in tree_rows
         ]
         active_trees = [tree for tree in trees if tree.status == TreeStatus.ACTIVE]
         width_m = Decimal("0")
         height_m = Decimal("0")
-        if parcel.trees_per_row and parcel.tree_spacing_m is not None:
-            width_m = Decimal(max(parcel.trees_per_row - 1, 0)) * parcel.tree_spacing_m
-        if parcel.row_count and parcel.row_spacing_m is not None:
-            height_m = Decimal(max(parcel.row_count - 1, 0)) * parcel.row_spacing_m
-        if width_m == 0 and trees:
-            width_m = max(tree.normalized_x for tree in trees)
-        if height_m == 0 and trees:
-            height_m = max(tree.normalized_y for tree in trees)
+        map_source = (parcel.map_layout or {}).get("source") if isinstance(parcel.map_layout, dict) else None
+        geo_layout = map_source == "map_editor" or any(
+            t.latitude is not None and t.longitude is not None for t, _ in tree_rows
+        )
+        if geo_layout and active_trees:
+            width_m = max((tree.normalized_x for tree in active_trees), default=Decimal("0"))
+            height_m = max((tree.normalized_y for tree in active_trees), default=Decimal("0"))
+        else:
+            if parcel.trees_per_row and parcel.tree_spacing_m is not None:
+                width_m = Decimal(max(parcel.trees_per_row - 1, 0)) * parcel.tree_spacing_m
+            if parcel.row_count and parcel.row_spacing_m is not None:
+                height_m = Decimal(max(parcel.row_count - 1, 0)) * parcel.row_spacing_m
+            if width_m == 0 and trees:
+                width_m = max(tree.normalized_x for tree in trees)
+            if height_m == 0 and trees:
+                height_m = max(tree.normalized_y for tree in trees)
         well = None
         if parcel.well_location is not None and parcel.well_x is not None and parcel.well_y is not None:
             well = WellRead(location=parcel.well_location, x=parcel.well_x, y=parcel.well_y)
@@ -265,6 +364,8 @@ class OrchardService:
             has_severe_case=tree.id in self.diseases.severe_tree_ids(parcel.id),
             normalized_x=tree.normalized_x,
             normalized_y=tree.normalized_y,
+            latitude=tree.latitude,
+            longitude=tree.longitude,
             activity_count=self.trees.activity_count(tree.id),
             disease_issue_count=self.trees.open_disease_count(tree.id),
             total_cost=self.trees.total_cost(tree.id),
@@ -291,6 +392,18 @@ class OrchardService:
             for tree, row_number in self.trees.list_options(parcel.id, row_id)
             if tree.status == TreeStatus.ACTIVE
         ]
+
+    def _apply_row_varieties_only(self, parcel: Parcel, plan: list[RowPlanItem]) -> None:
+        """Update row/tree varieties without reshaping geographic planting geometry."""
+        rows = {row.row_number: row for row in self.rows.list_by_parcel(parcel.id)}
+        for item in plan:
+            row = rows.get(item.row_number)
+            if row is None:
+                continue
+            row.variety = item.variety
+            for tree in parcel.trees:
+                if tree.row_id == row.id and tree.status != TreeStatus.REMOVED:
+                    tree.variety = item.variety
 
     def _apply_planting_plan(
         self,
@@ -323,12 +436,16 @@ class OrchardService:
                         self._remove_or_delete_tree(tree)
                     continue
                 active += 1
+                tree_number = starting + position - 1
+                public_id = format_tree_public_id(item.row_number, tree_number)
                 if tree is not None:
                     tree.status = TreeStatus.ACTIVE
                     tree.variety = item.variety
+                    if tree.public_id != public_id and public_id not in used_ids:
+                        used_ids.discard(tree.public_id)
+                        tree.public_id = public_id
+                        used_ids.add(public_id)
                     continue
-                sequence = starting + (item.row_number - 1) * trees_per_row + (position - 1)
-                public_id = format_tree_public_id(item.row_number, sequence)
                 if public_id in used_ids:
                     public_id = f"{public_id}-R"
                 used_ids.add(public_id)
@@ -393,6 +510,79 @@ class OrchardService:
                     }
                 )
         self.trees.bulk_insert(tree_rows)
+
+    @staticmethod
+    def _has_map_editor_boundary(parcel: Parcel) -> bool:
+        """True when boundary was committed via the isolated geographic map editor."""
+        layout = parcel.map_layout
+        if not isinstance(layout, dict):
+            return False
+        return layout.get("source") == "map_editor" and parcel.boundary is not None
+
+    def ensure_parcel_coordinates(self, parcel: Parcel) -> str:
+        """Ensure lat/lng for weather / SoilGrids.
+
+        Returns ``ok``, ``missing``, or ``invalid``.
+        Prefers existing coords, then boundary centroid, then Maps URL.
+        """
+        from app.map_editor.metrics import polygon_metrics
+        from app.soil.properties import coordinates_are_valid
+
+        if coordinates_are_valid(parcel.latitude, parcel.longitude):
+            return "ok"
+
+        if parcel.boundary and isinstance(parcel.boundary, dict):
+            try:
+                metrics = polygon_metrics(parcel.boundary)
+                lat = metrics.get("origin_lat")
+                lon = metrics.get("origin_lon")
+                if lat is not None and lon is not None and coordinates_are_valid(lat, lon):
+                    parcel.latitude = Decimal(str(round(float(lat), 6)))
+                    parcel.longitude = Decimal(str(round(float(lon), 6)))
+                    self.db.commit()
+                    self.db.refresh(parcel)
+                    return "ok"
+            except Exception:
+                pass
+
+        if parcel.maps_url:
+            try:
+                location = resolve_maps_location(parcel.maps_url, fallback_query=parcel.name)
+            except Exception:
+                location = None
+            if location is None:
+                return "invalid"
+            parcel.latitude, parcel.longitude = coordinates_as_decimal(location)
+            self.db.commit()
+            self.db.refresh(parcel)
+            return "ok"
+
+        return "missing"
+
+    def ensure_approximate_boundary(self, parcel: Parcel, *, force: bool = False) -> bool:
+        """Build a square from lat/lon + area (Maps pin).
+
+        When ``force`` is True, replaces an existing boundary — used when the
+        farmer updates Maps link or area before a precise polygon exists.
+        Never replaces a map-editor (precise) boundary.
+        """
+        if self._has_map_editor_boundary(parcel):
+            return False
+        if parcel.boundary is not None and not force:
+            return False
+        if parcel.latitude is None or parcel.longitude is None or parcel.area_hectares is None:
+            if force and not parcel.maps_url:
+                parcel.boundary = None
+            return False
+        try:
+            parcel.boundary = square_boundary_from_point(
+                float(parcel.latitude),
+                float(parcel.longitude),
+                float(parcel.area_hectares),
+            )
+        except (InvalidParcelGeometry, TypeError, ValueError):
+            return False
+        return True
 
     def _apply_maps_url(self, parcel: Parcel, maps_url: str | None) -> None:
         parcel.maps_url = maps_url

@@ -11,6 +11,7 @@ import { Button } from '@/shared/ui/button'
 import { Card, CardContent } from '@/shared/ui/card'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
+import { tr } from '@/shared/i18n/i18n'
 
 export function HealthIndexPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -39,23 +40,23 @@ export function HealthIndexPage() {
     <div className="w-full space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="kicker">Zdravlje stabala</p>
-          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Opažanja i sumnje na probleme</h1>
+          <p className="kicker">{tr("Zdravlje stabala")}</p>
+          <h1 className="mt-1 text-xl font-semibold sm:text-2xl">{tr('Opažanja i sumnje na probleme')}</h1>
           <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-            Ovo su terenska opažanja, a ne potvrđene agronomske dijagnoze.
+            {tr('Ovo su terenska opažanja, a ne potvrđene agronomske dijagnoze.')}
           </p>
         </div>
         <Link to={`/health/new?returnTo=${encodeURIComponent(listReturnTo)}`}>
-          <Button>+ Prijavi problem</Button>
+          <Button>{tr('+ Prijavi problem')}</Button>
         </Link>
       </div>
 
       <Card>
         <CardContent className="grid gap-3 py-4 md:grid-cols-3">
           <div className="space-y-1.5">
-            <Label>Parcela</Label>
+            <Label>{tr("Parcela")}</Label>
             <Select value={parcelId} onChange={(event) => setParcelId(event.target.value)}>
-              <option value="">Sve parcele</option>
+              <option value="">{tr('Sve parcele')}</option>
               {(parcelsQuery.data ?? []).map((parcel) => (
                 <option key={parcel.id} value={parcel.id}>
                   {parcel.name}
@@ -66,8 +67,8 @@ export function HealthIndexPage() {
           <div className="space-y-1.5">
             <Label>Status</Label>
             <Select value={status} onChange={(event) => setStatus(event.target.value as DiseaseStatus | '')}>
-              <option value="">Svi statusi</option>
-              {diseaseStatuses.map((item) => (
+              <option value="">{tr('Svi statusi')}</option>
+              {diseaseStatuses().map((item) => (
                 <option key={item.value} value={item.value}>
                   {item.label}
                 </option>
@@ -77,8 +78,8 @@ export function HealthIndexPage() {
           <div className="space-y-1.5">
             <Label>Kategorija</Label>
             <Select value={category} onChange={(event) => setCategory(event.target.value as DiseaseCategory | '')}>
-              <option value="">Sve kategorije</option>
-              {diseaseCategories.map((item) => (
+              <option value="">{tr('Sve kategorije')}</option>
+              {diseaseCategories().map((item) => (
                 <option key={item.value} value={item.value}>
                   {item.label}
                 </option>
@@ -89,9 +90,9 @@ export function HealthIndexPage() {
       </Card>
 
       {casesQuery.isLoading ? (
-        <p className="text-sm text-muted-foreground">Učitavanje opažanja…</p>
+        <p className="text-sm text-muted-foreground">{tr('Učitavanje opažanja…')}</p>
       ) : cases.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Nema opažanja za ove filtere.</p>
+        <p className="text-sm text-muted-foreground">{tr('Nema opažanja za ove filtere.')}</p>
       ) : (
         <div className="space-y-3">
           {cases.map((item) => (

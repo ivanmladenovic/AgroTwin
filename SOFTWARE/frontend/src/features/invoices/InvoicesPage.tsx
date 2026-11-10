@@ -18,11 +18,12 @@ import { Input } from '@/shared/ui/input'
 import { Label } from '@/shared/ui/label'
 import { Select } from '@/shared/ui/select'
 import { Textarea } from '@/shared/ui/textarea'
+import { tr } from '@/shared/i18n/i18n'
 
 function kindLabel(kind: InvoiceKind | null) {
-  if (kind === 'machine') return 'Mašine'
-  if (kind === 'equipment') return 'Oprema'
-  if (kind === 'other') return 'Ostale investicije'
+  if (kind === 'machine') return tr('Mašine')
+  if (kind === 'equipment') return tr('Oprema')
+  if (kind === 'other') return tr('Ostale investicije')
   return null
 }
 
@@ -35,20 +36,19 @@ export function InvoicesPage() {
   return (
     <div className="w-full space-y-6">
       <div>
-        <p className="kicker">Dokumentacija</p>
-        <h1 className="mt-1 text-xl font-semibold sm:text-2xl">Računi</h1>
+        <p className="kicker">{tr('Dokumentacija')}</p>
+        <h1 className="mt-1 text-xl font-semibold sm:text-2xl">{tr("Računi")}</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-          Arhiva računa za subvencije i internu evidenciju. Gorivo je posebna kategorija; mašine, oprema i
-          ostale investicije idu u drugu listu.
+          {tr('Arhiva računa za subvencije i internu evidenciju. Gorivo je posebna kategorija; mašine, oprema i ostale investicije idu u drugu listu.')}
         </p>
       </div>
 
       {invoicesQuery.isLoading ? (
-        <p className="text-sm text-muted-foreground">Učitavanje računa…</p>
+        <p className="text-sm text-muted-foreground">{tr('Učitavanje računa…')}</p>
       ) : (
         <div className="grid gap-6 md:grid-cols-2">
-          <InvoiceColumn category="fuel" title="Računi za gorivo." items={fuel} />
-          <InvoiceColumn category="other" title="Ostali računi." items={other} />
+          <InvoiceColumn category="fuel" title={tr("Računi za gorivo.")} items={fuel} />
+          <InvoiceColumn category="other" title={tr("Ostali računi.")} items={other} />
         </div>
       )}
     </div>
@@ -73,7 +73,7 @@ function InvoiceColumn({
       </CardHeader>
       <CardContent className="flex flex-1 flex-col gap-4">
         {items.length === 0 && !adding ? (
-          <p className="text-sm text-muted-foreground">Još nema sačuvanih računa u ovoj listi.</p>
+          <p className="text-sm text-muted-foreground">{tr('Još nema sačuvanih računa u ovoj listi.')}</p>
         ) : (
           <ul className="space-y-2">
             {items.map((item) => (
@@ -85,7 +85,7 @@ function InvoiceColumn({
           <InvoiceForm category={category} onClose={() => setAdding(false)} />
         ) : (
           <Button type="button" onClick={() => setAdding(true)}>
-            + Dodaj račun
+            {tr('+ Dodaj račun')}
           </Button>
         )}
       </CardContent>
@@ -120,10 +120,10 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         <Button type="button" size="sm" variant="outline" onClick={() => void openInvoiceFile(invoice)}>
-          Otvori
+          {tr('Otvori')}
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={() => void downloadInvoiceFile(invoice)}>
-          Preuzmi
+          {tr('Preuzmi')}
         </Button>
         <Button
           type="button"
@@ -131,12 +131,12 @@ function InvoiceRow({ invoice }: { invoice: Invoice }) {
           variant="ghost"
           disabled={deleteMutation.isPending}
           onClick={() => {
-            if (window.confirm('Obrisati ovaj račun i priloženi dokument?')) {
+            if (window.confirm(tr('Obrisati ovaj račun i priloženi dokument?'))) {
               deleteMutation.mutate()
             }
           }}
         >
-          Obriši
+          {tr("Obriši")}
         </Button>
       </div>
     </li>
@@ -155,7 +155,7 @@ function InvoiceForm({ category, onClose }: { category: InvoiceCategory; onClose
 
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!file) throw new Error('Izaberite dokument')
+      if (!file) throw new Error(tr('Izaberite dokument'))
       const upload = file.type.startsWith('image/') ? await compressPhoto(file) : file
       return createInvoice({
         file: upload,
@@ -181,39 +181,39 @@ function InvoiceForm({ category, onClose }: { category: InvoiceCategory; onClose
 
   return (
     <form className="grid gap-3 rounded-xl border border-border p-3" onSubmit={onSubmit}>
-      <p className="text-sm font-medium">Novi račun</p>
+      <p className="text-sm font-medium">{tr('Novi račun')}</p>
       <div className="space-y-1.5">
-        <Label>Naslov</Label>
-        <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Npr. Račun za dizel" />
+        <Label>{tr('Naslov')}</Label>
+        <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder={tr("Npr. Račun za dizel")} />
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label>Dobavljač</Label>
+          <Label>{tr("Dobavljač")}</Label>
           <Input value={vendor} onChange={(event) => setVendor(event.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <Label>Datum</Label>
+          <Label>{tr('Datum')}</Label>
           <Input type="date" value={issuedOn} onChange={(event) => setIssuedOn(event.target.value)} required />
         </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label>Iznos (EUR)</Label>
+          <Label>{tr('Iznos (EUR)')}</Label>
           <Input type="number" step="0.01" min="0" value={amount} onChange={(event) => setAmount(event.target.value)} />
         </div>
         {category === 'other' ? (
           <div className="space-y-1.5">
-            <Label>Vrsta</Label>
+            <Label>{tr('Vrsta')}</Label>
             <Select value={kind} onChange={(event) => setKind(event.target.value as InvoiceKind)}>
-              <option value="machine">Mašine</option>
-              <option value="equipment">Oprema</option>
-              <option value="other">Ostale investicije</option>
+              <option value="machine">{tr("Mašine")}</option>
+              <option value="equipment">{tr('Oprema')}</option>
+              <option value="other">{tr('Ostale investicije')}</option>
             </Select>
           </div>
         ) : null}
       </div>
       <div className="space-y-1.5">
-        <Label>Dokument</Label>
+        <Label>{tr('Dokument')}</Label>
         <Input
           type="file"
           accept="application/pdf,image/jpeg,image/png,image/webp"
@@ -222,20 +222,20 @@ function InvoiceForm({ category, onClose }: { category: InvoiceCategory; onClose
         />
       </div>
       <div className="space-y-1.5">
-        <Label>Beleške</Label>
+        <Label>{tr('Beleške')}</Label>
         <Textarea rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} />
       </div>
       {mutation.isError ? (
         <p className="text-sm text-danger">
-          {mutation.error instanceof Error ? mutation.error.message : 'Račun nije sačuvan'}
+          {mutation.error instanceof Error ? mutation.error.message : tr('Račun nije sačuvan')}
         </p>
       ) : null}
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={mutation.isPending || !file}>
-          {mutation.isPending ? 'Čuvanje…' : 'Sačuvaj račun'}
+          {mutation.isPending ? tr('Čuvanje…') : tr('Sačuvaj račun')}
         </Button>
         <Button type="button" variant="outline" disabled={mutation.isPending} onClick={onClose}>
-          Otkaži
+          {tr('Otkaži')}
         </Button>
       </div>
     </form>

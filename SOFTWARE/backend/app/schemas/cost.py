@@ -28,8 +28,23 @@ class CostCreate(BaseModel):
     receipt_filename: str | None = Field(default=None, max_length=255)
 
 
+class CostStandaloneCreate(BaseModel):
+    """Create a journal activity and attached cost in one step."""
+
+    description: str = Field(min_length=1, max_length=255)
+    cost_category_id: UUID
+    amount: Decimal = Field(gt=0)
+    currency: str = Field(default="EUR", min_length=3, max_length=3)
+    incurred_on: date
+    parcel_id: UUID
+    notes: str | None = None
+    activity_type_id: UUID | None = None
+
+
 class CostItemRead(IDSchema):
-    activity_id: UUID
+    activity_id: UUID | None = None
+    source: str | None = None
+    source_id: UUID | None = None
     description: str
     cost_category: CatalogItemRead
     amount: Decimal

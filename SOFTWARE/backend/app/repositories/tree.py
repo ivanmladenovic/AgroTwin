@@ -61,9 +61,14 @@ class TreeRepository:
         return int(self.db.scalar(stmt) or 0)
 
     def health_counts(self, parcel_id: UUID) -> dict[HealthStatus, int]:
+        """Health breakdown for active trees only.
+
+        Replaced/removed trees keep a health_status for history, but must not
+        inflate "zdravo" above the live planting count.
+        """
         stmt = (
             select(Tree.health_status, func.count())
-            .where(Tree.parcel_id == parcel_id)
+            .where(Tree.parcel_id == parcel_id, Tree.status == TreeStatus.ACTIVE)
             .group_by(Tree.health_status)
         )
         return {status: count for status, count in self.db.execute(stmt).all()}

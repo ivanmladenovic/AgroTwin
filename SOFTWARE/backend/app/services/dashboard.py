@@ -84,8 +84,17 @@ class DashboardService:
             )
         ]
         yearly = self.costs.yearly_totals(user.id)
+        # Include establishment costs before the labeled planting year (e.g. land
+        # purchase in 2021 when default_planting_year is 2022). Never start after
+        # the first year that has recorded costs.
         planting_years = [parcel.default_planting_year for parcel in parcels if parcel.default_planting_year]
-        start_year = min(planting_years) if planting_years else (min(yearly) if yearly else today.year)
+        cost_years = list(yearly.keys())
+        candidates: list[int] = []
+        if planting_years:
+            candidates.append(min(planting_years))
+        if cost_years:
+            candidates.append(min(cost_years))
+        start_year = min(candidates) if candidates else today.year
         lifetime_by_year = [
             YearAmount(year=year, amount=yearly.get(year, Decimal("0")))
             for year in range(start_year, today.year + 1)
